@@ -118,30 +118,15 @@
           <input type="password" id="login-password" class="form-control" placeholder="Masukkan password Anda" required autocomplete="current-password">
         </div>
 
-        <button type="submit" id="btn-submit-login" class="btn btn-primary btn-block btn-lg" style="margin-top: 0.5rem;">
+        <button type="submit" id="btn-submit-login" class="btn btn-primary btn-block btn-lg" style="margin-top: 1rem;">
           Masuk ke Portal
         </button>
       </form>
 
-      <!-- Quick Demo Login Buttons -->
       <div class="text-center" style="margin-top: 1.5rem;">
-        <span class="text-xs text-muted font-semibold">UJI COBA 1-KLIK (AKUN DEMO):</span>
-        <div class="quick-login-grid">
-          <button type="button" class="quick-btn" id="btn-quick-admin">
-            <span>🛡️ Masuk sbg <strong>Admin TU</strong></span>
-            <span class="text-xs text-muted">admin / admin123</span>
-          </button>
-          <button type="button" class="quick-btn" id="btn-quick-guru">
-            <span>👨‍🏫 Masuk sbg <strong>Guru (NIP)</strong></span>
-            <span class="text-xs text-muted">19850115... / guru123</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="text-center">
         <div class="database-status-pill">
           <span class="status-dot"></span>
-          <span>Database: Google Sheets (Vercel Ready)</span>
+          <span>Sistem Presensi Online Aktif</span>
         </div>
       </div>
     </div>
@@ -171,18 +156,6 @@
       const btnSubmit = document.getElementById("btn-submit-login");
       const userInput = document.getElementById("login-username");
       const passInput = document.getElementById("login-password");
-
-      document.getElementById("btn-quick-admin").addEventListener("click", () => {
-        userInput.value = "admin";
-        passInput.value = "admin123";
-        form.requestSubmit();
-      });
-
-      document.getElementById("btn-quick-guru").addEventListener("click", () => {
-        userInput.value = "198501152010011002";
-        passInput.value = "guru123";
-        form.requestSubmit();
-      });
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
