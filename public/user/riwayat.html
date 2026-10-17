@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Riwayat Presensi Guru - Sistem Absensi</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/user.css">
+</head>
+<body class="user-wrapper">
+
+  <nav class="user-navbar">
+    <div class="user-nav-container">
+      <div class="user-brand">
+        <span>👨‍🏫</span>
+        <span>Presensi Guru</span>
+      </div>
+
+      <ul class="user-nav-links">
+        <li><a href="/user/index.html">Presensi</a></li>
+        <li class="active"><a href="/user/riwayat.html">Riwayat Presensi</a></li>
+        <li><a href="/user/izin.html">Izin & Cuti</a></li>
+        <li><a href="/user/kartu.html">ID Card Guru</a></li>
+      </ul>
+
+      <div>
+        <a href="#" class="btn btn-sm btn-outline btn-logout" style="color: #ef4444;">Keluar</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="user-container">
+    <div class="page-header" style="margin-top: 1rem;">
+      <div>
+        <h1 class="page-title">Riwayat Presensi Kehadiran Guru</h1>
+        <p class="page-subtitle">Catatan presensi masuk dan jam pulang mengajar Anda</p>
+      </div>
+    </div>
+
+    <!-- Mini Stat Summary -->
+    <div class="grid grid-cols-3 gap-3" style="margin-bottom: 1.5rem;">
+      <div class="card text-center" style="padding: 1rem;">
+        <span class="text-xs text-muted font-semibold uppercase">Hadir Tepat Waktu</span>
+        <div class="text-2xl font-bold text-success" id="count-hadir" style="margin-top: 0.25rem;">0</div>
+      </div>
+      <div class="card text-center" style="padding: 1rem;">
+        <span class="text-xs text-muted font-semibold uppercase">Terlambat</span>
+        <div class="text-2xl font-bold text-warning" id="count-terlambat" style="margin-top: 0.25rem;">0</div>
+      </div>
+      <div class="card text-center" style="padding: 1rem;">
+        <span class="text-xs text-muted font-semibold uppercase">Izin / Cuti / Dinas</span>
+        <div class="text-2xl font-bold text-primary" id="count-izin" style="margin-top: 0.25rem;">0</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 40px;">No</th>
+              <th>Tanggal</th>
+              <th>Jam Masuk</th>
+              <th>Jam Pulang</th>
+              <th>Status</th>
+              <th>Keterangan</th>
+            </tr>
+          </thead>
+          <tbody id="user-riwayat-tbody">
+            <tr>
+              <td colspan="6" class="text-center text-muted" style="padding: 2rem;">Memuat riwayat kehadiran guru...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="mobile-bottom-nav">
+    <ul class="mobile-nav-items">
+      <li>
+        <a href="/user/index.html">
+          <span class="icon">📷</span>
+          <span>Presensi</span>
+        </a>
+      </li>
+      <li class="active">
+        <a href="/user/riwayat.html">
+          <span class="icon">📋</span>
+          <span>Riwayat</span>
+        </a>
+      </li>
+      <li>
+        <a href="/user/izin.html">
+          <span class="icon">✉️</span>
+          <span>Izin & Cuti</span>
+        </a>
+      </li>
+      <li>
+        <a href="/user/kartu.html">
+          <span class="icon">🪪</span>
+          <span>ID Card</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/js/config.js"></script>
+  <script src="/js/mockData.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/user.js"></script>
+</body>
+</html>

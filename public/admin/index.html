@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Admin - Absensi Guru & Tenaga Pendidik</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+  <div class="admin-layout">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">👨‍🏫</div>
+        <div class="brand-text">
+          <h2>Absensi Guru</h2>
+          <span>Admin Kepegawaian</span>
+        </div>
+      </div>
+
+      <ul class="sidebar-menu">
+        <li class="menu-category">Menu Utama</li>
+        <li class="menu-item active">
+          <a href="/admin/index.html">
+            <span>📊</span>
+            <span>Dashboard</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="/admin/rekap.html">
+            <span>📋</span>
+            <span>Rekap Presensi Guru</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="/admin/izin.html">
+            <span>✉️</span>
+            <span>Izin, Cuti & Dinas</span>
+          </a>
+        </li>
+
+        <li class="menu-category">Data Pegawai</li>
+        <li class="menu-item">
+          <a href="/admin/guru.html">
+            <span>👥</span>
+            <span>Data Guru & Staf</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="/admin/setting.html">
+            <span>⚙️</span>
+            <span>Pengaturan</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar auth-user-initial">A</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name auth-user-name">Admin Kepegawaian</div>
+            <div class="sidebar-user-role auth-user-role">Administrator TU</div>
+          </div>
+        </div>
+        <a href="#" class="btn-logout" title="Keluar" style="color: #ef4444; font-size: 1.25rem;">🚪</a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="topbar-left">
+          <button class="sidebar-toggle-btn" aria-label="Toggle Sidebar">☰</button>
+          <div class="topbar-title">Dashboard Kehadiran Guru</div>
+        </div>
+        <div class="topbar-right">
+          <div class="topbar-clock">
+            <span>--:--:--</span>
+          </div>
+          <a href="/admin/setting.html" class="btn btn-sm btn-outline">⚙️ Pengaturan</a>
+        </div>
+      </header>
+
+      <div class="admin-content">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Ringkasan Presensi Guru Hari Ini</h1>
+            <p class="page-subtitle">Pantau kehadiran guru berbasis radius lokasi sekolah secara real-time</p>
+          </div>
+          <div>
+            <a href="/admin/rekap.html" class="btn btn-primary">Lihat Rekap Lengkap &rarr;</a>
+          </div>
+        </div>
+
+        <!-- 4 Key Statistic Cards -->
+        <div class="grid grid-cols-4 gap-4" style="margin-bottom: 2rem;">
+          <div class="stat-card" style="--stat-color: #2563eb; --stat-bg: #eff6ff;">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total">0</span>
+              <span class="stat-label">Total Guru & Staf</span>
+            </div>
+          </div>
+
+          <div class="stat-card" style="--stat-color: #10b981; --stat-bg: #ecfdf5;">
+            <div class="stat-icon">✓</div>
+            <div class="stat-info">
+              <span class="stat-value text-success" id="stat-hadir">0</span>
+              <span class="stat-label">Hadir Tepat Waktu</span>
+            </div>
+          </div>
+
+          <div class="stat-card" style="--stat-color: #f59e0b; --stat-bg: #fffbeb;">
+            <div class="stat-icon">⏰</div>
+            <div class="stat-info">
+              <span class="stat-value text-warning" id="stat-terlambat">0</span>
+              <span class="stat-label">Terlambat Masuk</span>
+            </div>
+          </div>
+
+          <div class="stat-card" style="--stat-color: #0ea5e9; --stat-bg: #f0f9ff;">
+            <div class="stat-icon">📝</div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-izin">0</span>
+              <span class="stat-label">Izin / Cuti / Dinas</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Feed Table -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">Live Feed Presensi Guru Hari Ini</h2>
+              <p class="card-subtitle">Guru yang baru saja melakukan presensi berbasis radius GPS</p>
+            </div>
+            <button class="btn btn-sm btn-outline" onclick="location.reload()">🔄 Segarkan Data</button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">No</th>
+                  <th>NIP</th>
+                  <th>Nama Guru</th>
+                  <th>Mata Pelajaran</th>
+                  <th>Jam Masuk</th>
+                  <th>Status</th>
+                  <th>Radius / Lokasi Presensi</th>
+                </tr>
+              </thead>
+              <tbody id="recent-attendance-tbody">
+                <tr>
+                  <td colspan="7" class="text-center text-muted" style="padding: 2rem;">Memuat data presensi guru...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/js/config.js"></script>
+  <script src="/js/mockData.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

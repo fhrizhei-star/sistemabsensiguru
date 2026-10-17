@@ -1,0 +1,14 @@
+{
+  "name": "sistem-absensi-sekolah",
+  "version": "1.0.0",
+  "description": "Sistem Absensi Sekolah Modern berbasis Web dengan Database Google Sheets dan siap deploy ke Vercel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["absensi", "sekolah", "google-sheets", "vercel"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {}
+}

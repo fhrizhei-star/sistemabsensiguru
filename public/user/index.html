@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presensi Online Guru - Sistem Absensi</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/user.css">
+  <style>
+    .pulse-animation {
+      animation: pulseBtn 2s infinite;
+    }
+    @keyframes pulseBtn {
+      0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+    }
+
+    .gps-hero-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 1.75rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .gps-radar-icon {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 1rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.25rem;
+      transition: var(--transition);
+    }
+
+    .gps-radar-icon.in-range {
+      background-color: var(--success-light);
+      color: var(--success);
+      box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.15);
+    }
+
+    .gps-radar-icon.out-range {
+      background-color: var(--danger-light);
+      color: var(--danger);
+      box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.15);
+    }
+  </style>
+</head>
+<body class="user-wrapper">
+
+  <nav class="user-navbar">
+    <div class="user-nav-container">
+      <div class="user-brand">
+        <span>👨‍🏫</span>
+        <span>Presensi Guru</span>
+      </div>
+
+      <ul class="user-nav-links">
+        <li class="active"><a href="/user/index.html">Presensi</a></li>
+        <li><a href="/user/riwayat.html">Riwayat Presensi</a></li>
+        <li><a href="/user/izin.html">Izin & Cuti</a></li>
+        <li><a href="/user/kartu.html">ID Card Guru</a></li>
+      </ul>
+
+      <div>
+        <a href="#" class="btn btn-sm btn-outline btn-logout" style="color: #ef4444;">Keluar</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="user-container">
+    <!-- Profile Banner Card Guru -->
+    <div class="profile-card">
+      <div class="profile-avatar auth-user-initial">G</div>
+      <div class="profile-info">
+        <h3 id="user-profile-name">Memuat Data Guru...</h3>
+        <p class="text-xs text-white" id="user-profile-nip">NIP: -</p>
+        <span class="profile-badge" id="user-profile-mapel">Guru Mata Pelajaran</span>
+      </div>
+    </div>
+
+    <!-- Live Digital Clock Widget -->
+    <div class="clock-widget">
+      <div class="clock-time" id="clock-time">--:--:--</div>
+      <div class="clock-date" id="clock-date">Memuat tanggal...</div>
+    </div>
+
+    <!-- Attendance Today Status Pills -->
+    <div class="status-timeline">
+      <div class="status-box" id="box-masuk">
+        <div class="status-box-title">Jam Masuk Bertugas</div>
+        <div class="status-box-time text-primary" id="today-jam-masuk">--:--</div>
+      </div>
+      <div class="status-box" id="box-pulang">
+        <div class="status-box-title">Jam Selesai Bertugas</div>
+        <div class="status-box-time text-success" id="today-jam-pulang">--:--</div>
+      </div>
+    </div>
+
+    <!-- GPS & Location Radius Status Card -->
+    <div class="gps-hero-card">
+      <div id="gps-radar-icon" class="gps-radar-icon in-range">📍</div>
+      <h3 id="gps-status-title" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.35rem;">Mengecek Lokasi GPS...</h3>
+      <p id="gps-distance-text" class="text-sm text-muted" style="margin-bottom: 1rem;">Menghitung jarak perangkat Anda ke sekolah</p>
+      
+      <button type="button" id="btn-refresh-gps" class="btn btn-sm btn-outline">
+        🔄 Segarkan Posisi GPS
+      </button>
+    </div>
+
+    <!-- Tombol Aksi Presensi -->
+    <div class="grid grid-cols-2 gap-4">
+      <button type="button" id="btn-absen-masuk" class="btn btn-primary btn-lg" style="height: 64px; font-size: 1.05rem;">
+        <span style="font-size: 1.4rem;">☀️</span>
+        <span>Presensi Masuk</span>
+      </button>
+
+      <button type="button" id="btn-absen-pulang" class="btn btn-success btn-lg" style="height: 64px; font-size: 1.05rem;" disabled>
+        <span style="font-size: 1.4rem;">🌙</span>
+        <span>Presensi Pulang</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <div class="mobile-bottom-nav">
+    <ul class="mobile-nav-items">
+      <li class="active">
+        <a href="/user/index.html">
+          <span class="icon">📍</span>
+          <span>Presensi</span>
+        </a>
+      </li>
+      <li>
+        <a href="/user/riwayat.html">
+          <span class="icon">📋</span>
+          <span>Riwayat</span>
+        </a>
+      </li>
+      <li>
+        <a href="/user/izin.html">
+          <span class="icon">✉️</span>
+          <span>Izin & Cuti</span>
+        </a>
+      </li>
+      <li>
+        <a href="/user/kartu.html">
+          <span class="icon">🪪</span>
+          <span>ID Card</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/js/config.js"></script>
+  <script src="/js/mockData.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/user.js"></script>
+</body>
+</html>

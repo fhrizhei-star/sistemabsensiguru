@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Guru & Tenaga Kependidikan - Sistem Absensi</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">👨‍🏫</div>
+        <div class="brand-text">
+          <h2>Absensi Guru</h2>
+          <span>Admin Kepegawaian</span>
+        </div>
+      </div>
+
+      <ul class="sidebar-menu">
+        <li class="menu-category">Menu Utama</li>
+        <li class="menu-item">
+          <a href="/admin/index.html">
+            <span>📊</span>
+            <span>Dashboard</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="/admin/rekap.html">
+            <span>📋</span>
+            <span>Rekap Presensi Guru</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="/admin/izin.html">
+            <span>✉️</span>
+            <span>Izin, Cuti & Dinas</span>
+          </a>
+        </li>
+
+        <li class="menu-category">Data Pegawai</li>
+        <li class="menu-item active">
+          <a href="/admin/guru.html">
+            <span>👥</span>
+            <span>Data Guru & Staf</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="/admin/setting.html">
+            <span>⚙️</span>
+            <span>Pengaturan</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar auth-user-initial">A</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name auth-user-name">Admin Kepegawaian</div>
+            <div class="sidebar-user-role auth-user-role">Administrator TU</div>
+          </div>
+        </div>
+        <a href="#" class="btn-logout" title="Keluar" style="color: #ef4444; font-size: 1.25rem;">🚪</a>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="topbar-left">
+          <button class="sidebar-toggle-btn" aria-label="Toggle Sidebar">☰</button>
+          <div class="topbar-title">Data Guru & Pegawai</div>
+        </div>
+        <div class="topbar-right">
+          <div class="topbar-clock">
+            <span>--:--:--</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="admin-content">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Manajemen Guru & Tenaga Kependidikan</h1>
+            <p class="page-subtitle">Kelola akun guru pengajar, NIP, mata pelajaran, dan hak akses</p>
+          </div>
+          <div>
+            <button id="btn-add-guru" class="btn btn-primary">+ Tambah Guru / Pegawai</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 1.5rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <input type="text" id="search-guru" class="form-control" placeholder="🔍 Cari berdasarkan nama guru, NIP, atau mata pelajaran...">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">No</th>
+                  <th>NIP / Username</th>
+                  <th>Nama Lengkap</th>
+                  <th>Mata Pelajaran</th>
+                  <th>Jabatan / Role</th>
+                  <th>No. WhatsApp</th>
+                  <th style="width: 140px;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="guru-tbody">
+                <tr>
+                  <td colspan="7" class="text-center text-muted" style="padding: 2rem;">Memuat daftar guru...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal Tambah / Edit Guru -->
+  <div id="modal-guru" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Tambah Data Guru / Pegawai</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <form id="form-guru">
+        <div class="modal-body">
+          <input type="hidden" id="modal-user-id">
+
+          <div class="form-group">
+            <label class="form-label" for="modal-nip">Nomor Induk Pegawai (NIP)</label>
+            <input type="text" id="modal-nip" class="form-control" placeholder="Contoh: 198501152010011002" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="modal-nama">Nama Lengkap & Gelar</label>
+            <input type="text" id="modal-nama" class="form-control" placeholder="Contoh: Drs. Bambang Sudarsono, M.Pd" required>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="form-group">
+              <label class="form-label" for="modal-role">Role Akses</label>
+              <select id="modal-role" class="form-control" required>
+                <option value="guru">Guru / Tenaga Pendidik</option>
+                <option value="admin">Administrator Kepegawaian</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="modal-mapel">Mata Pelajaran</label>
+              <input type="text" id="modal-mapel" class="form-control" placeholder="Contoh: Matematika">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="modal-jabatan">Jabatan / Golongan</label>
+            <input type="text" id="modal-jabatan" class="form-control" placeholder="Contoh: Guru Madya / Penata Tk. I">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="modal-password">Password Akun</label>
+            <input type="password" id="modal-password" class="form-control" placeholder="Bawaan: guru123">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="modal-nohp">Nomor WhatsApp / HP</label>
+            <input type="tel" id="modal-nohp" class="form-control" placeholder="Contoh: 08123456789">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-modal-cancel">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Data Guru</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/js/config.js"></script>
+  <script src="/js/mockData.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

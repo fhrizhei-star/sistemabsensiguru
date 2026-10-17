@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Absensi Guru & Tenaga Pendidik</title>
+  <meta name="description" content="Sistem Presensi Online Guru & Tenaga Kependidikan berbasis Web & Google Sheets yang siap dideploy di Vercel.">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <style>
+    .login-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: radial-gradient(circle at 10% 20%, #eff6ff 0%, #e0e7ff 45%, #f8fafc 90%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 480px;
+      background: #ffffff;
+      border-radius: var(--radius-xl);
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      padding: 2.5rem 2rem;
+      position: relative;
+      z-index: 10;
+    }
+
+    .brand-logo-badge {
+      width: 58px;
+      height: 58px;
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 1.85rem;
+      margin: 0 auto 1.25rem;
+      box-shadow: 0 8px 16px var(--primary-glow);
+    }
+
+    .quick-login-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px dashed var(--border);
+    }
+
+    .quick-btn {
+      padding: 0.65rem 0.5rem;
+      font-size: 0.75rem;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+      transition: var(--transition);
+    }
+
+    .quick-btn:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .database-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background-color: #f1f5f9;
+      padding: 0.25rem 0.75rem;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #475569;
+      margin-top: 1.25rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--success);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="text-center">
+        <div class="brand-logo-badge">👨‍🏫</div>
+        <h1 style="font-size: 1.5rem; margin-bottom: 0.35rem;">Sistem Absensi Guru</h1>
+        <p class="text-muted text-sm" style="margin-bottom: 1.75rem;">Portal Presensi Guru & Tenaga Kependidikan</p>
+      </div>
+
+      <form id="form-login">
+        <div class="form-group">
+          <label class="form-label" for="login-username">NIP / Username</label>
+          <input type="text" id="login-username" class="form-control" placeholder="Masukkan NIP atau username Anda" required autofocus autocomplete="username">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="login-password">Password</label>
+          <input type="password" id="login-password" class="form-control" placeholder="Masukkan password Anda" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" id="btn-submit-login" class="btn btn-primary btn-block btn-lg" style="margin-top: 0.5rem;">
+          Masuk ke Portal
+        </button>
+      </form>
+
+      <!-- Quick Demo Login Buttons -->
+      <div class="text-center" style="margin-top: 1.5rem;">
+        <span class="text-xs text-muted font-semibold">UJI COBA 1-KLIK (AKUN DEMO):</span>
+        <div class="quick-login-grid">
+          <button type="button" class="quick-btn" id="btn-quick-admin">
+            <span>🛡️ Masuk sbg <strong>Admin TU</strong></span>
+            <span class="text-xs text-muted">admin / admin123</span>
+          </button>
+          <button type="button" class="quick-btn" id="btn-quick-guru">
+            <span>👨‍🏫 Masuk sbg <strong>Guru (NIP)</strong></span>
+            <span class="text-xs text-muted">19850115... / guru123</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="text-center">
+        <div class="database-status-pill">
+          <span class="status-dot"></span>
+          <span>Database: Google Sheets (Vercel Ready)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/js/config.js"></script>
+  <script src="/js/mockData.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const currentUser = Auth.getCurrentUser();
+      if (currentUser) {
+        if (currentUser.role === "admin") {
+          window.location.href = "/admin/index.html";
+        } else {
+          window.location.href = "/user/index.html";
+        }
+        return;
+      }
+
+      const form = document.getElementById("form-login");
+      const btnSubmit = document.getElementById("btn-submit-login");
+      const userInput = document.getElementById("login-username");
+      const passInput = document.getElementById("login-password");
+
+      document.getElementById("btn-quick-admin").addEventListener("click", () => {
+        userInput.value = "admin";
+        passInput.value = "admin123";
+        form.requestSubmit();
+      });
+
+      document.getElementById("btn-quick-guru").addEventListener("click", () => {
+        userInput.value = "198501152010011002";
+        passInput.value = "guru123";
+        form.requestSubmit();
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = userInput.value.trim();
+        const password = passInput.value.trim();
+
+        if (!username || !password) {
+          Utils.showToast("NIP/Username dan Password wajib diisi!", "warning");
+          return;
+        }
+
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = "Memverifikasi...";
+
+        try {
+          const res = await Api.login(username, password);
+          if (res.success && res.user) {
+            Auth.setCurrentUser(res.user);
+            Utils.showToast(`Selamat datang, ${res.user.nama}!`, "success");
+
+            setTimeout(() => {
+              if (res.user.role === "admin") {
+                window.location.href = "/admin/index.html";
+              } else {
+                window.location.href = "/user/index.html";
+              }
+            }, 500);
+          } else {
+            Utils.showToast(res.message || "NIP/Username atau password salah!", "error");
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Masuk ke Portal";
+          }
+        } catch (err) {
+          console.error(err);
+          Utils.showToast("Terjadi kesalahan koneksi", "error");
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = "Masuk ke Portal";
+        }
+      });
+    });
+  </script>
+</body>
+</html>

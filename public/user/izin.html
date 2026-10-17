@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pengajuan Izin & Cuti Guru - Sistem Absensi</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/user.css">
+</head>
+<body class="user-wrapper">
+
+  <nav class="user-navbar">
+    <div class="user-nav-container">
+      <div class="user-brand">
+        <span>👨‍🏫</span>
+        <span>Presensi Guru</span>
+      </div>
+
+      <ul class="user-nav-links">
+        <li><a href="/user/index.html">Presensi</a></li>
+        <li><a href="/user/riwayat.html">Riwayat Presensi</a></li>
+        <li class="active"><a href="/user/izin.html">Izin & Cuti</a></li>
+        <li><a href="/user/kartu.html">ID Card Guru</a></li>
+      </ul>
+
+      <div>
+        <a href="#" class="btn btn-sm btn-outline btn-logout" style="color: #ef4444;">Keluar</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="user-container">
+    <div class="page-header" style="margin-top: 1rem;">
+      <div>
+        <h1 class="page-title">Permohonan Izin, Cuti & Dinas Luar Guru</h1>
+        <p class="page-subtitle">Ajukan permohonan ketidakhadiran dinas atau cuti kepada manajemen sekolah</p>
+      </div>
+    </div>
+
+    <!-- Form Pengajuan -->
+    <div class="card" style="margin-bottom: 2rem;">
+      <form id="form-izin">
+        <div class="form-group">
+          <label class="form-label" for="izin-tipe">Jenis Permohonan</label>
+          <select id="izin-tipe" class="form-control" required>
+            <option value="Tugas Dinas Luar">Tugas Dinas Luar (MGMP / Diklat / Rapat Dinas)</option>
+            <option value="Cuti Tahunan">Cuti Tahunan</option>
+            <option value="Sakit">Sakit (Kondisi Kesehatan)</option>
+            <option value="Cuti Alasan Penting">Cuti Alasan Penting (Keluarga)</option>
+            <option value="Dispensasi Pelatihan">Dispensasi Pelatihan Guru Penggerak</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="form-group">
+            <label class="form-label" for="izin-mulai">Tanggal Mulai</label>
+            <input type="date" id="izin-mulai" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="izin-selesai">Tanggal Selesai</label>
+            <input type="date" id="izin-selesai" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="izin-alasan">Keterangan / Surat Tugas / Alasan</label>
+          <textarea id="izin-alasan" class="form-control" rows="3" placeholder="Tuliskan keterangan lengkap kegiatan dinas luar atau alasan cuti..." required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 0.5rem;">
+          📤 Kirim Permohonan Izin / Cuti
+        </button>
+      </form>
+    </div>
+
+    <!-- Riwayat Pengajuan Izin -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Status Permohonan Izin / Cuti Anda</h2>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 40px;">No</th>
+              <th>Jenis</th>
+              <th>Rentang Tanggal</th>
+              <th>Keterangan</th>
+              <th>Status Verifikasi</th>
+            </tr>
+          </thead>
+          <tbody id="riwayat-izin-tbody">
+            <tr>
+              <td colspan="5" class="text-center text-muted" style="padding: 1.5rem;">Memuat data...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="mobile-bottom-nav">
+    <ul class="mobile-nav-items">
+      <li>
+        <a href="/user/index.html">
+          <span class="icon">📷</span>
+          <span>Presensi</span>
+        </a>
+      </li>
+      <li>
+        <a href="/user/riwayat.html">
+          <span class="icon">📋</span>
+          <span>Riwayat</span>
+        </a>
+      </li>
+      <li class="active">
+        <a href="/user/izin.html">
+          <span class="icon">✉️</span>
+          <span>Izin & Cuti</span>
+        </a>
+      </li>
+      <li>
+        <a href="/user/kartu.html">
+          <span class="icon">🪪</span>
+          <span>ID Card</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/js/config.js"></script>
+  <script src="/js/mockData.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/user.js"></script>
+</body>
+</html>
