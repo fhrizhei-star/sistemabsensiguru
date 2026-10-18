@@ -279,14 +279,50 @@ function recordAttendanceHandler(data) {
     const rows = sheet.getDataRange().getValues();
     let existingRowIndex = -1;
 
-    for (let i = 1; i < rows.length; i++) {
-      const rawDate = rows[i][5];
-      const rowDate = rawDate instanceof Date
-        ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
-        : String(rawDate).trim().replace(/^'/, "");
-      if (rows[i][1] == data.user_id && rowDate == todayStr) {
-        existingRowIndex = i + 1;
-        break;
+    if (type === "pulang") {
+      // Cari baris kehadiran hari ini mulai dari baris paling baru (bawah ke atas)
+      for (let i = rows.length - 1; i >= 1; i--) {
+        const rowId = String(rows[i][0]).trim();
+        const rowUserId = String(rows[i][1]).trim();
+
+        if (data.attendance_id && rowId === String(data.attendance_id).trim()) {
+          existingRowIndex = i + 1;
+          break;
+        }
+
+        const rawDate = rows[i][5];
+        const rowDate = rawDate instanceof Date
+          ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
+          : String(rawDate).trim().replace(/^'/, "");
+
+        const ts = parseInt(rowId.replace("ATT", ""));
+        const isWithin24Hours = !isNaN(ts) && (new Date().getTime() - ts < 24 * 3600 * 1000);
+
+        if (rowUserId === String(data.user_id) && (rowDate === todayStr || isWithin24Hours)) {
+          // Cari baris yang jam_pulang-nya belum terisi
+          if (!rows[i][7]) {
+            existingRowIndex = i + 1;
+            break;
+          } else if (existingRowIndex === -1) {
+            existingRowIndex = i + 1;
+          }
+        }
+      }
+    } else {
+      // Untuk presensi masuk, cek apakah sudah pernah absen masuk hari ini
+      for (let i = rows.length - 1; i >= 1; i--) {
+        const rawDate = rows[i][5];
+        const rowDate = rawDate instanceof Date
+          ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
+          : String(rawDate).trim().replace(/^'/, "");
+
+        const ts = parseInt(String(rows[i][0]).replace("ATT", ""));
+        const isToday = !isNaN(ts) && (new Date().getTime() - ts < 24 * 3600 * 1000);
+
+        if (String(rows[i][1]) === String(data.user_id) && (rowDate === todayStr || isToday)) {
+          existingRowIndex = i + 1;
+          break;
+        }
       }
     }
 
@@ -324,7 +360,10 @@ function recordAttendanceHandler(data) {
 
       const currentJamPulang = sheet.getRange(existingRowIndex, 8).getValue();
       if (currentJamPulang) {
-        return { success: false, message: "Bapak/Ibu Guru sudah melakukan presensi pulang hari ini!" };
+        return { 
+          success: false, 
+          message: "Bapak/Ibu Guru sudah melakukan presensi pulang hari ini (" + currentJamPulang + ")!" 
+        };
       }
 
       sheet.getRange(existingRowIndex, 8).setValue(timeNowStr);

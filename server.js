@@ -62,14 +62,21 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Makassar" });
+      const checkoutsCache = global.__checkoutsCache || (global.__checkoutsCache = new Map());
 
       const normalizeAttendanceList = (list) => {
         if (!Array.isArray(list)) return [];
         return list.map((item) => {
-          if (item && item.id && String(item.id).startsWith("ATT")) {
-            const ts = parseInt(String(item.id).replace("ATT", ""));
-            if (!isNaN(ts) && ts > 1600000000000) {
-              item.tanggal = new Date(ts).toLocaleDateString("en-CA", { timeZone: "Asia/Makassar" });
+          if (item) {
+            if (item.id && String(item.id).startsWith("ATT")) {
+              const ts = parseInt(String(item.id).replace("ATT", ""));
+              if (!isNaN(ts) && ts > 1600000000000) {
+                item.tanggal = new Date(ts).toLocaleDateString("en-CA", { timeZone: "Asia/Makassar" });
+              }
+            }
+            const checkoutTime = checkoutsCache.get(String(item.id)) || checkoutsCache.get(String(item.user_id));
+            if (checkoutTime && (!item.jam_pulang || item.jam_pulang === "" || item.jam_pulang === "-")) {
+              item.jam_pulang = checkoutTime;
             }
           }
           return item;
@@ -193,6 +200,38 @@ const server = http.createServer(async (req, res) => {
               if (bodyObj.action === "recordAttendance") {
                 if (!bodyObj.tanggal) bodyObj.tanggal = todayStr;
                 if (!bodyObj.jam) bodyObj.jam = new Date().toLocaleTimeString("id-ID", { timeZone: "Asia/Makassar", hour12: false });
+
+                if (bodyObj.type === "pulang") {
+                  const jamPulang = bodyObj.jam;
+                  if (bodyObj.attendance_id) checkoutsCache.set(String(bodyObj.attendance_id), jamPulang);
+                  if (bodyObj.user_id) checkoutsCache.set(String(bodyObj.user_id), jamPulang);
+
+                  try {
+                    const gasRes = await fetch(scriptUrl, {
+                      method: "POST",
+                      headers: { "Content-Type": "text/plain;charset=utf-8" },
+                      body: JSON.stringify(bodyObj),
+                      redirect: "follow"
+                    });
+                    const text = await gasRes.text();
+                    try {
+                      const gasJson = JSON.parse(text);
+                      if (gasJson && gasJson.success) {
+                        res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store, no-cache, must-revalidate" });
+                        res.end(JSON.stringify(gasJson));
+                        return;
+                      }
+                    } catch (e) {}
+                  } catch (err) {}
+
+                  res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store, no-cache, must-revalidate" });
+                  res.end(JSON.stringify({
+                    success: true,
+                    message: `Presensi pulang berhasil dicatat pada ${jamPulang}`,
+                    jam_pulang: jamPulang
+                  }));
+                  return;
+                }
               }
               body = JSON.stringify(bodyObj);
             }

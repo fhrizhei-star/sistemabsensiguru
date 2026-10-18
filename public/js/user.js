@@ -35,6 +35,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function initGuruAttendancePage(user) {
   startDigitalClock();
 
+  const userId = user.id || user.user_id;
+  let currentAttendanceId = null;
+
   const btnAbsenMasuk = document.getElementById("btn-absen-masuk");
   const btnAbsenPulang = document.getElementById("btn-absen-pulang");
   const gpsRadarIcon = document.getElementById("gps-radar-icon");
@@ -66,9 +69,10 @@ async function initGuruAttendancePage(user) {
 
   const loadTodayStatus = async () => {
     const todayDate = new Date().toLocaleDateString("en-CA");
-    const todayRes = await Api.getTodayAttendance(user.id, todayDate);
+    const todayRes = await Api.getTodayAttendance(userId, todayDate);
     if (todayRes.success && todayRes.data) {
       const att = todayRes.data;
+      currentAttendanceId = att.id;
       if (todayMasukTime) todayMasukTime.textContent = att.jam_masuk || "--:--";
       if (todayPulangTime) todayPulangTime.textContent = att.jam_pulang || "--:--";
 
@@ -86,6 +90,7 @@ async function initGuruAttendancePage(user) {
         }
       }
     } else {
+      currentAttendanceId = null;
       if (todayMasukTime) todayMasukTime.textContent = "--:--";
       if (todayPulangTime) todayPulangTime.textContent = "--:--";
       btnAbsenMasuk.disabled = false;
@@ -190,7 +195,7 @@ async function initGuruAttendancePage(user) {
 
       const payload = {
         type: "masuk",
-        user_id: user.id,
+        user_id: userId,
         nama: user.nama,
         nip: user.nip || user.username,
         mapel: user.mapel || user.jabatan,
@@ -232,7 +237,8 @@ async function initGuruAttendancePage(user) {
 
       const payload = {
         type: "pulang",
-        user_id: user.id,
+        attendance_id: currentAttendanceId || "",
+        user_id: userId,
         nama: user.nama,
         nip: user.nip || user.username,
         mapel: user.mapel || user.jabatan,
@@ -278,6 +284,7 @@ function startDigitalClock() {
 
 // ================= 2. RIWAYAT PRESENSI GURU ================= //
 async function initGuruRiwayatPage(user) {
+  const userId = user.id || user.user_id;
   const tbody = document.getElementById("user-riwayat-tbody");
   const countHadir = document.getElementById("count-hadir");
   const countTerlambat = document.getElementById("count-terlambat");
@@ -287,8 +294,8 @@ async function initGuruRiwayatPage(user) {
   tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted" style="padding: 2rem;">Memuat riwayat kehadiran Anda...</td></tr>`;
 
   try {
-    const res = await Api.getUserAttendance(user.id);
-    const leavesRes = await Api.getLeaves(user.id);
+    const res = await Api.getUserAttendance(userId);
+    const leavesRes = await Api.getLeaves(userId);
 
     let list = res.success && res.list ? res.list : [];
     let leavesList = leavesRes.success && leavesRes.list ? leavesRes.list : [];
@@ -334,6 +341,7 @@ async function initGuruRiwayatPage(user) {
 
 // ================= 3. FORM PENGAJUAN IZIN / CUTI / DINAS GURU ================= //
 async function initGuruIzinPage(user) {
+  const userId = user.id || user.user_id;
   const form = document.getElementById("form-izin");
   const tbody = document.getElementById("riwayat-izin-tbody");
 
@@ -341,7 +349,7 @@ async function initGuruIzinPage(user) {
     if (!tbody) return;
     tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 1.5rem;">Memuat data...</td></tr>`;
 
-    const res = await Api.getLeaves(user.id);
+    const res = await Api.getLeaves(userId);
     if (!res.success || !res.list || res.list.length === 0) {
       tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 1.5rem;">Belum ada pengajuan izin, cuti, atau dinas luar.</td></tr>`;
       return;
@@ -383,7 +391,7 @@ async function initGuruIzinPage(user) {
       }
 
       const payload = {
-        user_id: user.id,
+        user_id: userId,
         nama: user.nama,
         nip: user.nip || user.username,
         mapel: user.mapel || user.jabatan,

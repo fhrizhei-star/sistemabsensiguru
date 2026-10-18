@@ -39,15 +39,22 @@ export default async function handler(req, res) {
 
   try {
     const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Makassar" });
+    const checkoutsCache = global.__checkoutsCache || (global.__checkoutsCache = new Map());
 
-    // Helper normalisasi tanggal record berdasarkan timestamp ID
+    // Helper normalisasi tanggal record berdasarkan timestamp ID & jam_pulang cache
     const normalizeAttendanceList = (list) => {
       if (!Array.isArray(list)) return [];
       return list.map((item) => {
-        if (item && item.id && String(item.id).startsWith("ATT")) {
-          const ts = parseInt(String(item.id).replace("ATT", ""));
-          if (!isNaN(ts) && ts > 1600000000000) {
-            item.tanggal = new Date(ts).toLocaleDateString("en-CA", { timeZone: "Asia/Makassar" });
+        if (item) {
+          if (item.id && String(item.id).startsWith("ATT")) {
+            const ts = parseInt(String(item.id).replace("ATT", ""));
+            if (!isNaN(ts) && ts > 1600000000000) {
+              item.tanggal = new Date(ts).toLocaleDateString("en-CA", { timeZone: "Asia/Makassar" });
+            }
+          }
+          const checkoutTime = checkoutsCache.get(String(item.id)) || checkoutsCache.get(String(item.user_id));
+          if (checkoutTime && (!item.jam_pulang || item.jam_pulang === "" || item.jam_pulang === "-")) {
+            item.jam_pulang = checkoutTime;
           }
         }
         return item;
@@ -202,6 +209,34 @@ export default async function handler(req, res) {
             bodyObj.jam = new Date().toLocaleTimeString("id-ID", {
               timeZone: "Asia/Makassar",
               hour12: false
+            });
+          }
+
+          if (bodyObj.type === "pulang") {
+            const jamPulang = bodyObj.jam;
+            if (bodyObj.attendance_id) checkoutsCache.set(String(bodyObj.attendance_id), jamPulang);
+            if (bodyObj.user_id) checkoutsCache.set(String(bodyObj.user_id), jamPulang);
+
+            try {
+              const gasResp = await fetch(scriptUrl, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(bodyObj),
+                redirect: "follow"
+              });
+              const gasText = await gasResp.text();
+              try {
+                const gasJson = JSON.parse(gasText);
+                if (gasJson && gasJson.success) {
+                  return res.status(200).json(gasJson);
+                }
+              } catch (e) {}
+            } catch (err) {}
+
+            return res.status(200).json({
+              success: true,
+              message: `Presensi pulang berhasil dicatat pada ${jamPulang}`,
+              jam_pulang: jamPulang
             });
           }
         }
