@@ -36,7 +36,13 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const scriptUrl = req.headers["x-script-url"] || parsedUrl.searchParams.get("script_url");
+    const DEFAULT_SCRIPT_URL =
+      "https://script.google.com/macros/s/AKfycbwerFB3CM8t3nf2YxmyTq-MWwr539yp7_ojIYDZmO_XAZv4GkJXBrfuNRaj3h3QWHZxWw/exec";
+
+    const scriptUrl =
+      parsedUrl.searchParams.get("script_url") ||
+      req.headers["x-script-url"] ||
+      DEFAULT_SCRIPT_URL;
 
     if (!scriptUrl || scriptUrl.includes("GANTI_DENGAN_URL")) {
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -55,9 +61,12 @@ const server = http.createServer(async (req, res) => {
         });
 
         const gasRes = await fetch(targetUrl.toString(), { redirect: "follow" });
-        const data = await gasRes.json();
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(data));
+        const text = await gasRes.text();
+        res.writeHead(200, {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-store, no-cache, must-revalidate"
+        });
+        res.end(text);
       } else if (req.method === "POST") {
         let body = "";
         req.on("data", chunk => { body += chunk; });
@@ -65,13 +74,16 @@ const server = http.createServer(async (req, res) => {
           try {
             const gasRes = await fetch(scriptUrl, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
               body: body,
               redirect: "follow"
             });
-            const data = await gasRes.json();
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify(data));
+            const text = await gasRes.text();
+            res.writeHead(200, {
+              "Content-Type": "application/json",
+              "Cache-Control": "no-store, no-cache, must-revalidate"
+            });
+            res.end(text);
           } catch (e) {
             res.writeHead(500, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ success: false, error: e.message }));

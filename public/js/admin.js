@@ -242,10 +242,32 @@ async function initGuruPage() {
   };
 
   const loadUsers = async () => {
-    const res = await Api.getUsers();
-    if (res.success && res.list) {
-      allUsers = res.list;
-      renderTable(allUsers);
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding: 2rem;">
+        <span style="display:inline-block; width:1.2rem; height:1.2rem; border:2.5px solid #10b981; border-right-color:transparent; border-radius:50%; animation:spin 0.75s linear infinite; vertical-align:middle; margin-right:0.5rem;"></span>
+        Memuat data guru dari Google Sheets...
+      </td></tr>`;
+    }
+    try {
+      const res = await Api.getUsers();
+      if (res && res.success && Array.isArray(res.list)) {
+        allUsers = res.list;
+        renderTable(allUsers);
+      } else {
+        if (tbody) {
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 2rem; color: #ef4444;">
+            <i class="bi bi-exclamation-triangle-fill" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
+            Gagal memuat data guru: ${res?.message || res?.error || "Koneksi ke database terputus"}
+          </td></tr>`;
+        }
+      }
+    } catch (err) {
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 2rem; color: #ef4444;">
+          <i class="bi bi-exclamation-triangle-fill" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
+          Terjadi kesalahan koneksi saat memuat data.
+        </td></tr>`;
+      }
     }
   };
 

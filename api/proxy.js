@@ -1,39 +1,43 @@
 // Vercel Serverless Function Proxy to Google Apps Script
 // Mengatasi masalah CORS dan 302 Redirection dari Google Apps Script Web App
 
+const DEFAULT_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbwerFB3CM8t3nf2YxmyTq-MWwr539yp7_ojIYDZmO_XAZv4GkJXBrfuNRaj3h3QWHZxWw/exec";
+
 export default async function handler(req, res) {
   // CORS Headers
-  res.setHeader("Access-Control-Allow-Credentials", true);
+  res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
+    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-script-url"
   );
+  // Pastikan data selalu realtime dari Google Sheets (tanpa cache)
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
 
   if (req.method === "OPTIONS") {
     res.status(200).end();
     return;
   }
 
-  // Ambil URL Google Apps Script dari Query Param, Body, atau Environment Variable
+  // Ambil URL Google Apps Script dari Query Param, Header, Environment Variable, atau Fallback Default
   const scriptUrl =
-    req.headers["x-script-url"] ||
     req.query.script_url ||
-    process.env.GOOGLE_SCRIPT_URL;
+    req.headers["x-script-url"] ||
+    process.env.GOOGLE_SCRIPT_URL ||
+    DEFAULT_SCRIPT_URL;
 
   if (!scriptUrl || scriptUrl.includes("GANTI_DENGAN_URL")) {
-    // Mode demo / belum dikonfigurasi
     return res.status(200).json({
       success: false,
-      isDemo: true,
-      message: "Google Apps Script URL belum dikonfigurasi. Menggunakan data demo lokal."
+      message: "Google Apps Script URL belum dikonfigurasi."
     });
   }
 
   try {
-    let targetUrl = scriptUrl;
-
     if (req.method === "GET") {
       const urlObj = new URL(scriptUrl);
       for (const [key, val] of Object.entries(req.query)) {
@@ -41,27 +45,52 @@ export default async function handler(req, res) {
           urlObj.searchParams.set(key, val);
         }
       }
-      targetUrl = urlObj.toString();
 
-      const response = await fetch(targetUrl, {
+      const response = await fetch(urlObj.toString(), {
         method: "GET",
         redirect: "follow"
       });
 
-      const data = await response.json();
-      return res.status(200).json(data);
+      const text = await response.text();
+      try {
+        const data = JSON.parse(text);
+        return res.status(200).json(data);
+      } catch (parseErr) {
+        return res.status(200).json({
+          success: false,
+          error: "Respons bukan format JSON valid",
+          raw: text.slice(0, 500)
+        });
+      }
     } else if (req.method === "POST") {
-      const response = await fetch(targetUrl, {
+      // Pastikan body tidak mengalami double JSON stringify jika sudah string
+      let postBody = req.body;
+      if (typeof postBody === "object" && postBody !== null) {
+        postBody = JSON.stringify(postBody);
+      } else if (typeof postBody !== "string") {
+        postBody = JSON.stringify(postBody || {});
+      }
+
+      const response = await fetch(scriptUrl, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "text/plain;charset=utf-8"
         },
-        body: JSON.stringify(req.body || {}),
+        body: postBody,
         redirect: "follow"
       });
 
-      const data = await response.json();
-      return res.status(200).json(data);
+      const text = await response.text();
+      try {
+        const data = JSON.parse(text);
+        return res.status(200).json(data);
+      } catch (parseErr) {
+        return res.status(200).json({
+          success: false,
+          error: "Respons bukan format JSON valid",
+          raw: text.slice(0, 500)
+        });
+      }
     } else {
       return res.status(405).json({ success: false, message: "Metode tidak didukung" });
     }

@@ -13,12 +13,12 @@ const Api = {
     }
 
     try {
-      const isVercel = window.location.hostname !== "localhost" && !window.location.hostname.includes("127.0.0.1");
-      const endpoint = isVercel ? "/api/proxy" : scriptUrl;
+      const isFileProtocol = window.location.protocol === "file:";
+      const endpoint = isFileProtocol ? scriptUrl : "/api/proxy";
 
       const url = new URL(endpoint, window.location.origin);
       url.searchParams.set("action", action);
-      if (isVercel) {
+      if (scriptUrl) {
         url.searchParams.set("script_url", scriptUrl);
       }
 
@@ -33,15 +33,8 @@ const Api = {
         redirect: "follow"
       };
 
-      if (isVercel) {
-        options.headers = {
-          "x-script-url": scriptUrl
-        };
-      }
-
       if (method === "POST" && body) {
         options.headers = {
-          ...options.headers,
           "Content-Type": "text/plain;charset=utf-8"
         };
         options.body = JSON.stringify({ action, ...body });
@@ -51,7 +44,7 @@ const Api = {
       const data = await res.json();
       return data;
     } catch (err) {
-      console.warn("Gagal terhubung ke Google Sheets, menggunakan MockDB cadangan:", err);
+      console.warn("Gagal terhubung ke Google Sheets, menggunakan data lokal cadangan:", err);
       return this.handleMockRequest(action, params, body);
     }
   },
