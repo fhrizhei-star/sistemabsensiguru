@@ -23,7 +23,6 @@ Sistem Informasi Presensi Online Khusus Guru dan Tenaga Kependidikan berbasis We
 - **Presensi Masuk & Pulang**: Jam kehadiran tercatat otomatis dengan deteksi status *Tepat Waktu* vs *Terlambat*.
 - **Riwayat Presensi**: Menampilkan riwayat kehadiran guru bulanan lengkap dengan status hadir/terlambat/cuti.
 - **Formulir Pengajuan Izin / Cuti / Tugas Dinas**: Guru dapat mengajukan izin tugas dinas luar (MGMP/Diklat), cuti tahunan, sakit, atau dispensasi kegiatan sekolah.
-- **Kartu Identitas Guru Elektronik (E-Teacher ID)**: ID card resmi guru dengan QR Code yang siap dicetak/diunduh.
 
 ---
 
@@ -48,8 +47,7 @@ Sistem Absensi/
 │   ├── user/
 │   │   ├── index.html        # Halaman utama presensi guru (Kamera & GPS)
 │   │   ├── riwayat.html      # Riwayat kehadiran guru
-│   │   ├── izin.html         # Form pengajuan cuti, izin & tugas dinas luar
-│   │   └── kartu.html        # ID Card Guru digital siap cetak
+│   │   └── izin.html         # Form pengajuan cuti, izin & tugas dinas luar
 │   ├── css/
 │   │   ├── main.css          # Design system, variabel warna, tipografi Google Fonts
 │   │   ├── components.css    # Tombol, badge, tabel, kartu, dialog modal, toast

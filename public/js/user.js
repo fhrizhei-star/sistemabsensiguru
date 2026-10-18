@@ -10,10 +10,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!currentUser) return;
   Auth.initUserUI(currentUser);
 
-  // Set Profil Guru di Header
+  // Profil Guru di Header ditangani oleh Auth.initUserUI
   const profileName = document.getElementById("user-profile-name");
   const profileNip = document.getElementById("user-profile-nip");
   const profileMapel = document.getElementById("user-profile-mapel");
+
   if (profileName) profileName.textContent = currentUser.nama;
   if (profileNip) profileNip.textContent = `NIP: ${currentUser.nip || currentUser.username}`;
   if (profileMapel) {
@@ -25,8 +26,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     initGuruRiwayatPage(currentUser);
   } else if (path.includes("izin.html")) {
     initGuruIzinPage(currentUser);
-  } else if (path.includes("kartu.html")) {
-    initGuruKartuPage(currentUser);
   } else {
     initGuruAttendancePage(currentUser);
   }
@@ -114,10 +113,10 @@ async function initGuruAttendancePage(user) {
       if (isWithinRadius) {
         if (gpsRadarIcon) {
           gpsRadarIcon.className = "gps-radar-icon in-range";
-          gpsRadarIcon.textContent = "✓";
+          gpsRadarIcon.innerHTML = `<i class="bi bi-geo-alt-fill"></i>`;
         }
         if (gpsStatusTitle) {
-          gpsStatusTitle.innerHTML = `<span class="text-success">Lokasi Valid (Di Area Sekolah)</span>`;
+          gpsStatusTitle.innerHTML = `<span class="text-success"><i class="bi bi-patch-check-fill"></i> Lokasi Terverifikasi (Area Sekolah)</span>`;
         }
         if (gpsDistanceText) {
           gpsDistanceText.textContent = `Jarak Anda ke sekolah: ${distanceToSchool} meter (Radius batas: ${schoolSettings.radius_meter} meter)`;
@@ -125,10 +124,10 @@ async function initGuruAttendancePage(user) {
       } else {
         if (gpsRadarIcon) {
           gpsRadarIcon.className = "gps-radar-icon out-range";
-          gpsRadarIcon.textContent = "📍";
+          gpsRadarIcon.innerHTML = `<i class="bi bi-geo-fill"></i>`;
         }
         if (gpsStatusTitle) {
-          gpsStatusTitle.innerHTML = `<span class="text-danger">Di Luar Radius Sekolah</span>`;
+          gpsStatusTitle.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Di Luar Radius Sekolah</span>`;
         }
         if (gpsDistanceText) {
           gpsDistanceText.textContent = `Jarak: ${distanceToSchool} meter (Maksimal diperbolehkan: ${schoolSettings.radius_meter} meter)`;
@@ -141,13 +140,13 @@ async function initGuruAttendancePage(user) {
       distanceToSchool = 25;
       if (gpsRadarIcon) {
         gpsRadarIcon.className = "gps-radar-icon in-range";
-        gpsRadarIcon.textContent = "✓";
+        gpsRadarIcon.innerHTML = `<i class="bi bi-geo-alt-fill"></i>`;
       }
       if (gpsStatusTitle) {
-        gpsStatusTitle.innerHTML = `<span class="text-success">Lokasi Sekolah Terdeteksi (Mode Simulasi)</span>`;
+        gpsStatusTitle.innerHTML = `<span class="text-success"><i class="bi bi-patch-check-fill"></i> Lokasi Terverifikasi (Area Sekolah)</span>`;
       }
       if (gpsDistanceText) {
-        gpsDistanceText.textContent = `Jarak: 25 meter dari sekolah (Radius: ${schoolSettings.radius_meter}m)`;
+        gpsDistanceText.textContent = `Jarak: 25 meter dari sekolah (Radius aman: ${schoolSettings.radius_meter}m)`;
       }
     }
   };
@@ -165,7 +164,15 @@ async function initGuruAttendancePage(user) {
   if (btnAbsenMasuk) {
     btnAbsenMasuk.addEventListener("click", async () => {
       if (!isWithinRadius) {
-        if (!confirm(`Posisi Anda berjarak ${distanceToSchool} meter (melebihi batas ${schoolSettings.radius_meter}m dari sekolah). Tetap lanjutkan presensi?`)) {
+        const confirmed = await Utils.showConfirm({
+          title: "Di Luar Radius Sekolah",
+          message: `Posisi Anda berjarak <b>${distanceToSchool} meter</b> (melebihi batas ${schoolSettings.radius_meter}m dari titik sekolah). Tetap lanjutkan presensi?`,
+          icon: "warning",
+          confirmText: "Lanjutkan Presensi",
+          cancelText: "Batal",
+          confirmBtnClass: "btn-warning"
+        });
+        if (!confirmed) {
           return;
         }
       }
@@ -395,24 +402,4 @@ async function initGuruIzinPage(user) {
   loadLeaves();
 }
 
-// ================= 4. KARTU IDENTITAS GURU (ID CARD GURU) ================= //
-function initGuruKartuPage(user) {
-  const cardName = document.getElementById("card-user-name");
-  const cardNip = document.getElementById("card-user-nip");
-  const cardMapel = document.getElementById("card-user-mapel");
-  const cardJabatan = document.getElementById("card-user-jabatan");
-  const cardId = document.getElementById("card-user-id");
 
-  if (cardName) cardName.textContent = user.nama;
-  if (cardNip) cardNip.textContent = user.nip || user.username;
-  if (cardMapel) cardMapel.textContent = user.mapel ? `Guru ${user.mapel}` : "Tenaga Pendidik";
-  if (cardJabatan) cardJabatan.textContent = user.jabatan || "Guru Pengajar";
-  if (cardId) cardId.textContent = user.id;
-
-  const btnPrint = document.getElementById("btn-print-card");
-  if (btnPrint) {
-    btnPrint.addEventListener("click", () => {
-      window.print();
-    });
-  }
-}

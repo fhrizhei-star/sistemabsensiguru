@@ -1,19 +1,24 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Data Guru & Tenaga Kependidikan - Sistem Absensi</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="shortcut icon" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="/css/components.css">
   <link rel="stylesheet" href="/css/admin.css">
 </head>
+
 <body>
 
   <div class="admin-layout">
     <aside class="admin-sidebar">
       <div class="sidebar-brand">
-        <div class="brand-icon">👨‍🏫</div>
+        <div class="brand-icon"><img src="/img/logo.png" alt="Logo"></div>
         <div class="brand-text">
           <h2>Absensi Guru</h2>
           <span>Admin Kepegawaian</span>
@@ -24,19 +29,19 @@
         <li class="menu-category">Menu Utama</li>
         <li class="menu-item">
           <a href="/admin/index.html">
-            <span>📊</span>
+            <i class="bi bi-grid-1x2-fill"></i>
             <span>Dashboard</span>
           </a>
         </li>
         <li class="menu-item">
           <a href="/admin/rekap.html">
-            <span>📋</span>
+            <i class="bi bi-file-earmark-spreadsheet-fill"></i>
             <span>Rekap Presensi Guru</span>
           </a>
         </li>
         <li class="menu-item">
           <a href="/admin/izin.html">
-            <span>✉️</span>
+            <i class="bi bi-envelope-paper-fill"></i>
             <span>Izin, Cuti & Dinas</span>
           </a>
         </li>
@@ -44,13 +49,13 @@
         <li class="menu-category">Data Pegawai</li>
         <li class="menu-item active">
           <a href="/admin/guru.html">
-            <span>👥</span>
+            <i class="bi bi-people-fill"></i>
             <span>Data Guru & Staf</span>
           </a>
         </li>
         <li class="menu-item">
           <a href="/admin/setting.html">
-            <span>⚙️</span>
+            <i class="bi bi-gear-fill"></i>
             <span>Pengaturan</span>
           </a>
         </li>
@@ -64,14 +69,16 @@
             <div class="sidebar-user-role auth-user-role">Administrator TU</div>
           </div>
         </div>
-        <a href="#" class="btn-logout" title="Keluar" style="color: #ef4444; font-size: 1.25rem;">🚪</a>
+        <a href="#" class="btn-logout" title="Keluar" style="color: #ef4444; font-size: 1.25rem;"><i
+            class="bi bi-box-arrow-right"></i></a>
       </div>
     </aside>
 
     <main class="admin-main">
       <header class="admin-topbar">
         <div class="topbar-left">
-          <button class="sidebar-toggle-btn" aria-label="Toggle Sidebar">☰</button>
+          <button class="sidebar-toggle-btn" aria-label="Toggle Sidebar"><i class="bi bi-list"
+              style="font-size: 1.3rem;"></i></button>
           <div class="topbar-title">Data Guru & Pegawai</div>
         </div>
         <div class="topbar-right">
@@ -88,13 +95,15 @@
             <p class="page-subtitle">Kelola akun guru pengajar, NIP, mata pelajaran, dan hak akses</p>
           </div>
           <div>
-            <button id="btn-add-guru" class="btn btn-primary">+ Tambah Guru / Pegawai</button>
+            <button id="btn-add-guru" class="btn btn-primary"><i class="bi bi-person-plus-fill"></i> Tambah Guru /
+              Pegawai</button>
           </div>
         </div>
 
         <div class="card" style="margin-bottom: 1.5rem;">
           <div class="form-group" style="margin-bottom: 0;">
-            <input type="text" id="search-guru" class="form-control" placeholder="🔍 Cari berdasarkan nama guru, NIP, atau mata pelajaran...">
+            <input type="text" id="search-guru" class="form-control"
+              placeholder="🔍 Cari berdasarkan nama guru, NIP, atau mata pelajaran...">
           </div>
         </div>
 
@@ -128,8 +137,8 @@
   <div id="modal-guru" class="modal-backdrop">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h3 class="modal-title" id="modal-title">Tambah Data Guru / Pegawai</h3>
-        <button class="modal-close">&times;</button>
+        <h3 class="modal-title" id="modal-title"><span>👨‍🏫</span> <span>Tambah Data Guru / Pegawai</span></h3>
+        <button class="modal-close" type="button">&times;</button>
       </div>
       <form id="form-guru">
         <div class="modal-body">
@@ -140,9 +149,27 @@
             <input type="text" id="modal-nip" class="form-control" placeholder="Contoh: 198501152010011002" required>
           </div>
 
+          <div class="form-group text-center" style="margin-bottom: 1.25rem;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+              <div id="foto-preview-container"
+                style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #d1fae5; background: #f0fdf4; display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.15); position: relative;">
+                <img id="img-preview-guru" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                <i id="icon-preview-guru" class="bi bi-person-fill" style="font-size: 2.5rem; color: #10b981;"></i>
+              </div>
+              <label for="modal-foto-file" class="btn btn-sm btn-outline"
+                style="cursor: pointer; font-size: 0.75rem; padding: 0.35rem 0.85rem;">
+                <i class="bi bi-camera-fill"></i> Pilih Pasfoto Guru
+              </label>
+              <input type="file" id="modal-foto-file" accept="image/*" style="display: none;">
+              <input type="hidden" id="modal-foto-base64">
+              <span class="text-xs text-muted">Format: JPG, PNG (Maks 2MB)</span>
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label" for="modal-nama">Nama Lengkap & Gelar</label>
-            <input type="text" id="modal-nama" class="form-control" placeholder="Contoh: Drs. Bambang Sudarsono, M.Pd" required>
+            <input type="text" id="modal-nama" class="form-control" placeholder="Contoh: Drs. Bambang Sudarsono, M.Pd"
+              required>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
@@ -156,7 +183,28 @@
 
             <div class="form-group">
               <label class="form-label" for="modal-mapel">Mata Pelajaran</label>
-              <input type="text" id="modal-mapel" class="form-control" placeholder="Contoh: Matematika">
+              <select id="modal-mapel-select" class="form-control">
+                <option value="-">- (Bukan Guru Mapel / Staf TU)</option>
+                <option value="Al-Qur'an Hadits">Al-Qur'an Hadits</option>
+                <option value="Akidah Akhlak">Akidah Akhlak</option>
+                <option value="Fikih">Fikih</option>
+                <option value="Sejarah Kebudayaan Islam (SKI)">Sejarah Kebudayaan Islam (SKI)</option>
+                <option value="Bahasa Arab">Bahasa Arab</option>
+                <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                <option value="Bahasa Inggris">Bahasa Inggris</option>
+                <option value="Matematika">Matematika</option>
+                <option value="Ilmu Pengetahuan Alam (IPA)">Ilmu Pengetahuan Alam (IPA)</option>
+                <option value="Ilmu Pengetahuan Sosial (IPS)">Ilmu Pengetahuan Sosial (IPS)</option>
+                <option value="Pendidikan Pancasila / PKn">Pendidikan Pancasila / PKn</option>
+                <option value="Informatika / TIK">Informatika / TIK</option>
+                <option value="Pendidikan Jasmani & Olahraga (PJOK)">Pendidikan Jasmani & Olahraga (PJOK)</option>
+                <option value="Seni Budaya & Prakarya">Seni Budaya & Prakarya</option>
+                <option value="Bimbingan Konseling (BK)">Bimbingan Konseling (BK)</option>
+                <option value="Muatan Lokal">Muatan Lokal</option>
+                <option value="Lainnya">Lainnya (Ketik Manual)...</option>
+              </select>
+              <input type="text" id="modal-mapel-custom" class="form-control"
+                placeholder="Tuliskan nama mata pelajaran..." style="display: none; margin-top: 0.5rem;">
             </div>
           </div>
 
@@ -193,4 +241,5 @@
   <script src="/js/api.js"></script>
   <script src="/js/admin.js"></script>
 </body>
+
 </html>

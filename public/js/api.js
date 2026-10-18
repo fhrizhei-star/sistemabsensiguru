@@ -231,7 +231,11 @@ const Api = {
         if (uData.id) {
           const idx = db.users.findIndex((u) => u.id === uData.id);
           if (idx !== -1) {
-            db.users[idx] = { ...db.users[idx], ...uData };
+            db.users[idx] = { 
+              ...db.users[idx], 
+              ...uData,
+              foto_url: uData.foto || db.users[idx].foto_url || ""
+            };
             MockDB.save(db);
             return { success: true, message: "Data guru berhasil diperbarui" };
           }
@@ -249,6 +253,7 @@ const Api = {
             mapel: uData.mapel || "-",
             email: uData.email || "-",
             no_hp: uData.no_hp || "-",
+            foto_url: uData.foto || "",
             status: "aktif"
           };
           db.users.push(newUser);

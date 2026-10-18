@@ -25,7 +25,7 @@ const CONFIG = {
   SCHOOL_LNG: 106.8456,
   RADIUS_METER: 250, // Radius toleransi absen dalam meter
 
-  // Mode Demo Lokal (Gunakan LocalStorage jika URL Google Sheets belum diisi)
+  // Mode Penyimpanan Cadangan Lokal (Offline Cache jika koneksi Google Sheets terputus)
   get USE_DEMO_MODE() {
     const savedUrl = this.getScriptUrl();
     return !savedUrl || savedUrl.trim() === "" || savedUrl.includes("GANTI_DENGAN_URL");

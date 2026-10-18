@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rekap Presensi Guru - Sistem Absensi Sekolah</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="shortcut icon" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="/css/components.css">
   <link rel="stylesheet" href="/css/admin.css">
@@ -30,7 +33,7 @@
   <div class="admin-layout">
     <aside class="admin-sidebar">
       <div class="sidebar-brand">
-        <div class="brand-icon">👨‍🏫</div>
+        <div class="brand-icon"><img src="/img/logo.png" alt="Logo"></div>
         <div class="brand-text">
           <h2>Absensi Guru</h2>
           <span>Admin Kepegawaian</span>
@@ -41,19 +44,19 @@
         <li class="menu-category">Menu Utama</li>
         <li class="menu-item">
           <a href="/admin/index.html">
-            <span>📊</span>
+            <i class="bi bi-grid-1x2-fill"></i>
             <span>Dashboard</span>
           </a>
         </li>
         <li class="menu-item active">
           <a href="/admin/rekap.html">
-            <span>📋</span>
+            <i class="bi bi-file-earmark-spreadsheet-fill"></i>
             <span>Rekap Presensi Guru</span>
           </a>
         </li>
         <li class="menu-item">
           <a href="/admin/izin.html">
-            <span>✉️</span>
+            <i class="bi bi-envelope-paper-fill"></i>
             <span>Izin, Cuti & Dinas</span>
           </a>
         </li>
@@ -61,13 +64,13 @@
         <li class="menu-category">Data Pegawai</li>
         <li class="menu-item">
           <a href="/admin/guru.html">
-            <span>👥</span>
+            <i class="bi bi-people-fill"></i>
             <span>Data Guru & Staf</span>
           </a>
         </li>
         <li class="menu-item">
           <a href="/admin/setting.html">
-            <span>⚙️</span>
+            <i class="bi bi-gear-fill"></i>
             <span>Pengaturan</span>
           </a>
         </li>
@@ -81,14 +84,14 @@
             <div class="sidebar-user-role auth-user-role">Administrator TU</div>
           </div>
         </div>
-        <a href="#" class="btn-logout" title="Keluar" style="color: #ef4444; font-size: 1.25rem;">🚪</a>
+        <a href="#" class="btn-logout" title="Keluar" style="color: #ef4444; font-size: 1.25rem;"><i class="bi bi-box-arrow-right"></i></a>
       </div>
     </aside>
 
     <main class="admin-main">
       <header class="admin-topbar">
         <div class="topbar-left">
-          <button class="sidebar-toggle-btn" aria-label="Toggle Sidebar">☰</button>
+          <button class="sidebar-toggle-btn" aria-label="Toggle Sidebar"><i class="bi bi-list" style="font-size: 1.3rem;"></i></button>
           <div class="topbar-title">Rekapitulasi Presensi Guru</div>
         </div>
         <div class="topbar-right">
@@ -105,8 +108,8 @@
             <p class="page-subtitle">Filter dan ekspor data presensi guru ke format Excel / CSV</p>
           </div>
           <div class="btn-export-group flex gap-2">
-            <button id="btn-print" class="btn btn-outline">🖨️ Cetak Laporan</button>
-            <button id="btn-export" class="btn btn-success">📥 Ekspor CSV / Excel</button>
+            <button id="btn-print" class="btn btn-outline"><i class="bi bi-printer-fill"></i> Cetak Laporan</button>
+            <button id="btn-export" class="btn btn-success"><i class="bi bi-file-earmark-excel-fill"></i> Ekspor CSV / Excel</button>
           </div>
         </div>
 
@@ -122,11 +125,22 @@
               <label class="form-label" for="filter-mapel">Filter Bidang Studi / Mapel</label>
               <select id="filter-mapel" class="form-control">
                 <option value="Semua">Semua Mata Pelajaran</option>
-                <option value="Matematika">Matematika</option>
+                <option value="Al-Qur'an Hadits">Al-Qur'an Hadits</option>
+                <option value="Akidah Akhlak">Akidah Akhlak</option>
+                <option value="Fikih">Fikih</option>
+                <option value="Sejarah Kebudayaan Islam (SKI)">Sejarah Kebudayaan Islam (SKI)</option>
+                <option value="Bahasa Arab">Bahasa Arab</option>
                 <option value="Bahasa Indonesia">Bahasa Indonesia</option>
-                <option value="Informatika / TIK">Informatika / TIK</option>
-                <option value="Fisika">Fisika</option>
                 <option value="Bahasa Inggris">Bahasa Inggris</option>
+                <option value="Matematika">Matematika</option>
+                <option value="Ilmu Pengetahuan Alam (IPA)">Ilmu Pengetahuan Alam (IPA)</option>
+                <option value="Ilmu Pengetahuan Sosial (IPS)">Ilmu Pengetahuan Sosial (IPS)</option>
+                <option value="Pendidikan Pancasila / PKn">Pendidikan Pancasila / PKn</option>
+                <option value="Informatika / TIK">Informatika / TIK</option>
+                <option value="Pendidikan Jasmani & Olahraga (PJOK)">Pendidikan Jasmani & Olahraga (PJOK)</option>
+                <option value="Seni Budaya & Prakarya">Seni Budaya & Prakarya</option>
+                <option value="Bimbingan Konseling (BK)">Bimbingan Konseling (BK)</option>
+                <option value="Muatan Lokal">Muatan Lokal</option>
               </select>
             </div>
 

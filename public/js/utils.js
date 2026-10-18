@@ -5,7 +5,7 @@
  */
 
 const Utils = {
-  // ---- TOAST NOTIFICATION ----
+  // ---- TOAST NOTIFICATION (MODERN FLOATING PILLS) ----
   showToast(message, type = "info", duration = 3500) {
     let container = document.getElementById("toast-container");
     if (!container) {
@@ -20,24 +20,93 @@ const Utils = {
     const icons = {
       success: "✓",
       error: "✕",
-      warning: "⚠",
+      warning: "!",
       info: "ℹ"
     };
 
     toast.innerHTML = `
-      <span style="font-size: 1.1rem; font-weight: bold;">${icons[type] || "•"}</span>
-      <span style="flex: 1;">${message}</span>
+      <div class="toast-icon-circle">${icons[type] || "•"}</div>
+      <div style="flex: 1; line-height: 1.4;">${message}</div>
     `;
 
     container.appendChild(toast);
 
-    // Trigger animation
-    setTimeout(() => toast.classList.add("show"), 50);
+    // Trigger smooth entrance
+    requestAnimationFrame(() => {
+      setTimeout(() => toast.classList.add("show"), 20);
+    });
 
     setTimeout(() => {
       toast.classList.remove("show");
-      setTimeout(() => toast.remove(), 300);
+      setTimeout(() => toast.remove(), 400);
     }, duration);
+  },
+
+  // ---- MODERN CONFIRM DIALOG POPUP ----
+  showConfirm({
+    title = "Konfirmasi Aksi",
+    message = "Apakah Anda yakin ingin melanjutkan?",
+    icon = "warning", // 'warning', 'danger', 'success'
+    confirmText = "Ya, Lanjutkan",
+    cancelText = "Batal",
+    confirmBtnClass = "btn-primary"
+  }) {
+    return new Promise((resolve) => {
+      // Remove any existing confirm modal
+      const existing = document.getElementById("custom-confirm-modal");
+      if (existing) existing.remove();
+
+      const iconsMap = {
+        warning: "⚠️",
+        danger: "🗑️",
+        success: "✨"
+      };
+
+      const backdrop = document.createElement("div");
+      backdrop.id = "custom-confirm-modal";
+      backdrop.className = "modal-backdrop";
+
+      backdrop.innerHTML = `
+        <div class="modal-dialog" style="max-width: 440px;">
+          <div class="modal-body confirm-box">
+            <div class="confirm-icon-badge ${icon}">
+              ${iconsMap[icon] || "⚠️"}
+            </div>
+            <h3 class="confirm-title">${title}</h3>
+            <p class="confirm-message">${message}</p>
+            <div style="display: flex; gap: 0.75rem; justify-content: center;">
+              <button type="button" class="btn btn-secondary" id="confirm-cancel-btn" style="flex: 1;">
+                ${cancelText}
+              </button>
+              <button type="button" class="btn ${confirmBtnClass}" id="confirm-ok-btn" style="flex: 1.2;">
+                ${confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(backdrop);
+
+      // Trigger entrance
+      requestAnimationFrame(() => {
+        setTimeout(() => backdrop.classList.add("active"), 20);
+      });
+
+      const cleanup = (result) => {
+        backdrop.classList.remove("active");
+        setTimeout(() => {
+          backdrop.remove();
+          resolve(result);
+        }, 300);
+      };
+
+      backdrop.querySelector("#confirm-ok-btn").addEventListener("click", () => cleanup(true));
+      backdrop.querySelector("#confirm-cancel-btn").addEventListener("click", () => cleanup(false));
+      backdrop.addEventListener("click", (e) => {
+        if (e.target === backdrop) cleanup(false);
+      });
+    });
   },
 
   // ---- DATE & TIME FORMATTERS ----

@@ -3,18 +3,25 @@
    Desain Modern, Bersih, Responsif & Elegan
    ==================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap');
+@import url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css');
 
 :root {
-  /* Color Palette */
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-light: #eff6ff;
-  --primary-glow: rgba(37, 99, 235, 0.2);
+  /* Color Palette - Fresh Emerald & Mint Modern */
+  --primary: #059669;
+  --primary-hover: #047857;
+  --primary-light: #ecfdf5;
+  --primary-glow: rgba(16, 185, 129, 0.35);
+  
+  --brand-mint: #10b981;
+  --brand-lime: #84cc16;
+  --brand-teal: #0d9488;
+  --brand-gradient: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
 
-  --secondary: #6366f1;
-  --secondary-hover: #4f46e5;
-  --secondary-light: #eef2ff;
+  --secondary: #0d9488;
+  --secondary-hover: #0f766e;
+  --secondary-light: #f0fdfa;
 
   --success: #10b981;
   --success-hover: #059669;
@@ -28,29 +35,33 @@
   --danger-hover: #dc2626;
   --danger-light: #fef2f2;
 
-  --info: #0ea5e9;
+  --info: #0284c7;
   --info-light: #f0f9ff;
 
-  /* Neutrals */
-  --bg-body: #f8fafc;
+  /* Neutrals & Surfaces */
+  --bg-body: #f4fbf7;
   --bg-card: #ffffff;
-  --bg-sidebar: #0f172a;
-  --bg-sidebar-hover: #1e293b;
+  --bg-card-glass: rgba(255, 255, 255, 0.88);
+  --bg-sidebar: #062e24;
+  --bg-sidebar-hover: #0b4537;
+  --bg-sidebar-active: #105a48;
   --bg-input: #ffffff;
-  --border: #e2e8f0;
-  --border-focus: #93c5fd;
+  --border: #d1fae5;
+  --border-focus: #34d399;
+  --border-subtle: #e2e8f0;
 
   /* Typography Colors */
-  --text-main: #0f172a;
-  --text-muted: #64748b;
-  --text-sub: #94a3b8;
+  --text-main: #062b21;
+  --text-muted: #4b6358;
+  --text-sub: #789085;
   --text-white: #ffffff;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  /* Shadows with emerald tint */
+  --shadow-sm: 0 1px 3px 0 rgba(6, 43, 33, 0.04);
+  --shadow-md: 0 4px 10px -2px rgba(6, 43, 33, 0.08), 0 2px 4px -2px rgba(6, 43, 33, 0.04);
+  --shadow-lg: 0 12px 24px -4px rgba(6, 43, 33, 0.1), 0 4px 8px -4px rgba(6, 43, 33, 0.05);
+  --shadow-xl: 0 20px 30px -6px rgba(6, 43, 33, 0.12), 0 8px 12px -6px rgba(6, 43, 33, 0.06);
+  --shadow-glow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
 
   /* Radius */
   --radius-sm: 8px;

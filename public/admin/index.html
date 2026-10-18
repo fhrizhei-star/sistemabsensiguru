@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard Admin - Absensi Guru & Tenaga Pendidik</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="shortcut icon" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="/css/components.css">
   <link rel="stylesheet" href="/css/admin.css">
@@ -14,7 +17,7 @@
     <!-- Sidebar -->
     <aside class="admin-sidebar">
       <div class="sidebar-brand">
-        <div class="brand-icon">👨‍🏫</div>
+        <div class="brand-icon"><img src="/img/logo.png" alt="Logo"></div>
         <div class="brand-text">
           <h2>Absensi Guru</h2>
           <span>Admin Kepegawaian</span>
@@ -25,19 +28,19 @@
         <li class="menu-category">Menu Utama</li>
         <li class="menu-item active">
           <a href="/admin/index.html">
-            <span>📊</span>
+            <i class="bi bi-grid-1x2-fill"></i>
             <span>Dashboard</span>
           </a>
         </li>
         <li class="menu-item">
           <a href="/admin/rekap.html">
-            <span>📋</span>
+            <i class="bi bi-file-earmark-spreadsheet-fill"></i>
             <span>Rekap Presensi Guru</span>
           </a>
         </li>
         <li class="menu-item">
           <a href="/admin/izin.html">
-            <span>✉️</span>
+            <i class="bi bi-envelope-paper-fill"></i>
             <span>Izin, Cuti & Dinas</span>
           </a>
         </li>
@@ -45,13 +48,13 @@
         <li class="menu-category">Data Pegawai</li>
         <li class="menu-item">
           <a href="/admin/guru.html">
-            <span>👥</span>
+            <i class="bi bi-people-fill"></i>
             <span>Data Guru & Staf</span>
           </a>
         </li>
         <li class="menu-item">
           <a href="/admin/setting.html">
-            <span>⚙️</span>
+            <i class="bi bi-gear-fill"></i>
             <span>Pengaturan</span>
           </a>
         </li>
@@ -65,7 +68,7 @@
             <div class="sidebar-user-role auth-user-role">Administrator TU</div>
           </div>
         </div>
-        <a href="#" class="btn-logout" title="Keluar" style="color: #ef4444; font-size: 1.25rem;">🚪</a>
+        <a href="#" class="btn-logout" title="Keluar" style="color: #ef4444; font-size: 1.25rem;"><i class="bi bi-box-arrow-right"></i></a>
       </div>
     </aside>
 
@@ -73,14 +76,14 @@
     <main class="admin-main">
       <header class="admin-topbar">
         <div class="topbar-left">
-          <button class="sidebar-toggle-btn" aria-label="Toggle Sidebar">☰</button>
+          <button class="sidebar-toggle-btn" aria-label="Toggle Sidebar"><i class="bi bi-list" style="font-size: 1.3rem;"></i></button>
           <div class="topbar-title">Dashboard Kehadiran Guru</div>
         </div>
         <div class="topbar-right">
           <div class="topbar-clock">
             <span>--:--:--</span>
           </div>
-          <a href="/admin/setting.html" class="btn btn-sm btn-outline">⚙️ Pengaturan</a>
+          <a href="/admin/setting.html" class="btn btn-sm btn-outline"><i class="bi bi-gear-fill"></i> Pengaturan</a>
         </div>
       </header>
 
@@ -95,37 +98,37 @@
           </div>
         </div>
 
-        <!-- 4 Key Statistic Cards -->
+        <!-- 4 Key Statistic Cards (Vibrant Colorful Gradients) -->
         <div class="grid grid-cols-4 gap-4" style="margin-bottom: 2rem;">
-          <div class="stat-card" style="--stat-color: #2563eb; --stat-bg: #eff6ff;">
-            <div class="stat-icon">👥</div>
+          <div class="stat-card" style="--stat-color: #059669; --stat-gradient: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); --stat-border: #a7f3d0; --stat-shadow: rgba(5, 150, 105, 0.25); --stat-glow: rgba(16, 185, 129, 0.35); --stat-icon-bg: #ffffff; --stat-text: #064e3b;">
+            <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
             <div class="stat-info">
               <span class="stat-value" id="stat-total">0</span>
-              <span class="stat-label">Total Guru & Staf</span>
+              <span class="stat-label" style="color: #047857; font-weight: 700;">Total Guru & Staf</span>
             </div>
           </div>
 
-          <div class="stat-card" style="--stat-color: #10b981; --stat-bg: #ecfdf5;">
-            <div class="stat-icon">✓</div>
+          <div class="stat-card" style="--stat-color: #0284c7; --stat-gradient: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); --stat-border: #bae6fd; --stat-shadow: rgba(2, 132, 199, 0.25); --stat-glow: rgba(14, 165, 233, 0.35); --stat-icon-bg: #ffffff; --stat-text: #075985;">
+            <div class="stat-icon"><i class="bi bi-check-circle-fill"></i></div>
             <div class="stat-info">
-              <span class="stat-value text-success" id="stat-hadir">0</span>
-              <span class="stat-label">Hadir Tepat Waktu</span>
+              <span class="stat-value" id="stat-hadir">0</span>
+              <span class="stat-label" style="color: #0284c7; font-weight: 700;">Hadir Tepat Waktu</span>
             </div>
           </div>
 
-          <div class="stat-card" style="--stat-color: #f59e0b; --stat-bg: #fffbeb;">
-            <div class="stat-icon">⏰</div>
+          <div class="stat-card" style="--stat-color: #d97706; --stat-gradient: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); --stat-border: #fde68a; --stat-shadow: rgba(217, 119, 6, 0.25); --stat-glow: rgba(245, 158, 11, 0.35); --stat-icon-bg: #ffffff; --stat-text: #92400e;">
+            <div class="stat-icon"><i class="bi bi-alarm-fill"></i></div>
             <div class="stat-info">
-              <span class="stat-value text-warning" id="stat-terlambat">0</span>
-              <span class="stat-label">Terlambat Masuk</span>
+              <span class="stat-value" id="stat-terlambat">0</span>
+              <span class="stat-label" style="color: #b45309; font-weight: 700;">Terlambat Masuk</span>
             </div>
           </div>
 
-          <div class="stat-card" style="--stat-color: #0ea5e9; --stat-bg: #f0f9ff;">
-            <div class="stat-icon">📝</div>
+          <div class="stat-card" style="--stat-color: #7c3aed; --stat-gradient: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); --stat-border: #ddd6fe; --stat-shadow: rgba(124, 58, 237, 0.25); --stat-glow: rgba(139, 92, 246, 0.35); --stat-icon-bg: #ffffff; --stat-text: #5b21b6;">
+            <div class="stat-icon"><i class="bi bi-calendar-event-fill"></i></div>
             <div class="stat-info">
               <span class="stat-value" id="stat-izin">0</span>
-              <span class="stat-label">Izin / Cuti / Dinas</span>
+              <span class="stat-label" style="color: #6d28d9; font-weight: 700;">Izin / Cuti / Dinas</span>
             </div>
           </div>
         </div>
@@ -137,7 +140,7 @@
               <h2 class="card-title">Live Feed Presensi Guru Hari Ini</h2>
               <p class="card-subtitle">Guru yang baru saja melakukan presensi berbasis radius GPS</p>
             </div>
-            <button class="btn btn-sm btn-outline" onclick="location.reload()">🔄 Segarkan Data</button>
+            <button class="btn btn-sm btn-outline" onclick="location.reload()"><i class="bi bi-arrow-clockwise"></i> Segarkan Data</button>
           </div>
 
           <div class="table-responsive">

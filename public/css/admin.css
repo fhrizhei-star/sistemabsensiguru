@@ -16,7 +16,7 @@
 .admin-sidebar {
   width: 260px;
   background-color: var(--bg-sidebar);
-  color: #94a3b8;
+  color: #9cd3c1;
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -25,7 +25,7 @@
   left: 0;
   z-index: 100;
   transition: var(--transition);
-  border-right: 1px solid #1e293b;
+  border-right: 1px solid #0d4436;
 }
 
 .sidebar-brand {
@@ -33,32 +33,44 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  border-bottom: 1px solid #1e293b;
+  border-bottom: 1px solid #0d4436;
 }
 
 .brand-icon {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  width: 42px;
+  height: 42px;
+  background: #ffffff;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 800;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  padding: 3px;
+  overflow: hidden;
+}
+
+.brand-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-text h2 {
-  font-size: 1rem;
+  font-size: 1.05rem;
   color: #ffffff;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   line-height: 1.2;
 }
 
 .brand-text span {
-  font-size: 0.75rem;
-  color: #64748b;
+  font-size: 0.72rem;
+  color: #6ee7b7;
+  font-weight: 500;
 }
 
 .sidebar-menu {
@@ -74,7 +86,7 @@
 .menu-category {
   font-size: 0.65rem;
   font-weight: 700;
-  color: #475569;
+  color: #528977;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   padding: 0.75rem 0.75rem 0.25rem;
@@ -86,10 +98,18 @@
   gap: 0.85rem;
   padding: 0.7rem 0.85rem;
   border-radius: var(--radius-md);
-  color: #94a3b8;
+  color: #a7f3d0;
   font-weight: 600;
   font-size: 0.875rem;
   transition: var(--transition);
+}
+
+.menu-item a i {
+  font-size: 1.15rem;
+  transition: transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .menu-item a:hover {
@@ -97,10 +117,19 @@
   color: #ffffff;
 }
 
+.menu-item a:hover i {
+  transform: scale(1.15);
+  color: #34d399;
+}
+
 .menu-item.active a {
-  background: linear-gradient(135deg, var(--primary), #3b82f6);
+  background: var(--brand-gradient);
   color: #ffffff;
-  box-shadow: 0 4px 12px var(--primary-glow);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+}
+
+.menu-item.active a i {
+  color: #ffffff;
 }
 
 .menu-item .menu-badge {

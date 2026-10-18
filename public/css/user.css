@@ -5,7 +5,7 @@
 
 .user-wrapper {
   min-height: 100vh;
-  background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 35%);
+  background: radial-gradient(circle at 10% 10%, #d1fae5 0%, #ecfdf5 25%, #f4fbf7 60%, #e6f7ef 100%);
   padding-bottom: 5rem;
 }
 
@@ -33,8 +33,9 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  font-weight: 700;
-  font-size: 1.1rem;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 1.15rem;
   color: var(--text-main);
 }
 
@@ -98,14 +99,14 @@
 
 /* Profile Card */
 .profile-card {
-  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  background: var(--brand-gradient);
   color: #ffffff;
   border-radius: var(--radius-xl);
   padding: 1.5rem;
   display: flex;
   align-items: center;
   gap: 1.25rem;
-  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 12px 25px -5px rgba(16, 185, 129, 0.35);
   margin-bottom: 1.5rem;
   position: relative;
   overflow: hidden;
@@ -154,115 +155,50 @@
   margin-top: 0.25rem;
 }
 
-/* Digital Live Clock Widget */
+/* Digital Live Clock Widget (Vibrant & Glowing) */
 .clock-widget {
-  background: #ffffff;
+  background: linear-gradient(135deg, #062e24 0%, #0d4436 50%, #0f766e 100%);
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border);
-  padding: 1.25rem;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  padding: 1.5rem 1.25rem;
   text-align: center;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 16px 32px -8px rgba(6, 46, 36, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1);
   margin-bottom: 1.5rem;
-}
-
-.clock-time {
-  font-family: 'Outfit', sans-serif;
-  font-size: 2.75rem;
-  font-weight: 800;
-  color: var(--text-main);
-  letter-spacing: 0.05em;
-  line-height: 1.1;
-}
-
-.clock-date {
-  font-size: 0.95rem;
-  color: var(--text-muted);
-  font-weight: 600;
-  margin-top: 0.25rem;
-}
-
-/* GPS & Radius Radar */
-.gps-card {
-  background: #ffffff;
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--border);
-  padding: 1.25rem;
-  margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.gps-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
-
-.gps-in-range {
-  background-color: var(--success-light);
-  color: var(--success);
-}
-
-.gps-out-range {
-  background-color: var(--danger-light);
-  color: var(--danger);
-}
-
-/* Camera Selfie Section */
-.camera-section {
-  background: #ffffff;
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--border);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
-}
-
-.camera-preview-box {
   position: relative;
-  width: 100%;
-  max-width: 360px;
-  height: 270px;
-  margin: 1rem auto;
-  border-radius: var(--radius-lg);
   overflow: hidden;
-  background-color: #0f172a;
-  box-shadow: var(--shadow-md);
-  border: 3px solid #e2e8f0;
 }
 
-.camera-preview-box video,
-.camera-preview-box img,
-.camera-preview-box canvas {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1); /* mirror selfie view */
-}
-
-.camera-overlay-guide {
+.clock-widget::before {
+  content: '';
   position: absolute;
-  inset: 20px;
-  border: 2px dashed rgba(255, 255, 255, 0.6);
+  top: -40px;
+  right: -40px;
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.25) 0%, transparent 70%);
   border-radius: 50%;
   pointer-events: none;
 }
 
-.camera-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 1rem;
+.clock-time {
+  font-family: 'Outfit', sans-serif;
+  font-size: 3rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  text-shadow: 0 4px 16px rgba(16, 185, 129, 0.5);
 }
 
-/* Today Attendance Status Pill */
+.clock-date {
+  font-size: 0.95rem;
+  color: #a7f3d0;
+  font-weight: 600;
+  margin-top: 0.35rem;
+  letter-spacing: 0.02em;
+}
+
+/* Today Attendance Status Pills (Vibrant Colorful Duo) */
 .status-timeline {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -273,29 +209,71 @@
 .status-box {
   background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
+  border-radius: var(--radius-xl);
+  padding: 1.15rem 1rem;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.06);
+}
+
+.status-box:hover {
+  transform: translateY(-2px);
+}
+
+/* Kotak Jam Masuk (Energetic Emerald Cyan) */
+.status-box#box-masuk {
+  background: linear-gradient(135deg, #ecfdf5 0%, #e0f2fe 100%);
+  border: 1.5px solid #a7f3d0;
+  box-shadow: 0 10px 22px -6px rgba(16, 185, 129, 0.2);
+}
+
+.status-box#box-masuk .status-box-title {
+  color: #047857;
+  font-weight: 800;
+}
+
+.status-box#box-masuk .status-box-time {
+  color: #065f46;
+  text-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+/* Kotak Jam Pulang (Warm Sunset Amber) */
+.status-box#box-pulang {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1.5px solid #fde68a;
+  box-shadow: 0 10px 22px -6px rgba(245, 158, 11, 0.2);
+}
+
+.status-box#box-pulang .status-box-title {
+  color: #b45309;
+  font-weight: 800;
+}
+
+.status-box#box-pulang .status-box-time {
+  color: #92400e;
+  text-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
 }
 
 .status-box.active {
   border-color: var(--success);
-  background-color: var(--success-light);
+  transform: scale(1.02);
 }
 
 .status-box-title {
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.725rem;
+  font-weight: 800;
   text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 0.25rem;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.35rem;
 }
 
 .status-box-time {
-  font-size: 1.25rem;
-  font-weight: 800;
+  font-size: 1.5rem;
+  font-weight: 900;
   font-family: 'Outfit', sans-serif;
-  color: var(--text-main);
+  letter-spacing: -0.01em;
 }
 
 /* Mobile Bottom Navigation */
@@ -331,12 +309,18 @@
   font-weight: 600;
 }
 
-.mobile-nav-items a svg,
+.mobile-nav-items a i,
 .mobile-nav-items a span.icon {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .mobile-nav-items li.active a {
+  color: var(--primary);
+}
+
+.mobile-nav-items li.active a i {
+  transform: translateY(-2px) scale(1.15);
   color: var(--primary);
 }
 

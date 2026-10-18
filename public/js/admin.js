@@ -207,7 +207,20 @@ async function initGuruPage() {
         (u, i) => `
         <tr>
           <td>${i + 1}</td>
-          <td><strong>${u.nip || u.username}</strong></td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div style="width: 38px; height: 38px; border-radius: 50%; background: #ecfdf5; border: 1.5px solid #d1fae5; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+                ${
+                  u.foto_url
+                    ? `<img src="${u.foto_url}" style="width: 100%; height: 100%; object-fit: cover;">`
+                    : `<i class="bi bi-person-fill" style="color: #10b981; font-size: 1.25rem;"></i>`
+                }
+              </div>
+              <div>
+                <strong>${u.nip || u.username}</strong>
+              </div>
+            </div>
+          </td>
           <td class="font-semibold">${u.nama}</td>
           <td><span class="badge" style="background:#e0f2fe; color:#0369a1;">${u.mapel || "-"}</span></td>
           <td><span class="badge ${u.role === "admin" ? "badge-danger" : "badge-info"}">${u.role === "admin" ? "ADMIN" : (u.jabatan || "GURU")}</span></td>
@@ -236,17 +249,46 @@ async function initGuruPage() {
     }
   };
 
-  if (searchInput) {
-    searchInput.addEventListener("input", (e) => {
-      const q = e.target.value.toLowerCase();
-      const filtered = allUsers.filter(
-        (u) =>
-          u.nama.toLowerCase().includes(q) ||
-          (u.nip && u.nip.toLowerCase().includes(q)) ||
-          u.username.toLowerCase().includes(q) ||
-          (u.mapel && u.mapel.toLowerCase().includes(q))
-      );
-      renderTable(filtered);
+  // Handler File Upload Pasfoto
+  const fotoFileInput = document.getElementById("modal-foto-file");
+  const imgPreview = document.getElementById("img-preview-guru");
+  const iconPreview = document.getElementById("icon-preview-guru");
+  const base64Input = document.getElementById("modal-foto-base64");
+
+  if (fotoFileInput) {
+    fotoFileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.size > 2 * 1024 * 1024) {
+        Utils.showToast("Ukuran foto maksimal 2MB!", "warning");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target.result;
+        base64Input.value = base64;
+        imgPreview.src = base64;
+        imgPreview.style.display = "block";
+        iconPreview.style.display = "none";
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const mapelSelect = document.getElementById("modal-mapel-select");
+  const mapelCustom = document.getElementById("modal-mapel-custom");
+
+  if (mapelSelect && mapelCustom) {
+    mapelSelect.addEventListener("change", () => {
+      if (mapelSelect.value === "Lainnya") {
+        mapelCustom.style.display = "block";
+        mapelCustom.focus();
+      } else {
+        mapelCustom.style.display = "none";
+        mapelCustom.value = "";
+      }
     });
   }
 
@@ -254,6 +296,15 @@ async function initGuruPage() {
     btnAdd.addEventListener("click", () => {
       form.reset();
       document.getElementById("modal-user-id").value = "";
+      base64Input.value = "";
+      imgPreview.src = "";
+      imgPreview.style.display = "none";
+      iconPreview.style.display = "block";
+      if (mapelSelect) mapelSelect.value = "-";
+      if (mapelCustom) {
+        mapelCustom.value = "";
+        mapelCustom.style.display = "none";
+      }
       document.getElementById("modal-title").textContent = "Tambah Data Guru / Pegawai";
       modal.classList.add("active");
     });
@@ -273,9 +324,19 @@ async function initGuruPage() {
       const nama = document.getElementById("modal-nama").value.trim();
       const role = document.getElementById("modal-role").value;
       const jabatan = document.getElementById("modal-jabatan").value.trim();
-      const mapel = document.getElementById("modal-mapel").value.trim();
+      
+      let mapel = "-";
+      if (mapelSelect) {
+        if (mapelSelect.value === "Lainnya") {
+          mapel = (mapelCustom && mapelCustom.value.trim()) ? mapelCustom.value.trim() : "Lainnya";
+        } else {
+          mapel = mapelSelect.value;
+        }
+      }
+
       const password = document.getElementById("modal-password").value.trim();
       const no_hp = document.getElementById("modal-nohp").value.trim();
+      const foto = base64Input ? base64Input.value : "";
 
       const payload = {
         username: nip,
@@ -288,6 +349,7 @@ async function initGuruPage() {
       };
       if (id) payload.id = id;
       if (password) payload.password = password;
+      if (foto) payload.foto = foto;
 
       const res = await Api.saveUser(payload);
       if (res.success) {
@@ -308,16 +370,53 @@ async function initGuruPage() {
     document.getElementById("modal-nama").value = u.nama;
     document.getElementById("modal-role").value = u.role;
     document.getElementById("modal-jabatan").value = u.jabatan || "";
-    document.getElementById("modal-mapel").value = u.mapel || "";
+    
+    // Set nilai Mata Pelajaran di dropdown atau opsi Lainnya
+    if (mapelSelect && mapelCustom) {
+      const currentMapel = u.mapel || "-";
+      const hasOption = Array.from(mapelSelect.options).some((opt) => opt.value === currentMapel);
+      if (hasOption) {
+        mapelSelect.value = currentMapel;
+        mapelCustom.style.display = "none";
+        mapelCustom.value = "";
+      } else {
+        mapelSelect.value = "Lainnya";
+        mapelCustom.style.display = "block";
+        mapelCustom.value = currentMapel;
+      }
+    }
+
     document.getElementById("modal-password").value = "";
     document.getElementById("modal-password").placeholder = "Kosongkan jika tidak diubah";
     document.getElementById("modal-nohp").value = u.no_hp || "";
     document.getElementById("modal-title").textContent = "Edit Data Guru";
+
+    if (u.foto_url) {
+      base64Input.value = u.foto_url;
+      imgPreview.src = u.foto_url;
+      imgPreview.style.display = "block";
+      iconPreview.style.display = "none";
+    } else {
+      base64Input.value = "";
+      imgPreview.src = "";
+      imgPreview.style.display = "none";
+      iconPreview.style.display = "block";
+    }
+
     modal.classList.add("active");
   };
 
   window.deleteGuru = async (id, nama) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus data guru "${nama}"?`)) {
+    const confirmed = await Utils.showConfirm({
+      title: "Hapus Data Guru",
+      message: `Apakah Anda yakin ingin menghapus data guru <b>"${nama}"</b>? Tindakan ini tidak dapat dibatalkan.`,
+      icon: "danger",
+      confirmText: "Hapus Guru",
+      cancelText: "Batal",
+      confirmBtnClass: "btn-danger"
+    });
+
+    if (confirmed) {
       const res = await Api.deleteUser(id);
       if (res.success) {
         Utils.showToast(res.message, "success");
@@ -476,10 +575,19 @@ async function initSettingPage() {
   }
 
   if (btnResetData) {
-    btnResetData.addEventListener("click", () => {
-      if (confirm("Reset database demo ke data guru awal?")) {
+    btnResetData.addEventListener("click", async () => {
+      const confirmed = await Utils.showConfirm({
+        title: "Reset Database Lokal",
+        message: "Apakah Anda yakin ingin mengembalikan data cadangan lokal ke data default awal?",
+        icon: "danger",
+        confirmText: "Reset Database",
+        cancelText: "Batal",
+        confirmBtnClass: "btn-danger"
+      });
+
+      if (confirmed) {
         MockDB.reset();
-        Utils.showToast("Data demo guru berhasil direset ke awal!", "success");
+        Utils.showToast("Data lokal berhasil direset ke awal!", "success");
         setTimeout(() => window.location.reload(), 1000);
       }
     });

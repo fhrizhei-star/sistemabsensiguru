@@ -68,17 +68,46 @@ const Auth = {
       }
     });
 
-    // Inisial avatar di .auth-user-initial
-    document.querySelectorAll(".auth-user-initial").forEach((el) => {
+    // Avatar profil di .auth-user-initial, .sidebar-avatar, & .profile-avatar
+    document.querySelectorAll(".auth-user-initial, .sidebar-avatar, .profile-avatar").forEach((el) => {
+      let photoUrl = (user.foto_url || "").trim();
       const initial = (user.nama || user.username || "G").charAt(0).toUpperCase();
-      el.textContent = initial;
+
+      if (photoUrl) {
+        // Ekstrak ID file Google Drive
+        let driveId = null;
+        const m1 = photoUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+        const m2 = photoUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        const m3 = photoUrl.match(/googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
+        if (m1) driveId = m1[1];
+        else if (m2) driveId = m2[1];
+        else if (m3) driveId = m3[1];
+
+        // Pakai URL lh3 langsung karena sudah terbukti HTTP 200 OK
+        const primarySrc = driveId ? `https://lh3.googleusercontent.com/d/${driveId}` : photoUrl;
+        const altSrc = driveId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w400` : "";
+
+        el.innerHTML = `<img src="${primarySrc}" referrerpolicy="no-referrer" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" onerror="if(this.dataset.tried!=='1' && '${altSrc}'){ this.dataset.tried='1'; this.src='${altSrc}'; } else { this.onerror=null; this.parentElement.textContent='${initial}'; }">`;
+        el.style.padding = "0";
+        el.style.overflow = "hidden";
+      } else {
+        el.textContent = initial;
+      }
     });
 
     // Tombol Logout
     document.querySelectorAll(".btn-logout").forEach((el) => {
-      el.addEventListener("click", (e) => {
+      el.addEventListener("click", async (e) => {
         e.preventDefault();
-        if (confirm("Apakah Anda yakin ingin keluar dari sistem absensi guru?")) {
+        const confirmed = await Utils.showConfirm({
+          title: "Konfirmasi Keluar",
+          message: "Apakah Anda yakin ingin keluar dari sistem absensi guru?",
+          icon: "warning",
+          confirmText: "Ya, Keluar",
+          cancelText: "Batal",
+          confirmBtnClass: "btn-danger"
+        });
+        if (confirmed) {
           Auth.logout();
         }
       });

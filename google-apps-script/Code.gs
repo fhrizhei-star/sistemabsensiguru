@@ -35,9 +35,9 @@ function initDatabase() {
   if (!sheetUsers) {
     sheetUsers = ss.insertSheet(SHEET_USERS);
     sheetUsers.appendRow([
-      "id", "username", "password", "nama", "role", "nip", "jabatan", "mapel", "email", "no_hp", "status", "created_at"
+      "id", "username", "password", "nama", "role", "nip", "jabatan", "mapel", "email", "no_hp", "status", "created_at", "foto_url"
     ]);
-    sheetUsers.getRange(1, 1, 1, 12).setFontWeight("bold").setBackground("#1e3a8a").setFontColor("#ffffff");
+    sheetUsers.getRange(1, 1, 1, 13).setFontWeight("bold").setBackground("#062e24").setFontColor("#ffffff");
 
     // Sample data Guru & Admin
     sheetUsers.appendRow(["U001", "admin", "admin123", "Bpk. Hendra Gunawan, S.Kom", "admin", "198001012005011001", "Kepala Tata Usaha / Admin", "Manajemen Kepegawaian", "admin@sekolah.sch.id", "081234567890", "aktif", new Date()]);
@@ -229,23 +229,26 @@ function loginHandler(username, password) {
   const rows = sheet.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const uName = String(row[1]).trim(); // username atau NIP
+    const uName = String(row[1]).trim().replace(/^'/, ""); // username atau NIP
+    const uNip = String(row[5]).trim().replace(/^'/, "");
     const uPass = String(row[2]).trim();
+    const inputUser = String(username).toLowerCase().trim().replace(/^'/, "");
 
-    if (uName.toLowerCase() === String(username).toLowerCase().trim() && uPass === String(password).trim()) {
+    if ((uName.toLowerCase() === inputUser || uNip.toLowerCase() === inputUser) && uPass === String(password).trim()) {
       return {
         success: true,
         user: {
-          id: row[0],
-          username: row[1],
-          nama: row[3],
-          role: row[4],
-          nip: row[5],
-          jabatan: row[6],
-          mapel: row[7],
-          email: row[8],
-          no_hp: row[9],
-          status: row[10]
+          id: String(row[0]),
+          username: uName,
+          nama: String(row[3]),
+          role: String(row[4]),
+          nip: uNip,
+          jabatan: String(row[6]),
+          mapel: String(row[7]),
+          email: String(row[8]),
+          no_hp: String(row[9]).replace(/^'/, ""),
+          status: String(row[10]),
+          foto_url: String(row[12] || "")
         }
       };
     }
@@ -255,76 +258,91 @@ function loginHandler(username, password) {
 }
 
 function recordAttendanceHandler(data) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_ATTENDANCE);
-  if (!sheet) {
-    initDatabase();
-    sheet = ss.getSheetByName(SHEET_ATTENDANCE);
+  // Gunakan LockService agar saat puluhan guru presensi serentak di pagi hari,
+  // data masuk secara tertib berurutan tanpa tabrakan baris / data tertimpa.
+  const lock = LockService.getScriptLock();
+  try {
+    // Tunggu antrean maksimal 30 detik
+    lock.waitLock(30000);
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEET_ATTENDANCE);
+    if (!sheet) {
+      initDatabase();
+      sheet = ss.getSheetByName(SHEET_ATTENDANCE);
+    }
+
+    const todayStr = data.tanggal || Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd");
+    const timeNowStr = data.jam || Utilities.formatDate(new Date(), "GMT+7", "HH:mm:ss");
+    const type = data.type || "masuk";
+
+    const rows = sheet.getDataRange().getValues();
+    let existingRowIndex = -1;
+
+    for (let i = 1; i < rows.length; i++) {
+      const rowDate = rows[i][5] instanceof Date 
+        ? Utilities.formatDate(rows[i][5], "GMT+7", "yyyy-MM-dd")
+        : String(rows[i][5]);
+      if (rows[i][1] == data.user_id && rowDate == todayStr) {
+        existingRowIndex = i + 1;
+        break;
+      }
+    }
+
+    if (type === "masuk") {
+      if (existingRowIndex !== -1) {
+        return { success: false, message: "Bapak/Ibu Guru sudah melakukan presensi masuk hari ini!" };
+      }
+
+      const newId = "ATT" + new Date().getTime();
+      sheet.appendRow([
+        newId,
+        data.user_id,
+        data.nama,
+        data.nip || "-",
+        data.mapel || "-",
+        todayStr,
+        timeNowStr,
+        "",
+        data.status || "Hadir",
+        data.koordinat || "-",
+        data.foto_selfie || "",
+        data.keterangan || "Presensi Masuk Guru",
+        new Date()
+      ]);
+
+      return { 
+        success: true, 
+        message: "Presensi masuk berhasil dicatat pada " + timeNowStr,
+        jam_masuk: timeNowStr
+      };
+    } else if (type === "pulang") {
+      if (existingRowIndex === -1) {
+        return { success: false, message: "Bapak/Ibu Guru belum melakukan presensi masuk hari ini!" };
+      }
+
+      const currentJamPulang = sheet.getRange(existingRowIndex, 8).getValue();
+      if (currentJamPulang) {
+        return { success: false, message: "Bapak/Ibu Guru sudah melakukan presensi pulang hari ini!" };
+      }
+
+      sheet.getRange(existingRowIndex, 8).setValue(timeNowStr);
+      return { 
+        success: true, 
+        message: "Presensi pulang berhasil dicatat pada " + timeNowStr,
+        jam_pulang: timeNowStr
+      };
+    }
+
+    return { success: false, message: "Tipe presensi tidak valid!" };
+  } catch (err) {
+    Logger.log("LockService / Attendance Error: " + err.toString());
+    return { success: false, message: "Server sedang sibuk memproses antrean absensi guru. Silakan coba 5 detik lagi." };
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (e) {}
   }
-
-  const todayStr = data.tanggal || Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd");
-  const timeNowStr = data.jam || Utilities.formatDate(new Date(), "GMT+7", "HH:mm:ss");
-  const type = data.type || "masuk";
-
-  const rows = sheet.getDataRange().getValues();
-  let existingRowIndex = -1;
-
-  for (let i = 1; i < rows.length; i++) {
-    const rowDate = rows[i][5] instanceof Date 
-      ? Utilities.formatDate(rows[i][5], "GMT+7", "yyyy-MM-dd")
-      : String(rows[i][5]);
-    if (rows[i][1] == data.user_id && rowDate == todayStr) {
-      existingRowIndex = i + 1;
-      break;
-    }
-  }
-
-  if (type === "masuk") {
-    if (existingRowIndex !== -1) {
-      return { success: false, message: "Bapak/Ibu Guru sudah melakukan presensi masuk hari ini!" };
-    }
-
-    const newId = "ATT" + new Date().getTime();
-    sheet.appendRow([
-      newId,
-      data.user_id,
-      data.nama,
-      data.nip || "-",
-      data.mapel || "-",
-      todayStr,
-      timeNowStr,
-      "",
-      data.status || "Hadir",
-      data.koordinat || "-",
-      data.foto_selfie || "",
-      data.keterangan || "Presensi Masuk Guru",
-      new Date()
-    ]);
-
-    return { 
-      success: true, 
-      message: "Presensi masuk berhasil dicatat pada " + timeNowStr,
-      jam_masuk: timeNowStr
-    };
-  } else if (type === "pulang") {
-    if (existingRowIndex === -1) {
-      return { success: false, message: "Bapak/Ibu Guru belum melakukan presensi masuk hari ini!" };
-    }
-
-    const currentJamPulang = sheet.getRange(existingRowIndex, 8).getValue();
-    if (currentJamPulang) {
-      return { success: false, message: "Bapak/Ibu Guru sudah melakukan presensi pulang hari ini!" };
-    }
-
-    sheet.getRange(existingRowIndex, 8).setValue(timeNowStr);
-    return { 
-      success: true, 
-      message: "Presensi pulang berhasil dicatat pada " + timeNowStr,
-      jam_pulang: timeNowStr
-    };
-  }
-
-  return { success: false, message: "Tipe presensi tidak valid!" };
 }
 
 function getTodayAttendanceHandler(userId, tanggal) {
@@ -435,29 +453,41 @@ function getAllAttendanceHandler(tanggal, mapel) {
 }
 
 function submitLeaveHandler(data) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_LEAVES);
-  if (!sheet) {
-    initDatabase();
-    sheet = ss.getSheetByName(SHEET_LEAVES);
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEET_LEAVES);
+    if (!sheet) {
+      initDatabase();
+      sheet = ss.getSheetByName(SHEET_LEAVES);
+    }
+
+    const newId = "LV" + new Date().getTime();
+    sheet.appendRow([
+      newId,
+      data.user_id,
+      data.nama,
+      data.nip || "-",
+      data.mapel || "-",
+      data.tipe,
+      data.tgl_mulai,
+      data.tgl_selesai,
+      data.alasan,
+      "Menunggu",
+      new Date()
+    ]);
+
+    return { success: true, message: "Pengajuan izin / cuti guru berhasil diajukan" };
+  } catch (err) {
+    Logger.log("LockService / Leave Error: " + err.toString());
+    return { success: false, message: "Gagal memproses pengajuan izin, silakan coba beberapa saat lagi." };
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (e) {}
   }
-
-  const newId = "LV" + new Date().getTime();
-  sheet.appendRow([
-    newId,
-    data.user_id,
-    data.nama,
-    data.nip || "-",
-    data.mapel || "-",
-    data.tipe,
-    data.tgl_mulai,
-    data.tgl_selesai,
-    data.alasan,
-    "Menunggu",
-    new Date()
-  ]);
-
-  return { success: true, message: "Pengajuan izin / cuti guru berhasil diajukan" };
 }
 
 function getLeavesHandler(userId) {
@@ -517,20 +547,67 @@ function getUsersHandler(role) {
     if (role && rows[i][4] != role) continue;
 
     list.push({
-      id: rows[i][0],
-      username: rows[i][1],
-      nama: rows[i][3],
-      role: rows[i][4],
-      nip: rows[i][5],
-      jabatan: rows[i][6],
-      mapel: rows[i][7],
-      email: rows[i][8],
-      no_hp: rows[i][9],
-      status: rows[i][10]
+      id: String(rows[i][0]),
+      username: "'" + String(rows[i][1]).replace(/^'/, ""),
+      nama: String(rows[i][3]),
+      role: String(rows[i][4]),
+      nip: String(rows[i][5]).replace(/^'/, ""),
+      jabatan: String(rows[i][6]),
+      mapel: String(rows[i][7]),
+      email: String(rows[i][8]),
+      no_hp: String(rows[i][9]),
+      status: String(rows[i][10]),
+      foto_url: String(rows[i][12] || "")
     });
   }
 
   return { success: true, list: list };
+}
+
+/**
+ * Jalankan fungsi ini SEKALI di editor Apps Script (pilih testDrivePermission lalu klik Run)
+ * untuk memberikan izin akses Google Drive agar foto otomatis tersimpan.
+ */
+function testDrivePermission() {
+  const folderName = "Foto Profil Guru & Staf";
+  const folders = DriveApp.getFoldersByName(folderName);
+  if (!folders.hasNext()) {
+    const f = DriveApp.createFolder(folderName);
+    f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  }
+  Logger.log("Izin Google Drive BERHASIL aktif!");
+  return "OK";
+}
+
+function uploadPhotoToDrive(base64Data, fileName) {
+  try {
+    if (!base64Data || !base64Data.startsWith("data:image")) {
+      return base64Data || "";
+    }
+    const folderName = "Foto Profil Guru & Staf";
+    const folders = DriveApp.getFoldersByName(folderName);
+    let folder;
+    if (folders.hasNext()) {
+      folder = folders.next();
+    } else {
+      folder = DriveApp.createFolder(folderName);
+      folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    }
+
+    const parts = base64Data.split(",");
+    const contentType = parts[0].split(";")[0].replace("data:", "");
+    const decoded = Utilities.base64Decode(parts[1]);
+    const blob = Utilities.newBlob(decoded, contentType, fileName);
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    // Buat URL Google Drive yang bebas CORS & bisa ditampilkan langsung di semua browser
+    const fileId = file.getId();
+    return "https://lh3.googleusercontent.com/d/" + fileId + "=s400";
+  } catch (err) {
+    Logger.log("Gagal upload foto ke Drive: " + err.toString());
+    return "";
+  }
 }
 
 function saveUserHandler(data) {
@@ -538,39 +615,48 @@ function saveUserHandler(data) {
   const sheet = ss.getSheetByName(SHEET_USERS);
   const rows = sheet.getDataRange().getValues();
 
+  let photoUrl = "";
+  if (data.foto) {
+    const safeName = "FOTO_" + (data.nip || data.username || "GURU") + ".jpg";
+    photoUrl = uploadPhotoToDrive(data.foto, safeName);
+  }
+
   if (data.id) {
     for (let i = 1; i < rows.length; i++) {
       if (rows[i][0] == data.id) {
-        if (data.username) sheet.getRange(i + 1, 2).setValue(data.username);
-        if (data.password) sheet.getRange(i + 1, 3).setValue(data.password);
+        if (data.username) sheet.getRange(i + 1, 2).setValue("'" + String(data.username).replace(/^'/, ""));
+        if (data.password) sheet.getRange(i + 1, 3).setValue(String(data.password));
         if (data.nama) sheet.getRange(i + 1, 4).setValue(data.nama);
         if (data.role) sheet.getRange(i + 1, 5).setValue(data.role);
-        if (data.nip) sheet.getRange(i + 1, 6).setValue(data.nip);
+        if (data.nip) sheet.getRange(i + 1, 6).setValue("'" + String(data.nip).replace(/^'/, ""));
         if (data.jabatan) sheet.getRange(i + 1, 7).setValue(data.jabatan);
         if (data.mapel) sheet.getRange(i + 1, 8).setValue(data.mapel);
         if (data.email) sheet.getRange(i + 1, 9).setValue(data.email);
-        if (data.no_hp) sheet.getRange(i + 1, 10).setValue(data.no_hp);
-        return { success: true, message: "Data guru berhasil diperbarui" };
+        if (data.no_hp) sheet.getRange(i + 1, 10).setValue("'" + String(data.no_hp).replace(/^'/, ""));
+        if (photoUrl) sheet.getRange(i + 1, 13).setValue(photoUrl);
+        return { success: true, message: "Data guru & foto berhasil diperbarui" };
       }
     }
     return { success: false, message: "Data guru tidak ditemukan" };
   } else {
     const newId = "U" + Math.floor(1000 + Math.random() * 9000);
+    const nipVal = String(data.nip || data.username || "").replace(/^'/, "");
     sheet.appendRow([
       newId,
-      data.username || data.nip,
+      "'" + nipVal,
       data.password || "guru123",
       data.nama,
       data.role || "guru",
-      data.nip || "-",
+      "'" + nipVal,
       data.jabatan || "Guru Pengajar",
       data.mapel || "-",
       data.email || "-",
-      data.no_hp || "-",
+      "'" + String(data.no_hp || "-").replace(/^'/, ""),
       "aktif",
-      new Date()
+      new Date(),
+      photoUrl
     ]);
-    return { success: true, message: "Guru baru berhasil didaftarkan", id: newId };
+    return { success: true, message: "Guru baru berhasil didaftarkan ke Google Drive & Sheets", id: newId };
   }
 }
 
