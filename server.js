@@ -24,6 +24,13 @@ const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host || "localhost:3000"}`);
   let pathname = parsedUrl.pathname;
 
+  // Normalize pathname: remove /public prefix if proxy prepended it
+  if (pathname.startsWith("/public/")) {
+    pathname = pathname.substring(7);
+  } else if (pathname === "/public") {
+    pathname = "/";
+  }
+
   // Handle API Proxy
   if (pathname.startsWith("/api/proxy")) {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -106,6 +113,8 @@ const server = http.createServer(async (req, res) => {
   // If path is a directory, look for index.html inside it
   if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
     filePath = path.join(filePath, "index.html");
+  } else if (!path.extname(filePath) && fs.existsSync(filePath + ".html")) {
+    filePath = filePath + ".html";
   }
 
   const extname = path.extname(filePath).toLowerCase();

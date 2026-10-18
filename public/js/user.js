@@ -21,10 +21,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     profileMapel.textContent = currentUser.mapel ? `Guru ${currentUser.mapel}` : (currentUser.jabatan || "Tenaga Pendidik");
   }
 
-  const path = window.location.pathname;
-  if (path.includes("riwayat.html")) {
+  const path = window.location.pathname.toLowerCase();
+  if (path.includes("riwayat")) {
     initGuruRiwayatPage(currentUser);
-  } else if (path.includes("izin.html")) {
+  } else if (path.includes("izin")) {
     initGuruIzinPage(currentUser);
   } else {
     initGuruAttendancePage(currentUser);

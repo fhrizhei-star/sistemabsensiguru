@@ -15,19 +15,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   const sidebarToggle = document.querySelector(".sidebar-toggle-btn");
   const sidebar = document.querySelector(".admin-sidebar");
   if (sidebarToggle && sidebar) {
-    sidebarToggle.addEventListener("click", () => {
+    sidebarToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
       sidebar.classList.toggle("open");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (sidebar.classList.contains("open")) {
+        if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+          sidebar.classList.remove("open");
+        }
+      }
     });
   }
 
-  const path = window.location.pathname;
-  if (path.includes("rekap.html")) {
+  const path = window.location.pathname.toLowerCase();
+  if (path.includes("rekap")) {
     initRekapPage();
-  } else if (path.includes("guru.html") || path.includes("siswa.html")) {
+  } else if (path.includes("guru") || path.includes("siswa")) {
     initGuruPage();
-  } else if (path.includes("izin.html")) {
+  } else if (path.includes("izin")) {
     initIzinPage();
-  } else if (path.includes("setting.html")) {
+  } else if (path.includes("setting")) {
     initSettingPage();
   } else {
     initDashboardPage();
