@@ -21,7 +21,7 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer(async (req, res) => {
-  const parsedUrl = url.parse(req.url, true);
+  const parsedUrl = new URL(req.url, `http://${req.headers.host || "localhost:3000"}`);
   let pathname = parsedUrl.pathname;
 
   // Handle API Proxy
@@ -36,14 +36,13 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const scriptUrl = req.headers["x-script-url"] || parsedUrl.query.script_url;
+    const scriptUrl = req.headers["x-script-url"] || parsedUrl.searchParams.get("script_url");
 
     if (!scriptUrl || scriptUrl.includes("GANTI_DENGAN_URL")) {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         success: false,
-        isDemo: true,
-        message: "Google Apps Script URL belum dikonfigurasi. Berjalan dalam mode demo lokal."
+        message: "Google Apps Script URL belum dikonfigurasi."
       }));
       return;
     }
@@ -51,9 +50,9 @@ const server = http.createServer(async (req, res) => {
     try {
       if (req.method === "GET") {
         const targetUrl = new URL(scriptUrl);
-        for (const [k, v] of Object.entries(parsedUrl.query)) {
+        parsedUrl.searchParams.forEach((v, k) => {
           if (k !== "script_url") targetUrl.searchParams.set(k, v);
-        }
+        });
 
         const gasRes = await fetch(targetUrl.toString(), { redirect: "follow" });
         const data = await gasRes.json();
