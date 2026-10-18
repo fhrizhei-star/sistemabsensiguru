@@ -61,7 +61,106 @@ const server = http.createServer(async (req, res) => {
     }
 
     try {
+      const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Makassar" });
+
+      const normalizeAttendanceList = (list) => {
+        if (!Array.isArray(list)) return [];
+        return list.map((item) => {
+          if (item && item.id && String(item.id).startsWith("ATT")) {
+            const ts = parseInt(String(item.id).replace("ATT", ""));
+            if (!isNaN(ts) && ts > 1600000000000) {
+              item.tanggal = new Date(ts).toLocaleDateString("en-CA", { timeZone: "Asia/Makassar" });
+            }
+          }
+          return item;
+        });
+      };
+
       if (req.method === "GET") {
+        const action = parsedUrl.searchParams.get("action");
+
+        if (action === "getDashboardStats") {
+          const [attRes, usersRes] = await Promise.all([
+            fetch(`${scriptUrl}?action=getAllAttendance`, { redirect: "follow" }).then(r => r.json()).catch(() => ({ success: false, list: [] })),
+            fetch(`${scriptUrl}?action=getUsers`, { redirect: "follow" }).then(r => r.json()).catch(() => ({ success: false, list: [] }))
+          ]);
+
+          const allUsers = usersRes.list || [];
+          const totalGuru = allUsers.filter(u => u.role === "guru").length || allUsers.length || 3;
+          const normalizedAtt = normalizeAttendanceList(attRes.list || []);
+          const targetDate = parsedUrl.searchParams.get("tanggal") || todayStr;
+          const todayAtt = normalizedAtt.filter(a => a.tanggal === targetDate);
+
+          const attendedUserIds = new Set();
+          let hadir = 0;
+          let terlambat = 0;
+
+          todayAtt.forEach(a => {
+            if (!attendedUserIds.has(a.user_id)) {
+              attendedUserIds.add(a.user_id);
+              if (a.status === "Terlambat") terlambat++;
+              else hadir++;
+            }
+          });
+
+          const belumAbsen = Math.max(0, totalGuru - (hadir + terlambat));
+
+          res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store, no-cache, must-revalidate" });
+          res.end(JSON.stringify({
+            success: true,
+            stats: { totalGuru, hadir, terlambat, izin: 0, belumAbsen, tanggal: targetDate },
+            recentAttendance: todayAtt.slice(0, 10)
+          }));
+          return;
+        }
+
+        if (action === "getAllAttendance") {
+          const gasRes = await fetch(`${scriptUrl}?action=getAllAttendance`, { redirect: "follow" });
+          const gasData = await gasRes.json();
+          if (gasData && Array.isArray(gasData.list)) {
+            let list = normalizeAttendanceList(gasData.list);
+            const reqTanggal = parsedUrl.searchParams.get("tanggal");
+            const reqMapel = parsedUrl.searchParams.get("mapel");
+            if (reqTanggal) list = list.filter(a => a.tanggal === reqTanggal);
+            if (reqMapel && reqMapel !== "Semua") list = list.filter(a => a.mapel === reqMapel);
+            res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store, no-cache, must-revalidate" });
+            res.end(JSON.stringify({ success: true, list }));
+            return;
+          }
+        }
+
+        if (action === "getTodayAttendance") {
+          const gasRes = await fetch(`${scriptUrl}?action=getAllAttendance`, { redirect: "follow" });
+          const gasData = await gasRes.json();
+          const targetDate = parsedUrl.searchParams.get("tanggal") || todayStr;
+          const userId = parsedUrl.searchParams.get("user_id");
+          const normalized = normalizeAttendanceList(gasData.list || []);
+          const todayRecord = normalized.find(a => a.user_id === userId && a.tanggal === targetDate);
+          res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store, no-cache, must-revalidate" });
+          res.end(JSON.stringify({ success: true, data: todayRecord || null }));
+          return;
+        }
+
+        if (action === "getUserAttendance") {
+          const fetchUrl = new URL(scriptUrl);
+          fetchUrl.searchParams.set("action", "getUserAttendance");
+          const uid = parsedUrl.searchParams.get("user_id");
+          if (uid) fetchUrl.searchParams.set("user_id", uid);
+          const bln = parsedUrl.searchParams.get("bulan");
+          if (bln) fetchUrl.searchParams.set("bulan", bln);
+          const thn = parsedUrl.searchParams.get("tahun");
+          if (thn) fetchUrl.searchParams.set("tahun", thn);
+
+          const gasRes = await fetch(fetchUrl.toString(), { redirect: "follow" });
+          const gasData = await gasRes.json();
+          if (gasData && Array.isArray(gasData.list)) {
+            const list = normalizeAttendanceList(gasData.list);
+            res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store, no-cache, must-revalidate" });
+            res.end(JSON.stringify({ success: true, list }));
+            return;
+          }
+        }
+
         const targetUrl = new URL(scriptUrl);
         parsedUrl.searchParams.forEach((v, k) => {
           if (k !== "script_url") targetUrl.searchParams.set(k, v);
@@ -69,16 +168,35 @@ const server = http.createServer(async (req, res) => {
 
         const gasRes = await fetch(targetUrl.toString(), { redirect: "follow" });
         const text = await gasRes.text();
+        let finalOutput = text;
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed && Array.isArray(parsed.list)) {
+            parsed.list = normalizeAttendanceList(parsed.list);
+            finalOutput = JSON.stringify(parsed);
+          }
+        } catch (e) {}
+
         res.writeHead(200, {
           "Content-Type": "application/json",
           "Cache-Control": "no-store, no-cache, must-revalidate"
         });
-        res.end(text);
+        res.end(finalOutput);
       } else if (req.method === "POST") {
         let body = "";
         req.on("data", chunk => { body += chunk; });
         req.on("end", async () => {
           try {
+            let bodyObj = body;
+            try { bodyObj = JSON.parse(body); } catch (e) {}
+            if (typeof bodyObj === "object" && bodyObj !== null) {
+              if (bodyObj.action === "recordAttendance") {
+                if (!bodyObj.tanggal) bodyObj.tanggal = todayStr;
+                if (!bodyObj.jam) bodyObj.jam = new Date().toLocaleTimeString("id-ID", { timeZone: "Asia/Makassar", hour12: false });
+              }
+              body = JSON.stringify(bodyObj);
+            }
+
             const gasRes = await fetch(scriptUrl, {
               method: "POST",
               headers: { "Content-Type": "text/plain;charset=utf-8" },

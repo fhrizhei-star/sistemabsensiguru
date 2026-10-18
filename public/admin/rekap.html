@@ -117,7 +117,10 @@
         <div class="card filter-section" style="margin-bottom: 1.5rem;">
           <div class="grid grid-cols-3 gap-4 items-center">
             <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label" for="filter-tanggal">Pilih Tanggal</label>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <label class="form-label" for="filter-tanggal" style="margin-bottom: 0;">Pilih Tanggal</label>
+                <button type="button" id="btn-semua-tanggal" style="background: none; border: none; color: var(--primary); font-size: 0.75rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">Semua Tanggal</button>
+              </div>
               <input type="date" id="filter-tanggal" class="form-control">
             </div>
 

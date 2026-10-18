@@ -64,7 +64,8 @@ async function initDashboardPage() {
   const tableBody = document.getElementById("recent-attendance-tbody");
 
   try {
-    const res = await Api.getDashboardStats();
+    const todayLocal = new Date().toLocaleDateString("en-CA");
+    const res = await Api.getDashboardStats(todayLocal);
     if (res.success && res.stats) {
       if (statTotal) statTotal.textContent = res.stats.totalGuru;
       if (statHadir) statHadir.textContent = res.stats.hadir;
@@ -108,6 +109,7 @@ async function initDashboardPage() {
 // ================= 2. REKAP ABSENSI GURU ================= //
 async function initRekapPage() {
   const dateInput = document.getElementById("filter-tanggal");
+  const btnSemuaTanggal = document.getElementById("btn-semua-tanggal");
   const mapelSelect = document.getElementById("filter-mapel");
   const btnFilter = document.getElementById("btn-filter");
   const btnExport = document.getElementById("btn-export");
@@ -115,7 +117,14 @@ async function initRekapPage() {
   const tbody = document.getElementById("rekap-tbody");
 
   if (dateInput) {
-    dateInput.value = new Date().toISOString().split("T")[0];
+    dateInput.value = new Date().toLocaleDateString("en-CA");
+  }
+
+  if (btnSemuaTanggal) {
+    btnSemuaTanggal.addEventListener("click", () => {
+      if (dateInput) dateInput.value = "";
+      loadData();
+    });
   }
 
   const loadData = async () => {

@@ -65,7 +65,8 @@ async function initGuruAttendancePage(user) {
   }
 
   const loadTodayStatus = async () => {
-    const todayRes = await Api.getTodayAttendance(user.id);
+    const todayDate = new Date().toLocaleDateString("en-CA");
+    const todayRes = await Api.getTodayAttendance(user.id, todayDate);
     if (todayRes.success && todayRes.data) {
       const att = todayRes.data;
       if (todayMasukTime) todayMasukTime.textContent = att.jam_masuk || "--:--";
@@ -182,6 +183,7 @@ async function initGuruAttendancePage(user) {
 
       const now = new Date();
       const jamStr = now.toLocaleTimeString("id-ID", { hour12: false });
+      const tanggalStr = now.toLocaleDateString("en-CA");
       const batasMasuk = schoolSettings.jam_masuk_akhir || "07:15";
       const isLate = jamStr > batasMasuk;
       const statusAbsen = isLate ? "Terlambat" : "Hadir";
@@ -192,10 +194,11 @@ async function initGuruAttendancePage(user) {
         nama: user.nama,
         nip: user.nip || user.username,
         mapel: user.mapel || user.jabatan,
+        tanggal: tanggalStr,
         jam: jamStr,
         status: statusAbsen,
         koordinat: userCoords ? `${userCoords.lat.toFixed(6)}, ${userCoords.lng.toFixed(6)} (${distanceToSchool}m)` : `Area Sekolah (${distanceToSchool}m)`,
-        foto_selfie: "", // Tidak menggunakan foto sesuai permintaan
+        foto_selfie: "",
         keterangan: isLate ? `Terlambat (masuk pukul ${jamStr})` : "Tepat Waktu"
       };
 
@@ -225,6 +228,7 @@ async function initGuruAttendancePage(user) {
 
       const now = new Date();
       const jamStr = now.toLocaleTimeString("id-ID", { hour12: false });
+      const tanggalStr = now.toLocaleDateString("en-CA");
 
       const payload = {
         type: "pulang",
@@ -232,6 +236,7 @@ async function initGuruAttendancePage(user) {
         nama: user.nama,
         nip: user.nip || user.username,
         mapel: user.mapel || user.jabatan,
+        tanggal: tanggalStr,
         jam: jamStr,
         keterangan: "Selesai Jam Bertugas"
       };

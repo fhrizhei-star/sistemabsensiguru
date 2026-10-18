@@ -38,7 +38,126 @@ export default async function handler(req, res) {
   }
 
   try {
+    const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Makassar" });
+
+    // Helper normalisasi tanggal record berdasarkan timestamp ID
+    const normalizeAttendanceList = (list) => {
+      if (!Array.isArray(list)) return [];
+      return list.map((item) => {
+        if (item && item.id && String(item.id).startsWith("ATT")) {
+          const ts = parseInt(String(item.id).replace("ATT", ""));
+          if (!isNaN(ts) && ts > 1600000000000) {
+            item.tanggal = new Date(ts).toLocaleDateString("en-CA", { timeZone: "Asia/Makassar" });
+          }
+        }
+        return item;
+      });
+    };
+
     if (req.method === "GET") {
+      const action = req.query.action;
+
+      if (action === "getDashboardStats") {
+        // Ambil data absensi dan guru secara simultan
+        const [attRes, usersRes] = await Promise.all([
+          fetch(`${scriptUrl}?action=getAllAttendance`, { redirect: "follow" })
+            .then((r) => r.json())
+            .catch(() => ({ success: false, list: [] })),
+          fetch(`${scriptUrl}?action=getUsers`, { redirect: "follow" })
+            .then((r) => r.json())
+            .catch(() => ({ success: false, list: [] }))
+        ]);
+
+        const allUsers = usersRes.list || [];
+        const totalGuru = allUsers.filter((u) => u.role === "guru").length || allUsers.length || 3;
+        const normalizedAtt = normalizeAttendanceList(attRes.list || []);
+
+        const targetDate = req.query.tanggal || todayStr;
+        const todayAtt = normalizedAtt.filter((a) => a.tanggal === targetDate);
+
+        // Hitung hadir & terlambat unik berdasarkan user_id
+        const attendedUserIds = new Set();
+        let hadir = 0;
+        let terlambat = 0;
+
+        todayAtt.forEach((a) => {
+          if (!attendedUserIds.has(a.user_id)) {
+            attendedUserIds.add(a.user_id);
+            if (a.status === "Terlambat") {
+              terlambat++;
+            } else {
+              hadir++;
+            }
+          }
+        });
+
+        const belumAbsen = Math.max(0, totalGuru - (hadir + terlambat));
+
+        return res.status(200).json({
+          success: true,
+          stats: {
+            totalGuru,
+            hadir,
+            terlambat,
+            izin: 0,
+            belumAbsen,
+            tanggal: targetDate
+          },
+          recentAttendance: todayAtt.slice(0, 10)
+        });
+      }
+
+      if (action === "getAllAttendance") {
+        const fetchUrl = new URL(scriptUrl);
+        fetchUrl.searchParams.set("action", "getAllAttendance");
+
+        const gasRes = await fetch(fetchUrl.toString(), { redirect: "follow" });
+        const gasData = await gasRes.json();
+        if (gasData && Array.isArray(gasData.list)) {
+          let list = normalizeAttendanceList(gasData.list);
+          if (req.query.tanggal) {
+            list = list.filter((a) => a.tanggal === req.query.tanggal);
+          }
+          if (req.query.mapel && req.query.mapel !== "Semua") {
+            list = list.filter((a) => a.mapel === req.query.mapel);
+          }
+          return res.status(200).json({ success: true, list });
+        }
+        return res.status(200).json(gasData);
+      }
+
+      if (action === "getTodayAttendance") {
+        const fetchUrl = new URL(scriptUrl);
+        fetchUrl.searchParams.set("action", "getAllAttendance");
+
+        const gasRes = await fetch(fetchUrl.toString(), { redirect: "follow" });
+        const gasData = await gasRes.json();
+        const targetDate = req.query.tanggal || todayStr;
+        const normalized = normalizeAttendanceList(gasData.list || []);
+        const todayRecord = normalized.find(
+          (a) => a.user_id === req.query.user_id && a.tanggal === targetDate
+        );
+
+        return res.status(200).json({ success: true, data: todayRecord || null });
+      }
+
+      if (action === "getUserAttendance") {
+        const fetchUrl = new URL(scriptUrl);
+        fetchUrl.searchParams.set("action", "getUserAttendance");
+        if (req.query.user_id) fetchUrl.searchParams.set("user_id", req.query.user_id);
+        if (req.query.bulan) fetchUrl.searchParams.set("bulan", req.query.bulan);
+        if (req.query.tahun) fetchUrl.searchParams.set("tahun", req.query.tahun);
+
+        const gasRes = await fetch(fetchUrl.toString(), { redirect: "follow" });
+        const gasData = await gasRes.json();
+        if (gasData && Array.isArray(gasData.list)) {
+          const list = normalizeAttendanceList(gasData.list);
+          return res.status(200).json({ success: true, list });
+        }
+        return res.status(200).json(gasData);
+      }
+
+      // Default pass-through untuk aksi GET lainnya
       const urlObj = new URL(scriptUrl);
       for (const [key, val] of Object.entries(req.query)) {
         if (key !== "script_url") {
@@ -54,6 +173,9 @@ export default async function handler(req, res) {
       const text = await response.text();
       try {
         const data = JSON.parse(text);
+        if (data && Array.isArray(data.list)) {
+          data.list = normalizeAttendanceList(data.list);
+        }
         return res.status(200).json(data);
       } catch (parseErr) {
         return res.status(200).json({
@@ -63,13 +185,29 @@ export default async function handler(req, res) {
         });
       }
     } else if (req.method === "POST") {
-      // Pastikan body tidak mengalami double JSON stringify jika sudah string
-      let postBody = req.body;
-      if (typeof postBody === "object" && postBody !== null) {
-        postBody = JSON.stringify(postBody);
-      } else if (typeof postBody !== "string") {
-        postBody = JSON.stringify(postBody || {});
+      let bodyObj = req.body;
+      if (typeof bodyObj === "string") {
+        try {
+          bodyObj = JSON.parse(bodyObj);
+        } catch (e) {}
       }
+
+      // Pastikan tanggal dan jam selalu akurat (WITA GMT+8) jika belum diset
+      if (typeof bodyObj === "object" && bodyObj !== null) {
+        if (bodyObj.action === "recordAttendance") {
+          if (!bodyObj.tanggal) {
+            bodyObj.tanggal = todayStr;
+          }
+          if (!bodyObj.jam) {
+            bodyObj.jam = new Date().toLocaleTimeString("id-ID", {
+              timeZone: "Asia/Makassar",
+              hour12: false
+            });
+          }
+        }
+      }
+
+      const postBody = typeof bodyObj === "object" ? JSON.stringify(bodyObj) : bodyObj;
 
       const response = await fetch(scriptUrl, {
         method: "POST",

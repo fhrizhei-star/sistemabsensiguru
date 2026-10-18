@@ -272,17 +272,18 @@ function recordAttendanceHandler(data) {
       sheet = ss.getSheetByName(SHEET_ATTENDANCE);
     }
 
-    const todayStr = data.tanggal || Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd");
-    const timeNowStr = data.jam || Utilities.formatDate(new Date(), "GMT+7", "HH:mm:ss");
+    const todayStr = data.tanggal || Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
+    const timeNowStr = data.jam || Utilities.formatDate(new Date(), "GMT+8", "HH:mm:ss");
     const type = data.type || "masuk";
 
     const rows = sheet.getDataRange().getValues();
     let existingRowIndex = -1;
 
     for (let i = 1; i < rows.length; i++) {
-      const rowDate = rows[i][5] instanceof Date 
-        ? Utilities.formatDate(rows[i][5], "GMT+7", "yyyy-MM-dd")
-        : String(rows[i][5]);
+      const rawDate = rows[i][5];
+      const rowDate = rawDate instanceof Date
+        ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
+        : String(rawDate).trim().replace(/^'/, "");
       if (rows[i][1] == data.user_id && rowDate == todayStr) {
         existingRowIndex = i + 1;
         break;
@@ -301,7 +302,7 @@ function recordAttendanceHandler(data) {
         data.nama,
         data.nip || "-",
         data.mapel || "-",
-        todayStr,
+        "'" + todayStr, // Simpan dengan tanda petik agar tidak diubah timezone Google Sheets
         timeNowStr,
         "",
         data.status || "Hadir",
@@ -350,13 +351,14 @@ function getTodayAttendanceHandler(userId, tanggal) {
   const sheet = ss.getSheetByName(SHEET_ATTENDANCE);
   if (!sheet) return { success: true, data: null };
 
-  const todayStr = tanggal || Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd");
+  const todayStr = tanggal || Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
   const rows = sheet.getDataRange().getValues();
 
   for (let i = 1; i < rows.length; i++) {
-    const rowDate = rows[i][5] instanceof Date 
-      ? Utilities.formatDate(rows[i][5], "GMT+7", "yyyy-MM-dd")
-      : String(rows[i][5]);
+    const rawDate = rows[i][5];
+    const rowDate = rawDate instanceof Date 
+      ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
+      : String(rawDate).trim().replace(/^'/, "");
     if (rows[i][1] == userId && rowDate == todayStr) {
       return {
         success: true,
@@ -391,9 +393,10 @@ function getUserAttendanceHandler(userId, bulan, tahun) {
 
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][1] == userId) {
-      const rowDate = rows[i][5] instanceof Date 
-        ? Utilities.formatDate(rows[i][5], "GMT+7", "yyyy-MM-dd")
-        : String(rows[i][5]);
+      const rawDate = rows[i][5];
+      const rowDate = rawDate instanceof Date 
+        ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
+        : String(rawDate).trim().replace(/^'/, "");
 
       list.push({
         id: rows[i][0],
@@ -425,9 +428,10 @@ function getAllAttendanceHandler(tanggal, mapel) {
   const list = [];
 
   for (let i = 1; i < rows.length; i++) {
-    const rowDate = rows[i][5] instanceof Date 
-      ? Utilities.formatDate(rows[i][5], "GMT+7", "yyyy-MM-dd")
-      : String(rows[i][5]);
+    const rawDate = rows[i][5];
+    const rowDate = rawDate instanceof Date 
+      ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
+      : String(rawDate).trim().replace(/^'/, "");
 
     if (tanggal && rowDate !== tanggal) continue;
     if (mapel && mapel !== "Semua" && rows[i][4] !== mapel) continue;
@@ -508,8 +512,8 @@ function getLeavesHandler(userId) {
       nip: rows[i][3],
       mapel: rows[i][4],
       tipe: rows[i][5],
-      tgl_mulai: rows[i][6] instanceof Date ? Utilities.formatDate(rows[i][6], "GMT+7", "yyyy-MM-dd") : String(rows[i][6]),
-      tgl_selesai: rows[i][7] instanceof Date ? Utilities.formatDate(rows[i][7], "GMT+7", "yyyy-MM-dd") : String(rows[i][7]),
+      tgl_mulai: rows[i][6] instanceof Date ? Utilities.formatDate(rows[i][6], "GMT+8", "yyyy-MM-dd") : String(rows[i][6]).trim().replace(/^'/, ""),
+      tgl_selesai: rows[i][7] instanceof Date ? Utilities.formatDate(rows[i][7], "GMT+8", "yyyy-MM-dd") : String(rows[i][7]).trim().replace(/^'/, ""),
       alasan: rows[i][8],
       status: rows[i][9],
       created_at: rows[i][10]
@@ -677,7 +681,7 @@ function deleteUserHandler(id) {
 
 function getDashboardStatsHandler(tanggal) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const todayStr = tanggal || Utilities.formatDate(new Date(), "GMT+7", "yyyy-MM-dd");
+  const todayStr = tanggal || Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
 
   const sheetUsers = ss.getSheetByName(SHEET_USERS);
   const sheetAtt = ss.getSheetByName(SHEET_ATTENDANCE);
@@ -698,9 +702,10 @@ function getDashboardStatsHandler(tanggal) {
   if (sheetAtt) {
     const attRows = sheetAtt.getDataRange().getValues();
     for (let i = 1; i < attRows.length; i++) {
-      const rowDate = attRows[i][5] instanceof Date 
-        ? Utilities.formatDate(attRows[i][5], "GMT+7", "yyyy-MM-dd")
-        : String(attRows[i][5]);
+      const rawDate = attRows[i][5];
+      const rowDate = rawDate instanceof Date 
+        ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
+        : String(rawDate).trim().replace(/^'/, "");
 
       if (rowDate === todayStr) {
         if (attRows[i][8] === "Hadir") hadir++;
