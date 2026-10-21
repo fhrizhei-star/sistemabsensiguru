@@ -706,8 +706,20 @@ function getDashboardStatsHandler(tanggal) {
   const todayStr = tanggal || Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
   const dayName = getDayNameIndo(new Date(todayStr));
 
+  const sheetUsers = ss.getSheetByName(SHEET_USERS);
   const sheetSch = ss.getSheetByName(SHEET_SCHEDULES);
   const sheetAtt = ss.getSheetByName(SHEET_ATTENDANCE);
+  const sheetLeaves = ss.getSheetByName(SHEET_LEAVES);
+
+  let totalGuru = 0;
+  if (sheetUsers) {
+    const userRows = sheetUsers.getDataRange().getValues();
+    for (let i = 1; i < userRows.length; i++) {
+      if (userRows[i][4] === "guru" && userRows[i][10] === "aktif") {
+        totalGuru++;
+      }
+    }
+  }
 
   let totalSesi = 0;
   if (sheetSch) {
@@ -750,19 +762,38 @@ function getDashboardStatsHandler(tanggal) {
     }
   }
 
+  let izin = 0;
+  if (sheetLeaves) {
+    const leaveRows = sheetLeaves.getDataRange().getValues();
+    for (let i = 1; i < leaveRows.length; i++) {
+      const tglMulai = leaveRows[i][6] instanceof Date ? Utilities.formatDate(leaveRows[i][6], "GMT+8", "yyyy-MM-dd") : String(leaveRows[i][6]).trim().replace(/^'/, "");
+      const tglSelesai = leaveRows[i][7] instanceof Date ? Utilities.formatDate(leaveRows[i][7], "GMT+8", "yyyy-MM-dd") : String(leaveRows[i][7]).trim().replace(/^'/, "");
+      const status = leaveRows[i][9];
+      if (status === "Disetujui" && todayStr >= tglMulai && todayStr <= tglSelesai) {
+        izin++;
+      }
+    }
+  }
+
   const belumAbsen = Math.max(0, totalSesi - (hadir + terlambat));
 
   return {
     success: true,
     stats: {
+      total_guru: totalGuru,
+      totalGuru: totalGuru,
+      total_sesi: totalSesi,
       totalSesi: totalSesi,
       hadir: hadir,
       terlambat: terlambat,
+      izin: izin,
+      alpha: belumAbsen,
       belumAbsen: belumAbsen,
       tanggal: todayStr,
       hari: dayName
     },
-    recentAttendance: recentAttendance.slice(-15).reverse()
+    recentAttendance: recentAttendance.slice(-15).reverse(),
+    recent_activity: recentAttendance.slice(-15).reverse()
   };
 }
 

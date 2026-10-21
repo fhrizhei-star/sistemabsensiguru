@@ -25,6 +25,7 @@ import {
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
+  const [schoolName, setSchoolName] = useState("SMA NEGERI 1 TELADAN");
   const [stats, setStats] = useState({
     total_guru: 0,
     total_sesi: 0,
@@ -46,16 +47,49 @@ export default function AdminDashboardPage() {
 
     const fetchDashboard = async () => {
       setLoading(true);
-      const res = await Api.request("GET", "getDashboardStats", {
-        tanggal: getTodayDateStr()
-      });
-      if (res && res.stats) {
-        setStats(res.stats);
-        if (res.recent_activity) {
-          setRecentActivities(res.recent_activity);
+      try {
+        const today = getTodayDateStr();
+        const [statsRes, usersRes, leavesRes, settingsRes] = await Promise.all([
+          Api.request("GET", "getDashboardStats", { tanggal: today }),
+          Api.request("GET", "getUsers"),
+          Api.request("GET", "getLeaves"),
+          Api.request("GET", "getSettings")
+        ]);
+
+        if (settingsRes?.settings?.nama_sekolah) {
+          setSchoolName(settingsRes.settings.nama_sekolah);
         }
+
+        const teachers = (usersRes?.users || usersRes?.list || []).filter((u) => u.role === "guru" && u.status !== "nonaktif");
+        const activeLeaves = (leavesRes?.leaves || leavesRes?.list || []).filter(
+          (l) => l.status === "Disetujui" && today >= l.tgl_mulai && today <= l.tgl_selesai
+        );
+
+        if (statsRes && statsRes.stats) {
+          const s = statsRes.stats;
+          setStats({
+            total_guru: s.total_guru || s.totalGuru || teachers.length,
+            total_sesi: s.total_sesi ?? s.totalSesi ?? 0,
+            hadir: s.hadir ?? 0,
+            terlambat: s.terlambat ?? 0,
+            izin: s.izin !== undefined ? s.izin : activeLeaves.length,
+            alpha: s.alpha ?? s.belumAbsen ?? 0
+          });
+
+          const recents = statsRes.recent_activity || statsRes.recentAttendance || [];
+          setRecentActivities(recents);
+        } else {
+          setStats((prev) => ({
+            ...prev,
+            total_guru: teachers.length,
+            izin: activeLeaves.length
+          }));
+        }
+      } catch (err) {
+        console.error("Gagal memuat dashboard:", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchDashboard();
@@ -164,7 +198,7 @@ export default function AdminDashboardPage() {
                 Dashboard Administrator Tata Usaha
               </h1>
               <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
-                Pemantauan kehadiran guru SMA Negeri 1 Teladan &bull; {getTodayDayName()},{" "}
+                Pemantauan kehadiran guru {schoolName} &bull; {getTodayDayName()},{" "}
                 {getTodayDateStr()}
               </p>
             </div>
@@ -338,7 +372,9 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      <span className="badge-status badge-hadir">Hadir</span>
+                      <span className={`badge-status badge-${(act.status || "hadir").toLowerCase()}`}>
+                        {act.status || "Hadir"}
+                      </span>
                     </motion.div>
                   ))}
                 </div>
