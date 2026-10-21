@@ -1,24 +1,23 @@
 /**
  * ====================================================================
- * SISTEM ABSENSI GURU & TENAGA PENDIDIK - BACKEND GOOGLE APPS SCRIPT
+ * SISTEM ABSENSI GURU BERBASIS JADWAL PELAJARAN - GOOGLE APPS SCRIPT
  * ====================================================================
  * Cara Penggunaan:
  * 1. Buka Google Sheets baru di https://sheets.new
- * 2. Beri nama spreadsheet, misal: "Database Absensi Guru"
+ * 2. Beri nama spreadsheet, misal: "Database Absensi Mengajar Guru"
  * 3. Klik menu: Extensions (Ekstensi) -> Apps Script
  * 4. Hapus kode yang ada, lalu Paste seluruh isi file ini ke editor Apps Script.
  * 5. Klik Save (ikon disket).
  * 6. Klik tombol "Deploy" (Terapkan) di kanan atas -> "New deployment" (Penerapan baru).
  * 7. Pilih tipe "Web app" (Aplikasi Web).
- * 8. Isi deskripsi: "v1.0 Absensi Guru"
- * 9. Atur "Execute as" (Jalankan sebagai): "Me" (Saya / akun Google Anda).
- * 10. Atur "Who has access" (Siapa yang memiliki akses): "Anyone" (Siapa saja).
- * 11. Klik Deploy, Berikan izin akses (Authorize access), lalu COPY "Web app URL".
- * 12. Paste URL tersebut ke menu Pengaturan di web atau file `public/js/config.js`.
+ * 8. Atur "Execute as": "Me" dan "Who has access": "Anyone".
+ * 9. Klik Deploy, Berikan izin akses (Authorize access), lalu COPY "Web app URL".
+ * 10. Paste URL tersebut ke menu Pengaturan di web atau file `public/js/config.js`.
  * ====================================================================
  */
 
 const SHEET_USERS = "GURU_STAF";
+const SHEET_SCHEDULES = "JADWAL_PELAJARAN";
 const SHEET_ATTENDANCE = "ABSENSI_GURU";
 const SHEET_LEAVES = "IZIN_CUTI_GURU";
 const SHEET_SETTINGS = "PENGATURAN";
@@ -40,24 +39,58 @@ function initDatabase() {
     sheetUsers.getRange(1, 1, 1, 13).setFontWeight("bold").setBackground("#062e24").setFontColor("#ffffff");
 
     // Sample data Guru & Admin
-    sheetUsers.appendRow(["U001", "admin", "admin123", "Bpk. Hendra Gunawan, S.Kom", "admin", "198001012005011001", "Kepala Tata Usaha / Admin", "Manajemen Kepegawaian", "admin@sekolah.sch.id", "081234567890", "aktif", new Date()]);
-    sheetUsers.appendRow(["U002", "198501152010011002", "guru123", "Drs. Bambang Sudarsono, M.Pd", "guru", "198501152010011002", "Guru Madya", "Matematika", "bambang@sekolah.sch.id", "081234567891", "aktif", new Date()]);
-    sheetUsers.appendRow(["U003", "199003202015022001", "guru123", "Siti Nurhaliza, S.Pd", "guru", "199003202015022001", "Guru Pertama", "Bahasa Indonesia", "siti@sekolah.sch.id", "081234567892", "aktif", new Date()]);
-    sheetUsers.appendRow(["U004", "199208142019031005", "guru123", "Ahmad Fauzi, S.Kom", "guru", "199208142019031005", "Guru Pertama", "Informatika / TIK", "fauzi@sekolah.sch.id", "081234567893", "aktif", new Date()]);
-    sheetUsers.appendRow(["U005", "198811052014022003", "guru123", "Dewi Lestari, S.Pd, M.Si", "guru", "198811052014022003", "Guru Muda", "Fisika", "dewi@sekolah.sch.id", "081234567894", "aktif", new Date()]);
+    sheetUsers.appendRow(["U001", "admin", "admin123", "Bpk. Hendra Gunawan, S.Kom", "admin", "198001012005011001", "Kepala Tata Usaha / Admin", "Manajemen Kepegawaian", "admin@sekolah.sch.id", "081234567890", "aktif", new Date(), ""]);
+    sheetUsers.appendRow(["U002", "198501152010011002", "guru123", "Drs. Bambang Sudarsono, M.Pd", "guru", "198501152010011002", "Guru Madya", "Matematika", "bambang@sekolah.sch.id", "081234567891", "aktif", new Date(), ""]);
+    sheetUsers.appendRow(["U003", "199003202015022001", "guru123", "Siti Nurhaliza, S.Pd", "guru", "199003202015022001", "Guru Pertama", "Bahasa Indonesia", "siti@sekolah.sch.id", "081234567892", "aktif", new Date(), ""]);
+    sheetUsers.appendRow(["U004", "199208142019031005", "guru123", "Ahmad Fauzi, S.Kom", "guru", "199208142019031005", "Guru Pertama", "Informatika / TIK", "fauzi@sekolah.sch.id", "081234567893", "aktif", new Date(), ""]);
+    sheetUsers.appendRow(["U005", "198811052014022003", "guru123", "Dewi Lestari, S.Pd, M.Si", "guru", "198811052014022003", "Guru Muda", "Fisika", "dewi@sekolah.sch.id", "081234567894", "aktif", new Date(), ""]);
   }
 
-  // 2. Sheet ABSENSI_GURU
+  // 2. Sheet JADWAL_PELAJARAN
+  let sheetSch = ss.getSheetByName(SHEET_SCHEDULES);
+  if (!sheetSch) {
+    sheetSch = ss.insertSheet(SHEET_SCHEDULES);
+    sheetSch.appendRow([
+      "id", "guru_id", "nama_guru", "nip", "mapel", "kelas", "hari", "jam_ke", "jam_mulai", "jam_selesai", "ruangan", "created_at"
+    ]);
+    sheetSch.getRange(1, 1, 1, 12).setFontWeight("bold").setBackground("#1e3a8a").setFontColor("#ffffff");
+
+    // Sample data Jadwal
+    sheetSch.appendRow(["JAD101", "U002", "Drs. Bambang Sudarsono, M.Pd", "198501152010011002", "Matematika", "X MIPA 1", "Senin", "Jam Ke 1 - 2", "07:30", "09:00", "R. Kelas X-1", new Date()]);
+    sheetSch.appendRow(["JAD102", "U002", "Drs. Bambang Sudarsono, M.Pd", "198501152010011002", "Matematika", "XI MIPA 2", "Senin", "Jam Ke 3 - 4", "09:15", "10:45", "R. Kelas XI-2", new Date()]);
+    sheetSch.appendRow(["JAD201", "U003", "Siti Nurhaliza, S.Pd", "199003202015022001", "Bahasa Indonesia", "X IPS 1", "Senin", "Jam Ke 1 - 2", "07:30", "09:00", "R. Kelas X-IPS", new Date()]);
+    sheetSch.appendRow(["JAD301", "U004", "Ahmad Fauzi, S.Kom", "199208142019031005", "Informatika / TIK", "X MIPA 1", "Senin", "Jam Ke 3 - 4", "09:15", "10:45", "Lab Komputer 1", new Date()]);
+  }
+
+  // 3. Sheet ABSENSI_GURU
   let sheetAtt = ss.getSheetByName(SHEET_ATTENDANCE);
   if (!sheetAtt) {
     sheetAtt = ss.insertSheet(SHEET_ATTENDANCE);
     sheetAtt.appendRow([
-      "id", "user_id", "nama", "nip", "mapel", "tanggal", "jam_masuk", "jam_pulang", "status", "koordinat", "foto_selfie", "keterangan", "created_at"
+      "id", "jadwal_id", "user_id", "nama", "nip", "mapel", "kelas", "hari", "tanggal", "jam_jadwal", "jam_absen", "status", "koordinat", "keterangan", "created_at"
     ]);
-    sheetAtt.getRange(1, 1, 1, 13).setFontWeight("bold").setBackground("#059669").setFontColor("#ffffff");
+    sheetAtt.getRange(1, 1, 1, 15).setFontWeight("bold").setBackground("#059669").setFontColor("#ffffff");
+  } else {
+    // Auto-check jika header masih versi lama (belum ada jadwal_id)
+    const attHeaders = sheetAtt.getRange(1, 1, 1, Math.max(1, sheetAtt.getLastColumn())).getValues()[0];
+    const headerStrs = attHeaders.map(function(h) { return String(h).trim().toLowerCase(); });
+    if (headerStrs.indexOf("jadwal_id") === -1) {
+      sheetAtt.getRange(1, 1, 1, 15).setValues([[
+        "id", "jadwal_id", "user_id", "nama", "nip", "mapel", "kelas", "hari", "tanggal", "jam_jadwal", "jam_absen", "status", "koordinat", "keterangan", "created_at"
+      ]]).setFontWeight("bold").setBackground("#059669").setFontColor("#ffffff");
+    }
   }
 
-  // 3. Sheet IZIN_CUTI_GURU
+  // Auto-check sheet GURU_STAF untuk kolom foto_url (kolom 13)
+  if (sheetUsers) {
+    const userHeaders = sheetUsers.getRange(1, 1, 1, Math.max(1, sheetUsers.getLastColumn())).getValues()[0];
+    const userHeaderStrs = userHeaders.map(function(h) { return String(h).trim().toLowerCase(); });
+    if (userHeaderStrs.indexOf("foto_url") === -1) {
+      sheetUsers.getRange(1, 13).setValue("foto_url").setFontWeight("bold").setBackground("#062e24").setFontColor("#ffffff");
+    }
+  }
+
+  // 4. Sheet IZIN_CUTI_GURU
   let sheetLeaves = ss.getSheetByName(SHEET_LEAVES);
   if (!sheetLeaves) {
     sheetLeaves = ss.insertSheet(SHEET_LEAVES);
@@ -67,7 +100,7 @@ function initDatabase() {
     sheetLeaves.getRange(1, 1, 1, 11).setFontWeight("bold").setBackground("#d97706").setFontColor("#ffffff");
   }
 
-  // 4. Sheet PENGATURAN
+  // 5. Sheet PENGATURAN
   let sheetSettings = ss.getSheetByName(SHEET_SETTINGS);
   if (!sheetSettings) {
     sheetSettings = ss.insertSheet(SHEET_SETTINGS);
@@ -75,16 +108,28 @@ function initDatabase() {
     sheetSettings.getRange(1, 1, 1, 3).setFontWeight("bold").setBackground("#4f46e5").setFontColor("#ffffff");
 
     sheetSettings.appendRow(["nama_sekolah", "SMA NEGERI 1 TELADAN", "Nama Sekolah / Instansi"]);
-    sheetSettings.appendRow(["jam_masuk", "06:45", "Batas awal presensi pagi"]);
-    sheetSettings.appendRow(["jam_masuk_akhir", "07:15", "Batas maksimal jam masuk tepat waktu guru"]);
-    sheetSettings.appendRow(["jam_pulang", "15:30", "Batas jam boleh presensi pulang"]);
+    sheetSettings.appendRow(["alamat_sekolah", "Jl. Pendidikan Nasional No. 45, Jakarta", "Alamat Sekolah"]);
+    sheetSettings.appendRow(["kepala_sekolah", "Drs. H. Mulyadi, M.Pd", "Nama Kepala Sekolah"]);
+    sheetSettings.appendRow(["nip_kepsek", "196805121994031004", "NIP Kepala Sekolah"]);
+    sheetSettings.appendRow(["npsn", "20104567", "Nomor Pokok Sekolah Nasional"]);
+    sheetSettings.appendRow(["no_telp", "(0411) 861234", "Nomor Telepon Sekolah"]);
+    sheetSettings.appendRow(["kota", "Kabupaten Gowa", "Kota / Kabupaten"]);
     sheetSettings.appendRow(["toleransi_menit", "15", "Toleransi keterlambatan dalam menit"]);
     sheetSettings.appendRow(["lat_sekolah", "-6.2088", "Latitude sekolah"]);
     sheetSettings.appendRow(["lng_sekolah", "106.8456", "Longitude sekolah"]);
     sheetSettings.appendRow(["radius_meter", "250", "Radius toleransi presensi dalam meter"]);
+  } else {
+    const sRows = sheetSettings.getDataRange().getValues();
+    let hasTelp = false;
+    for (let i = 1; i < sRows.length; i++) {
+      if (sRows[i][0] === "no_telp") { hasTelp = true; break; }
+    }
+    if (!hasTelp) {
+      sheetSettings.appendRow(["no_telp", "(0411) 861234", "Nomor Telepon Sekolah"]);
+    }
   }
 
-  return { success: true, message: "Database Absensi Guru Google Sheets berhasil disiapkan!" };
+  return { success: true, message: "Database Absensi Mengajar Guru Google Sheets berhasil disiapkan!" };
 }
 
 // Router untuk GET Request
@@ -103,14 +148,27 @@ function doGet(e) {
       case "getSettings":
         result = getSettingsHandler();
         break;
-      case "getTodayAttendance":
-        result = getTodayAttendanceHandler(e.parameter.user_id, e.parameter.tanggal);
+      case "getTeacherTodaySchedules":
+        result = getTeacherTodaySchedulesHandler(e.parameter.user_id, e.parameter.tanggal, e.parameter.hari);
+        break;
+      case "getSchedules":
+        result = getSchedulesHandler(e.parameter.hari, e.parameter.guru_id, e.parameter.kelas, e.parameter.mapel);
         break;
       case "getUserAttendance":
-        result = getUserAttendanceHandler(e.parameter.user_id, e.parameter.bulan, e.parameter.tahun);
+        result = getUserAttendanceHandler(e.parameter.user_id);
         break;
       case "getAllAttendance":
-        result = getAllAttendanceHandler(e.parameter.tanggal, e.parameter.mapel);
+        result = getAllAttendanceHandler(e.parameter.tanggal, e.parameter.mapel, e.parameter.kelas, e.parameter.guru_id);
+        break;
+      case "getAttendance":
+        if (e.parameter.user_id) {
+          result = getUserAttendanceHandler(e.parameter.user_id);
+        } else {
+          result = getAllAttendanceHandler(e.parameter.tanggal, e.parameter.mapel, e.parameter.kelas, e.parameter.guru_id);
+        }
+        if (result && result.list) {
+          result.attendance = result.list;
+        }
         break;
       case "getUsers":
         result = getUsersHandler(e.parameter.role);
@@ -149,7 +207,14 @@ function doPost(e) {
         result = loginHandler(data.username, data.password);
         break;
       case "recordAttendance":
-        result = recordAttendanceHandler(data);
+      case "recordClassAttendance":
+        result = recordClassAttendanceHandler(data);
+        break;
+      case "saveSchedule":
+        result = saveScheduleHandler(data);
+        break;
+      case "deleteSchedule":
+        result = deleteScheduleHandler(data.id);
         break;
       case "submitLeave":
         result = submitLeaveHandler(data);
@@ -176,6 +241,22 @@ function doPost(e) {
   }
 }
 
+// ================= HELPER FORMAT ================= //
+
+function formatGasTime(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, "GMT+8", "HH:mm");
+  }
+  const s = String(val).trim();
+  if (/^\d{2}:\d{2}$/.test(s)) return s;
+  const match = s.match(/(\d{1,2})[:.](\d{2})/);
+  if (match) {
+    return (match[1].length === 1 ? "0" + match[1] : match[1]) + ":" + match[2];
+  }
+  return s;
+}
+
 // ================= HANDLERS ================= //
 
 function getSettingsHandler() {
@@ -193,6 +274,13 @@ function getSettingsHandler() {
     const val = rows[i][1];
     if (key) settings[key] = val;
   }
+
+  // Format jam agar selalu HH:mm
+  if (settings.jam_masuk) settings.jam_masuk = formatGasTime(settings.jam_masuk);
+  if (settings.jam_masuk_akhir) settings.jam_masuk_akhir = formatGasTime(settings.jam_masuk_akhir);
+  if (settings.jam_pulang) settings.jam_pulang = formatGasTime(settings.jam_pulang);
+  if (!settings.no_telp) settings.no_telp = "(0411) 861234";
+
   return { success: true, settings: settings };
 }
 
@@ -229,7 +317,7 @@ function loginHandler(username, password) {
   const rows = sheet.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const uName = String(row[1]).trim().replace(/^'/, ""); // username atau NIP
+    const uName = String(row[1]).trim().replace(/^'/, "");
     const uNip = String(row[5]).trim().replace(/^'/, "");
     const uPass = String(row[2]).trim();
     const inputUser = String(username).toLowerCase().trim().replace(/^'/, "");
@@ -257,12 +345,107 @@ function loginHandler(username, password) {
   return { success: false, message: "NIP / Username atau Password salah!" };
 }
 
-function recordAttendanceHandler(data) {
-  // Gunakan LockService agar saat puluhan guru presensi serentak di pagi hari,
-  // data masuk secara tertib berurutan tanpa tabrakan baris / data tertimpa.
+function getDayNameIndo(dateObj) {
+  const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+  return days[dateObj.getDay()];
+}
+
+function getTeacherTodaySchedulesHandler(userId, tanggal, hariParam) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheetSch = ss.getSheetByName(SHEET_SCHEDULES);
+  let sheetAtt = ss.getSheetByName(SHEET_ATTENDANCE);
+  if (!sheetSch) {
+    initDatabase();
+    sheetSch = ss.getSheetByName(SHEET_SCHEDULES);
+    sheetAtt = ss.getSheetByName(SHEET_ATTENDANCE);
+  }
+
+  const targetDateStr = tanggal || Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
+  const targetDay = hariParam || getDayNameIndo(new Date(targetDateStr));
+
+  // Ambil semua jadwal guru ini
+  const schRows = sheetSch.getDataRange().getValues();
+  const schedules = [];
+
+  for (let i = 1; i < schRows.length; i++) {
+    const row = schRows[i];
+    const schGuruId = String(row[1]);
+    const schHari = String(row[6]);
+
+    if (schGuruId === String(userId) && (targetDay === "Semua" || schHari === targetDay)) {
+      schedules.push({
+        id: String(row[0]),
+        guru_id: schGuruId,
+        nama_guru: String(row[2]),
+        nip: String(row[3]),
+        mapel: String(row[4]),
+        kelas: String(row[5]),
+        hari: schHari,
+        jam_ke: String(row[7] || "-"),
+        jam_mulai: String(row[8]),
+        jam_selesai: String(row[9]),
+        ruangan: String(row[10] || "-")
+      });
+    }
+  }
+
+  // Cek catatan kehadiran untuk tanggal ini
+  const attRows = sheetAtt ? sheetAtt.getDataRange().getValues() : [];
+  const list = schedules.map(function(sch) {
+    let matchedAtt = null;
+    for (let j = 1; j < attRows.length; j++) {
+      const aRow = attRows[j];
+      const aJadwalId = String(aRow[1]);
+      const aUserId = String(aRow[2]);
+      const rawDate = aRow[8];
+      const aDate = rawDate instanceof Date
+        ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
+        : String(rawDate).trim().replace(/^'/, "");
+
+      if (aJadwalId === sch.id && aUserId === String(userId) && aDate === targetDateStr) {
+        matchedAtt = {
+          id: String(aRow[0]),
+          jam_absen: String(aRow[10]),
+          status: String(aRow[11]),
+          koordinat: String(aRow[12]),
+          keterangan: String(aRow[13])
+        };
+        break;
+      }
+    }
+
+    return {
+      id: sch.id,
+      guru_id: sch.guru_id,
+      nama_guru: sch.nama_guru,
+      nip: sch.nip,
+      mapel: sch.mapel,
+      kelas: sch.kelas,
+      hari: sch.hari,
+      jam_ke: sch.jam_ke,
+      jam_mulai: sch.jam_mulai,
+      jam_selesai: sch.jam_selesai,
+      ruangan: sch.ruangan,
+      is_attended: !!matchedAtt,
+      attendance: matchedAtt
+    };
+  });
+
+  list.sort(function(a, b) {
+    return a.jam_mulai > b.jam_mulai ? 1 : -1;
+  });
+
+  return {
+    success: true,
+    hari: targetDay,
+    tanggal: targetDateStr,
+    list: list
+  };
+}
+
+function recordClassAttendanceHandler(data) {
   const lock = LockService.getScriptLock();
   try {
-    // Tunggu antrean maksimal 30 detik
     lock.waitLock(30000);
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -273,111 +456,52 @@ function recordAttendanceHandler(data) {
     }
 
     const todayStr = data.tanggal || Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
-    const timeNowStr = data.jam || Utilities.formatDate(new Date(), "GMT+8", "HH:mm:ss");
-    const type = data.type || "masuk";
+    const timeNowStr = data.jam_absen || Utilities.formatDate(new Date(), "GMT+8", "HH:mm:ss");
 
+    // Cek apakah guru sudah pernah absen untuk jadwal ini pada tanggal yang sama
     const rows = sheet.getDataRange().getValues();
-    let existingRowIndex = -1;
+    for (let i = 1; i < rows.length; i++) {
+      const aJadwalId = String(rows[i][1]);
+      const aUserId = String(rows[i][2]);
+      const rawDate = rows[i][8];
+      const aDate = rawDate instanceof Date
+        ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
+        : String(rawDate).trim().replace(/^'/, "");
 
-    if (type === "pulang") {
-      // Cari baris kehadiran hari ini mulai dari baris paling baru (bawah ke atas)
-      for (let i = rows.length - 1; i >= 1; i--) {
-        const rowId = String(rows[i][0]).trim();
-        const rowUserId = String(rows[i][1]).trim();
-
-        if (data.attendance_id && rowId === String(data.attendance_id).trim()) {
-          existingRowIndex = i + 1;
-          break;
-        }
-
-        const rawDate = rows[i][5];
-        const rowDate = rawDate instanceof Date
-          ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
-          : String(rawDate).trim().replace(/^'/, "");
-
-        const ts = parseInt(rowId.replace("ATT", ""));
-        const isWithin24Hours = !isNaN(ts) && (new Date().getTime() - ts < 24 * 3600 * 1000);
-
-        if (rowUserId === String(data.user_id) && (rowDate === todayStr || isWithin24Hours)) {
-          // Cari baris yang jam_pulang-nya belum terisi
-          if (!rows[i][7]) {
-            existingRowIndex = i + 1;
-            break;
-          } else if (existingRowIndex === -1) {
-            existingRowIndex = i + 1;
-          }
-        }
-      }
-    } else {
-      // Untuk presensi masuk, cek apakah sudah pernah absen masuk hari ini
-      for (let i = rows.length - 1; i >= 1; i--) {
-        const rawDate = rows[i][5];
-        const rowDate = rawDate instanceof Date
-          ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
-          : String(rawDate).trim().replace(/^'/, "");
-
-        const ts = parseInt(String(rows[i][0]).replace("ATT", ""));
-        const isToday = !isNaN(ts) && (new Date().getTime() - ts < 24 * 3600 * 1000);
-
-        if (String(rows[i][1]) === String(data.user_id) && (rowDate === todayStr || isToday)) {
-          existingRowIndex = i + 1;
-          break;
-        }
-      }
-    }
-
-    if (type === "masuk") {
-      if (existingRowIndex !== -1) {
-        return { success: false, message: "Bapak/Ibu Guru sudah melakukan presensi masuk hari ini!" };
-      }
-
-      const newId = "ATT" + new Date().getTime();
-      sheet.appendRow([
-        newId,
-        data.user_id,
-        data.nama,
-        data.nip || "-",
-        data.mapel || "-",
-        "'" + todayStr, // Simpan dengan tanda petik agar tidak diubah timezone Google Sheets
-        timeNowStr,
-        "",
-        data.status || "Hadir",
-        data.koordinat || "-",
-        data.foto_selfie || "",
-        data.keterangan || "Presensi Masuk Guru",
-        new Date()
-      ]);
-
-      return { 
-        success: true, 
-        message: "Presensi masuk berhasil dicatat pada " + timeNowStr,
-        jam_masuk: timeNowStr
-      };
-    } else if (type === "pulang") {
-      if (existingRowIndex === -1) {
-        return { success: false, message: "Bapak/Ibu Guru belum melakukan presensi masuk hari ini!" };
-      }
-
-      const currentJamPulang = sheet.getRange(existingRowIndex, 8).getValue();
-      if (currentJamPulang) {
-        return { 
-          success: false, 
-          message: "Bapak/Ibu Guru sudah melakukan presensi pulang hari ini (" + currentJamPulang + ")!" 
+      if (aJadwalId === String(data.jadwal_id) && aUserId === String(data.user_id) && aDate === todayStr) {
+        return {
+          success: false,
+          message: "Bapak/Ibu Guru sudah melakukan presensi untuk kelas ini hari ini!"
         };
       }
-
-      sheet.getRange(existingRowIndex, 8).setValue(timeNowStr);
-      return { 
-        success: true, 
-        message: "Presensi pulang berhasil dicatat pada " + timeNowStr,
-        jam_pulang: timeNowStr
-      };
     }
 
-    return { success: false, message: "Tipe presensi tidak valid!" };
+    const newId = "ATT" + new Date().getTime();
+    sheet.appendRow([
+      newId,
+      data.jadwal_id,
+      data.user_id,
+      data.nama,
+      data.nip || "-",
+      data.mapel || "-",
+      data.kelas || "-",
+      data.hari || "-",
+      "'" + todayStr,
+      data.jam_jadwal || "-",
+      timeNowStr,
+      data.status || "Hadir",
+      data.koordinat || "Area Sekolah",
+      data.keterangan || "Tepat Waktu",
+      new Date()
+    ]);
+
+    return {
+      success: true,
+      message: "Presensi kelas " + (data.kelas || "") + " berhasil dicatat pada " + timeNowStr,
+      jam_absen: timeNowStr
+    };
   } catch (err) {
-    Logger.log("LockService / Attendance Error: " + err.toString());
-    return { success: false, message: "Server sedang sibuk memproses antrean absensi guru. Silakan coba 5 detik lagi." };
+    return { success: false, message: "Terjadi kesalahan server: " + err.toString() };
   } finally {
     try {
       lock.releaseLock();
@@ -385,44 +509,110 @@ function recordAttendanceHandler(data) {
   }
 }
 
-function getTodayAttendanceHandler(userId, tanggal) {
+function getSchedulesHandler(hari, guru_id, kelas, mapel) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_ATTENDANCE);
-  if (!sheet) return { success: true, data: null };
+  let sheet = ss.getSheetByName(SHEET_SCHEDULES);
+  if (!sheet) return { success: true, list: [] };
 
-  const todayStr = tanggal || Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
   const rows = sheet.getDataRange().getValues();
+  const list = [];
 
   for (let i = 1; i < rows.length; i++) {
-    const rawDate = rows[i][5];
-    const rowDate = rawDate instanceof Date 
-      ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
-      : String(rawDate).trim().replace(/^'/, "");
-    if (rows[i][1] == userId && rowDate == todayStr) {
-      return {
-        success: true,
-        data: {
-          id: rows[i][0],
-          user_id: rows[i][1],
-          nama: rows[i][2],
-          nip: rows[i][3],
-          mapel: rows[i][4],
-          tanggal: rowDate,
-          jam_masuk: rows[i][6],
-          jam_pulang: rows[i][7],
-          status: rows[i][8],
-          koordinat: rows[i][9],
-          foto_selfie: rows[i][10],
-          keterangan: rows[i][11]
-        }
-      };
+    const row = rows[i];
+    const sHari = String(row[6]);
+    const sGuruId = String(row[1]);
+    const sKelas = String(row[5]);
+    const sMapel = String(row[4]);
+
+    if (hari && hari !== "Semua" && sHari !== hari) continue;
+    if (guru_id && sGuruId !== String(guru_id)) continue;
+    if (kelas && kelas !== "Semua" && sKelas !== kelas) continue;
+    if (mapel && mapel !== "Semua" && sMapel !== mapel) continue;
+
+    list.push({
+      id: String(row[0]),
+      guru_id: sGuruId,
+      nama_guru: String(row[2]),
+      nip: String(row[3]),
+      mapel: sMapel,
+      kelas: sKelas,
+      hari: sHari,
+      jam_ke: String(row[7] || "-"),
+      jam_mulai: String(row[8]),
+      jam_selesai: String(row[9]),
+      ruangan: String(row[10] || "-")
+    });
+  }
+
+  return { success: true, schedules: list, list: list };
+}
+
+function saveScheduleHandler(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_SCHEDULES);
+  if (!sheet) {
+    initDatabase();
+    sheet = ss.getSheetByName(SHEET_SCHEDULES);
+  }
+
+  const rows = sheet.getDataRange().getValues();
+
+  if (data.id) {
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]) === String(data.id)) {
+        if (data.guru_id) sheet.getRange(i + 1, 2).setValue(data.guru_id);
+        if (data.nama_guru) sheet.getRange(i + 1, 3).setValue(data.nama_guru);
+        if (data.nip) sheet.getRange(i + 1, 4).setValue("'" + String(data.nip).replace(/^'/, ""));
+        if (data.mapel) sheet.getRange(i + 1, 5).setValue(data.mapel);
+        if (data.kelas) sheet.getRange(i + 1, 6).setValue(data.kelas);
+        if (data.hari) sheet.getRange(i + 1, 7).setValue(data.hari);
+        if (data.jam_ke) sheet.getRange(i + 1, 8).setValue(data.jam_ke);
+        if (data.jam_mulai) sheet.getRange(i + 1, 9).setValue(data.jam_mulai);
+        if (data.jam_selesai) sheet.getRange(i + 1, 10).setValue(data.jam_selesai);
+        if (data.ruangan) sheet.getRange(i + 1, 11).setValue(data.ruangan);
+
+        return { success: true, message: "Jadwal pelajaran berhasil diperbarui!" };
+      }
+    }
+    return { success: false, message: "Jadwal tidak ditemukan!" };
+  } else {
+    const newId = "JAD" + new Date().getTime();
+    sheet.appendRow([
+      newId,
+      data.guru_id,
+      data.nama_guru,
+      "'" + String(data.nip || "-").replace(/^'/, ""),
+      data.mapel,
+      data.kelas,
+      data.hari,
+      data.jam_ke || "Jam Ke 1 - 2",
+      data.jam_mulai,
+      data.jam_selesai,
+      data.ruangan || "-",
+      new Date()
+    ]);
+
+    return { success: true, message: "Jadwal pelajaran baru berhasil ditambahkan!", id: newId };
+  }
+}
+
+function deleteScheduleHandler(id) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_SCHEDULES);
+  if (!sheet) return { success: false, message: "Sheet jadwal tidak ditemukan" };
+
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(id)) {
+      sheet.deleteRow(i + 1);
+      return { success: true, message: "Jadwal pelajaran berhasil dihapus" };
     }
   }
 
-  return { success: true, data: null };
+  return { success: false, message: "Jadwal tidak ditemukan" };
 }
 
-function getUserAttendanceHandler(userId, bulan, tahun) {
+function getUserAttendanceHandler(userId) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_ATTENDANCE);
   if (!sheet) return { success: true, list: [] };
@@ -431,34 +621,39 @@ function getUserAttendanceHandler(userId, bulan, tahun) {
   const list = [];
 
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][1] == userId) {
-      const rawDate = rows[i][5];
-      const rowDate = rawDate instanceof Date 
+    if (String(rows[i][2]) === String(userId)) {
+      const rawDate = rows[i][8];
+      const rowDate = rawDate instanceof Date
         ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
         : String(rawDate).trim().replace(/^'/, "");
 
       list.push({
-        id: rows[i][0],
-        user_id: rows[i][1],
-        nama: rows[i][2],
-        nip: rows[i][3],
-        mapel: rows[i][4],
+        id: String(rows[i][0]),
+        jadwal_id: String(rows[i][1]),
+        user_id: String(rows[i][2]),
+        nama: String(rows[i][3]),
+        nip: String(rows[i][4]),
+        mapel: String(rows[i][5]),
+        kelas: String(rows[i][6]),
+        hari: String(rows[i][7]),
         tanggal: rowDate,
-        jam_masuk: rows[i][6],
-        jam_pulang: rows[i][7],
-        status: rows[i][8],
-        koordinat: rows[i][9],
-        foto_selfie: rows[i][10],
-        keterangan: rows[i][11]
+        jam_jadwal: String(rows[i][9]),
+        jam_absen: String(rows[i][10]),
+        status: String(rows[i][11]),
+        koordinat: String(rows[i][12]),
+        keterangan: String(rows[i][13])
       });
     }
   }
 
-  list.sort((a, b) => (b.tanggal > a.tanggal ? 1 : -1));
-  return { success: true, list: list };
+  list.sort(function(a, b) {
+    return b.tanggal > a.tanggal ? 1 : b.jam_absen > a.jam_absen ? 1 : -1;
+  });
+
+  return { success: true, attendance: list, list: list };
 }
 
-function getAllAttendanceHandler(tanggal, mapel) {
+function getAllAttendanceHandler(tanggal, mapel, kelas, guru_id) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_ATTENDANCE);
   if (!sheet) return { success: true, list: [] };
@@ -467,32 +662,108 @@ function getAllAttendanceHandler(tanggal, mapel) {
   const list = [];
 
   for (let i = 1; i < rows.length; i++) {
-    const rawDate = rows[i][5];
-    const rowDate = rawDate instanceof Date 
+    const rawDate = rows[i][8];
+    const rowDate = rawDate instanceof Date
       ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
       : String(rawDate).trim().replace(/^'/, "");
 
+    const rowMapel = String(rows[i][5]);
+    const rowKelas = String(rows[i][6]);
+    const rowGuruId = String(rows[i][2]);
+
     if (tanggal && rowDate !== tanggal) continue;
-    if (mapel && mapel !== "Semua" && rows[i][4] !== mapel) continue;
+    if (mapel && mapel !== "Semua" && rowMapel !== mapel) continue;
+    if (kelas && kelas !== "Semua" && rowKelas !== kelas) continue;
+    if (guru_id && rowGuruId !== String(guru_id)) continue;
 
     list.push({
-      id: rows[i][0],
-      user_id: rows[i][1],
-      nama: rows[i][2],
-      nip: rows[i][3],
-      mapel: rows[i][4],
+      id: String(rows[i][0]),
+      jadwal_id: String(rows[i][1]),
+      user_id: rowGuruId,
+      nama: String(rows[i][3]),
+      nip: String(rows[i][4]),
+      mapel: rowMapel,
+      kelas: rowKelas,
+      hari: String(rows[i][7]),
       tanggal: rowDate,
-      jam_masuk: rows[i][6],
-      jam_pulang: rows[i][7],
-      status: rows[i][8],
-      koordinat: rows[i][9],
-      foto_selfie: rows[i][10],
-      keterangan: rows[i][11]
+      jam_jadwal: String(rows[i][9]),
+      jam_absen: String(rows[i][10]),
+      status: String(rows[i][11]),
+      koordinat: String(rows[i][12]),
+      keterangan: String(rows[i][13])
     });
   }
 
-  list.sort((a, b) => (b.tanggal > a.tanggal ? 1 : -1));
-  return { success: true, list: list };
+  list.sort(function(a, b) {
+    return b.tanggal > a.tanggal ? 1 : b.jam_absen > a.jam_absen ? 1 : -1;
+  });
+
+  return { success: true, attendance: list, list: list };
+}
+
+function getDashboardStatsHandler(tanggal) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const todayStr = tanggal || Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
+  const dayName = getDayNameIndo(new Date(todayStr));
+
+  const sheetSch = ss.getSheetByName(SHEET_SCHEDULES);
+  const sheetAtt = ss.getSheetByName(SHEET_ATTENDANCE);
+
+  let totalSesi = 0;
+  if (sheetSch) {
+    const schRows = sheetSch.getDataRange().getValues();
+    for (let i = 1; i < schRows.length; i++) {
+      if (String(schRows[i][6]) === dayName) {
+        totalSesi++;
+      }
+    }
+  }
+
+  let hadir = 0;
+  let terlambat = 0;
+  const recentAttendance = [];
+
+  if (sheetAtt) {
+    const attRows = sheetAtt.getDataRange().getValues();
+    for (let i = 1; i < attRows.length; i++) {
+      const rawDate = attRows[i][8];
+      const rowDate = rawDate instanceof Date
+        ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
+        : String(rawDate).trim().replace(/^'/, "");
+
+      if (rowDate === todayStr) {
+        if (attRows[i][11] === "Hadir") hadir++;
+        if (attRows[i][11] === "Terlambat") terlambat++;
+
+        recentAttendance.push({
+          id: String(attRows[i][0]),
+          nama: String(attRows[i][3]),
+          nip: String(attRows[i][4]),
+          mapel: String(attRows[i][5]),
+          kelas: String(attRows[i][6]),
+          jam_jadwal: String(attRows[i][9]),
+          jam_absen: String(attRows[i][10]),
+          status: String(attRows[i][11]),
+          koordinat: String(attRows[i][12])
+        });
+      }
+    }
+  }
+
+  const belumAbsen = Math.max(0, totalSesi - (hadir + terlambat));
+
+  return {
+    success: true,
+    stats: {
+      totalSesi: totalSesi,
+      hadir: hadir,
+      terlambat: terlambat,
+      belumAbsen: belumAbsen,
+      tanggal: todayStr,
+      hari: dayName
+    },
+    recentAttendance: recentAttendance.slice(-15).reverse()
+  };
 }
 
 function submitLeaveHandler(data) {
@@ -524,8 +795,7 @@ function submitLeaveHandler(data) {
 
     return { success: true, message: "Pengajuan izin / cuti guru berhasil diajukan" };
   } catch (err) {
-    Logger.log("LockService / Leave Error: " + err.toString());
-    return { success: false, message: "Gagal memproses pengajuan izin, silakan coba beberapa saat lagi." };
+    return { success: false, message: "Gagal memproses pengajuan izin: " + err.toString() };
   } finally {
     try {
       lock.releaseLock();
@@ -542,25 +812,27 @@ function getLeavesHandler(userId) {
   const list = [];
 
   for (let i = 1; i < rows.length; i++) {
-    if (userId && rows[i][1] != userId) continue;
+    if (userId && String(rows[i][1]) !== String(userId)) continue;
 
     list.push({
-      id: rows[i][0],
-      user_id: rows[i][1],
-      nama: rows[i][2],
-      nip: rows[i][3],
-      mapel: rows[i][4],
-      tipe: rows[i][5],
+      id: String(rows[i][0]),
+      user_id: String(rows[i][1]),
+      nama: String(rows[i][2]),
+      nip: String(rows[i][3]),
+      mapel: String(rows[i][4]),
+      tipe: String(rows[i][5]),
       tgl_mulai: rows[i][6] instanceof Date ? Utilities.formatDate(rows[i][6], "GMT+8", "yyyy-MM-dd") : String(rows[i][6]).trim().replace(/^'/, ""),
       tgl_selesai: rows[i][7] instanceof Date ? Utilities.formatDate(rows[i][7], "GMT+8", "yyyy-MM-dd") : String(rows[i][7]).trim().replace(/^'/, ""),
-      alasan: rows[i][8],
-      status: rows[i][9],
+      alasan: String(rows[i][8]),
+      status: String(rows[i][9]),
       created_at: rows[i][10]
     });
   }
 
-  list.sort((a, b) => (b.id > a.id ? 1 : -1));
-  return { success: true, list: list };
+  list.sort(function(a, b) {
+    return b.id > a.id ? 1 : -1;
+  });
+  return { success: true, leaves: list, list: list };
 }
 
 function updateLeaveStatusHandler(id, status) {
@@ -569,7 +841,7 @@ function updateLeaveStatusHandler(id, status) {
   const rows = sheet.getDataRange().getValues();
 
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] == id) {
+    if (String(rows[i][0]) === String(id)) {
       sheet.getRange(i + 1, 10).setValue(status);
       return { success: true, message: "Status izin/cuti berhasil diperbarui menjadi: " + status };
     }
@@ -587,7 +859,7 @@ function getUsersHandler(role) {
   const list = [];
 
   for (let i = 1; i < rows.length; i++) {
-    if (role && rows[i][4] != role) continue;
+    if (role && String(rows[i][4]) !== String(role)) continue;
 
     list.push({
       id: String(rows[i][0]),
@@ -604,69 +876,89 @@ function getUsersHandler(role) {
     });
   }
 
-  return { success: true, list: list };
+  return { success: true, users: list, list: list };
 }
 
 /**
- * Jalankan fungsi ini SEKALI di editor Apps Script (pilih testDrivePermission lalu klik Run)
- * untuk memberikan izin akses Google Drive agar foto otomatis tersimpan.
+ * Helper untuk mengunggah Base64 Image ke Google Drive
+ * Menyimpan file ke folder "FOTO_GURU_ABSENSI" dan mengembalikan direct URL Google CDN
  */
-function testDrivePermission() {
-  const folderName = "Foto Profil Guru & Staf";
-  const folders = DriveApp.getFoldersByName(folderName);
-  if (!folders.hasNext()) {
-    const f = DriveApp.createFolder(folderName);
-    f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  }
-  Logger.log("Izin Google Drive BERHASIL aktif!");
-  return "OK";
-}
-
-function uploadPhotoToDrive(base64Data, fileName) {
+function uploadBase64ToDrive(base64Data, fileNamePrefix) {
   try {
-    if (!base64Data || !base64Data.startsWith("data:image")) {
-      return base64Data || "";
+    if (!base64Data || typeof base64Data !== "string") return "";
+
+    // Jika sudah berupa link HTTP biasa, kembalikan langsung
+    if (base64Data.indexOf("http://") === 0 || base64Data.indexOf("https://") === 0) {
+      return base64Data;
     }
-    const folderName = "Foto Profil Guru & Staf";
-    const folders = DriveApp.getFoldersByName(folderName);
+
+    let contentType = "image/jpeg";
+    let pureBase64 = base64Data;
+
+    if (base64Data.indexOf(";base64,") !== -1) {
+      const parts = base64Data.split(";base64,");
+      contentType = parts[0].replace("data:", "") || "image/jpeg";
+      pureBase64 = parts[1];
+    }
+
+    const bytes = Utilities.base64Decode(pureBase64);
+    const ext = contentType.indexOf("png") !== -1 ? "png" : contentType.indexOf("webp") !== -1 ? "webp" : "jpg";
+    const cleanName = (fileNamePrefix || "guru_" + new Date().getTime()).replace(/[^a-zA-Z0-9_-]/g, "_") + "_" + new Date().getTime() + "." + ext;
+    const blob = Utilities.newBlob(bytes, contentType, cleanName);
+
+    // Dapatkan atau buat folder di Google Drive
+    const FOLDER_NAME = "FOTO_GURU_ABSENSI";
     let folder;
-    if (folders.hasNext()) {
-      folder = folders.next();
+    const folderIter = DriveApp.getFoldersByName(FOLDER_NAME);
+    if (folderIter.hasNext()) {
+      folder = folderIter.next();
     } else {
-      folder = DriveApp.createFolder(folderName);
-      folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      folder = DriveApp.createFolder(FOLDER_NAME);
     }
 
-    const parts = base64Data.split(",");
-    const contentType = parts[0].split(";")[0].replace("data:", "");
-    const decoded = Utilities.base64Decode(parts[1]);
-    const blob = Utilities.newBlob(decoded, contentType, fileName);
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // Set permission agar foto bisa diakses di web
+    try {
+      folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (e) {}
 
-    // Buat URL Google Drive yang bebas CORS & bisa ditampilkan langsung di semua browser
+    const file = folder.createFile(blob);
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (e) {}
+
     const fileId = file.getId();
-    return "https://lh3.googleusercontent.com/d/" + fileId + "=s400";
+    // Return direct image link Google CDN
+    return "https://lh3.googleusercontent.com/d/" + fileId;
   } catch (err) {
-    Logger.log("Gagal upload foto ke Drive: " + err.toString());
+    Logger.log("Gagal upload gambar ke Google Drive: " + err.toString());
     return "";
   }
 }
 
-function saveUserHandler(data) {
+function saveUserHandler(raw) {
+  const data = (raw && raw.user) ? raw.user : (raw || {});
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_USERS);
   const rows = sheet.getDataRange().getValues();
 
-  let photoUrl = "";
-  if (data.foto) {
-    const safeName = "FOTO_" + (data.nip || data.username || "GURU") + ".jpg";
-    photoUrl = uploadPhotoToDrive(data.foto, safeName);
+  // Olah foto: jika ada input upload Base64, simpan ke Google Drive
+  let finalFotoUrl = data.foto_url || "";
+  const rawFoto = data.foto || data.foto_base64 || data.foto_url;
+  if (rawFoto && typeof rawFoto === "string") {
+    if (rawFoto.indexOf("data:image") === 0) {
+      const nipTag = data.nip || data.username || "guru";
+      const uploadedDriveUrl = uploadBase64ToDrive(rawFoto, "foto_" + nipTag);
+      if (uploadedDriveUrl) {
+        finalFotoUrl = uploadedDriveUrl;
+      }
+    } else if (rawFoto.indexOf("http") === 0) {
+      finalFotoUrl = rawFoto;
+    }
   }
 
   if (data.id) {
     for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] == data.id) {
+      if (String(rows[i][0]) === String(data.id)) {
         if (data.username) sheet.getRange(i + 1, 2).setValue("'" + String(data.username).replace(/^'/, ""));
         if (data.password) sheet.getRange(i + 1, 3).setValue(String(data.password));
         if (data.nama) sheet.getRange(i + 1, 4).setValue(data.nama);
@@ -676,8 +968,11 @@ function saveUserHandler(data) {
         if (data.mapel) sheet.getRange(i + 1, 8).setValue(data.mapel);
         if (data.email) sheet.getRange(i + 1, 9).setValue(data.email);
         if (data.no_hp) sheet.getRange(i + 1, 10).setValue("'" + String(data.no_hp).replace(/^'/, ""));
-        if (photoUrl) sheet.getRange(i + 1, 13).setValue(photoUrl);
-        return { success: true, message: "Data guru & foto berhasil diperbarui" };
+        if (data.status) sheet.getRange(i + 1, 11).setValue(data.status);
+        if (finalFotoUrl) {
+          sheet.getRange(i + 1, 13).setValue(finalFotoUrl);
+        }
+        return { success: true, message: "Data guru berhasil diperbarui", foto_url: finalFotoUrl };
       }
     }
     return { success: false, message: "Data guru tidak ditemukan" };
@@ -695,11 +990,11 @@ function saveUserHandler(data) {
       data.mapel || "-",
       data.email || "-",
       "'" + String(data.no_hp || "-").replace(/^'/, ""),
-      "aktif",
+      data.status || "aktif",
       new Date(),
-      photoUrl
+      finalFotoUrl || ""
     ]);
-    return { success: true, message: "Guru baru berhasil didaftarkan ke Google Drive & Sheets", id: newId };
+    return { success: true, message: "Guru baru berhasil didaftarkan", id: newId, foto_url: finalFotoUrl };
   }
 }
 
@@ -709,84 +1004,13 @@ function deleteUserHandler(id) {
   const rows = sheet.getDataRange().getValues();
 
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] == id) {
+    if (String(rows[i][0]) === String(id)) {
       sheet.deleteRow(i + 1);
       return { success: true, message: "Data guru berhasil dihapus" };
     }
   }
 
   return { success: false, message: "Guru tidak ditemukan" };
-}
-
-function getDashboardStatsHandler(tanggal) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const todayStr = tanggal || Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
-
-  const sheetUsers = ss.getSheetByName(SHEET_USERS);
-  const sheetAtt = ss.getSheetByName(SHEET_ATTENDANCE);
-  const sheetLeaves = ss.getSheetByName(SHEET_LEAVES);
-
-  let totalGuru = 0;
-  if (sheetUsers) {
-    const userRows = sheetUsers.getDataRange().getValues();
-    for (let i = 1; i < userRows.length; i++) {
-      if (userRows[i][4] === "guru") totalGuru++;
-    }
-  }
-
-  let hadir = 0;
-  let terlambat = 0;
-  const recentAttendance = [];
-
-  if (sheetAtt) {
-    const attRows = sheetAtt.getDataRange().getValues();
-    for (let i = 1; i < attRows.length; i++) {
-      const rawDate = attRows[i][5];
-      const rowDate = rawDate instanceof Date 
-        ? Utilities.formatDate(rawDate, "GMT+8", "yyyy-MM-dd")
-        : String(rawDate).trim().replace(/^'/, "");
-
-      if (rowDate === todayStr) {
-        if (attRows[i][8] === "Hadir") hadir++;
-        if (attRows[i][8] === "Terlambat") terlambat++;
-
-        recentAttendance.push({
-          id: attRows[i][0],
-          nama: attRows[i][2],
-          nip: attRows[i][3],
-          mapel: attRows[i][4],
-          jam_masuk: attRows[i][6],
-          status: attRows[i][8],
-          foto: attRows[i][10]
-        });
-      }
-    }
-  }
-
-  let izin = 0;
-  if (sheetLeaves) {
-    const leaveRows = sheetLeaves.getDataRange().getValues();
-    for (let i = 1; i < leaveRows.length; i++) {
-      if (leaveRows[i][9] === "Disetujui") {
-        izin++;
-      }
-    }
-  }
-
-  const belumAbsen = Math.max(0, totalGuru - (hadir + terlambat + izin));
-
-  return {
-    success: true,
-    stats: {
-      totalGuru: totalGuru,
-      hadir: hadir,
-      terlambat: terlambat,
-      izin: izin,
-      belumAbsen: belumAbsen,
-      tanggal: todayStr
-    },
-    recentAttendance: recentAttendance.slice(-10).reverse()
-  };
 }
 
 function createJsonResponse(data) {
