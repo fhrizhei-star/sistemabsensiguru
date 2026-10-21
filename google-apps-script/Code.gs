@@ -476,6 +476,63 @@ function recordClassAttendanceHandler(data) {
       }
     }
 
+    // Cek pembatasan jam jadwal (jika data.jam_jadwal ada)
+    let finalStatus = data.status || "Hadir";
+    let finalKeterangan = data.keterangan || "Tepat Waktu";
+
+    if (data.jam_jadwal && String(data.jam_jadwal).includes("-")) {
+      const parts = String(data.jam_jadwal).split("-");
+      const jamMulaiStr = parts[0].trim();
+      const jamSelesaiStr = parts[1].trim();
+
+      const parseGasMinutes = function(tStr) {
+        if (!tStr) return null;
+        const p = tStr.replace(".", ":").split(":");
+        if (p.length >= 2) {
+          const h = parseInt(p[0], 10);
+          const m = parseInt(p[1], 10);
+          if (!isNaN(h) && !isNaN(m)) return h * 60 + m;
+        }
+        return null;
+      };
+
+      const startMin = parseGasMinutes(jamMulaiStr);
+      const endMin = parseGasMinutes(jamSelesaiStr);
+      const nowMin = parseGasMinutes(timeNowStr);
+
+      let toleransiMenit = 15;
+      const sheetSet = ss.getSheetByName(SHEET_SETTINGS);
+      if (sheetSet) {
+        const setRows = sheetSet.getDataRange().getValues();
+        for (let s = 1; s < setRows.length; s++) {
+          if (setRows[s][0] === "toleransi_menit") {
+            toleransiMenit = Number(setRows[s][1]) || 15;
+            break;
+          }
+        }
+      }
+
+      if (startMin !== null && endMin !== null && nowMin !== null) {
+        if (nowMin < startMin) {
+          return {
+            success: false,
+            message: "Sesi kelas " + (data.kelas || "") + " belum dimulai! Presensi baru dibuka tepat pukul " + jamMulaiStr + " (waktu saat ini: " + timeNowStr + ")."
+          };
+        }
+        if (nowMin > endMin) {
+          return {
+            success: false,
+            message: "Sesi kelas " + (data.kelas || "") + " telah berakhir pada pukul " + jamSelesaiStr + " (waktu saat ini: " + timeNowStr + ")."
+          };
+        }
+        if (nowMin > startMin + toleransiMenit) {
+          finalStatus = "Terlambat";
+          const late = nowMin - startMin;
+          finalKeterangan = (data.keterangan ? data.keterangan + " • " : "") + "Terlambat " + late + " menit";
+        }
+      }
+    }
+
     const newId = "ATT" + new Date().getTime();
     sheet.appendRow([
       newId,
@@ -489,9 +546,9 @@ function recordClassAttendanceHandler(data) {
       "'" + todayStr,
       data.jam_jadwal || "-",
       timeNowStr,
-      data.status || "Hadir",
+      finalStatus,
       data.koordinat || "Area Sekolah",
-      data.keterangan || "Tepat Waktu",
+      finalKeterangan,
       new Date()
     ]);
 

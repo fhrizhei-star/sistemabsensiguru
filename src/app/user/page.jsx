@@ -21,8 +21,160 @@ import {
   School,
   AlertTriangle,
   UserCheck,
-  ShieldCheck
+  ShieldCheck,
+  Timer,
+  AlertCircle
 } from "lucide-react";
+
+// --- Helper Fungsi Pembatasan Jam Mengajar & Status Keterlambatan ---
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return null;
+  const cleaned = String(timeStr).trim().replace(".", ":");
+  const parts = cleaned.split(":");
+  if (parts.length >= 2) {
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (!isNaN(h) && !isNaN(m)) return h * 60 + m;
+  }
+  return null;
+}
+
+function formatMinutesToTime(totalMinutes) {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function evaluateAttendanceTiming(schedule, settings, dateObj = new Date()) {
+  const nowMin = dateObj.getHours() * 60 + dateObj.getMinutes();
+  const toleransi = Number(settings?.toleransi_menit ?? 15);
+  const currentTimeStr = dateObj.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+
+  if (!schedule) {
+    // Mode Presensi Harian Umum
+    const masukMulai = settings?.jam_masuk_mulai || "06:30";
+    const masukBatas = settings?.jam_masuk_batas || "07:15";
+    const startMin = parseTimeToMinutes(masukMulai) ?? (6 * 60 + 30);
+    const limitMin = parseTimeToMinutes(masukBatas) ?? (7 * 60 + 15);
+
+    if (nowMin < startMin) {
+      return {
+        allowed: false,
+        phase: "too_early",
+        recordStatus: "Hadir",
+        badgeText: `⏳ Dibuka ${masukMulai}`,
+        badgeColor: "#b45309",
+        badgeBg: "#fffbeb",
+        badgeBorder: "#fde68a",
+        message: `Presensi harian belum dibuka. Presensi dibuka tepat pukul ${masukMulai} (waktu saat ini ${currentTimeStr}).`,
+        keterangan: "Tepat Waktu"
+      };
+    }
+    if (nowMin <= limitMin + toleransi) {
+      return {
+        allowed: true,
+        phase: "on_time",
+        recordStatus: "Hadir",
+        badgeText: "🟢 Tepat Waktu",
+        badgeColor: "#065f46",
+        badgeBg: "#ecfdf5",
+        badgeBorder: "#a7f3d0",
+        message: `Presensi harian tepat waktu (batas toleransi s/d ${formatMinutesToTime(limitMin + toleransi)}).`,
+        keterangan: "Tepat Waktu"
+      };
+    }
+    const diff = nowMin - limitMin;
+    return {
+      allowed: true,
+      phase: "late",
+      recordStatus: "Terlambat",
+      badgeText: `🟠 Terlambat (${diff} mnt)`,
+      badgeColor: "#c2410c",
+      badgeBg: "#fff7ed",
+      badgeBorder: "#fed7aa",
+      message: `Peringatan: Melewati jam batas masuk ${masukBatas}. Kehadiran tercatat TERLAMBAT ${diff} menit.`,
+      keterangan: `Terlambat ${diff} menit`
+    };
+  }
+
+  // Mode Sesi Kelas Berdasarkan Jadwal Pelajaran
+  const startMin = parseTimeToMinutes(schedule.jam_mulai);
+  const endMin = parseTimeToMinutes(schedule.jam_selesai);
+
+  if (startMin === null || endMin === null) {
+    return {
+      allowed: true,
+      phase: "on_time",
+      recordStatus: "Hadir",
+      badgeText: "🟢 Terjadwal",
+      badgeColor: "#065f46",
+      badgeBg: "#ecfdf5",
+      badgeBorder: "#a7f3d0",
+      message: "Jadwal terverifikasi.",
+      keterangan: "Tepat Waktu"
+    };
+  }
+
+  // 1. Belum Waktunya (Misal jadwal 07:30, sekarang 07:28) -> TIDAK BISA ABSEN
+  if (nowMin < startMin) {
+    const diffBefore = startMin - nowMin;
+    return {
+      allowed: false,
+      phase: "too_early",
+      recordStatus: "Hadir",
+      badgeText: `⏳ Dibuka ${schedule.jam_mulai}`,
+      badgeColor: "#b45309",
+      badgeBg: "#fffbeb",
+      badgeBorder: "#fde68a",
+      message: `Sesi kelas ${schedule.kelas} (${schedule.mapel}) belum dimulai! Presensi baru dapat dilakukan tepat pukul ${schedule.jam_mulai} (saat ini ${currentTimeStr}). Harap menunggu ${diffBefore} menit lagi.`,
+      keterangan: "Tepat Waktu"
+    };
+  }
+
+  // 2. Sudah Melewati Jam Selesai (Misal jadwal 10:00, sekarang 10:01) -> SESI BERAKHIR
+  if (nowMin > endMin) {
+    return {
+      allowed: false,
+      phase: "ended",
+      recordStatus: "Terlambat",
+      badgeText: `⛔ Selesai (${schedule.jam_selesai})`,
+      badgeColor: "#475569",
+      badgeBg: "#f1f5f9",
+      badgeBorder: "#cbd5e1",
+      message: `Sesi kelas ${schedule.kelas} (${schedule.mapel}) telah berakhir pada pukul ${schedule.jam_selesai} (saat ini ${currentTimeStr}). Presensi untuk sesi ini sudah ditutup.`,
+      keterangan: "Sesi Berakhir"
+    };
+  }
+
+  // 3. Waktu Presensi Tepat Waktu (07:30 s/d 07:30 + 15 menit = 07:45) -> HADIR
+  if (nowMin <= startMin + toleransi) {
+    return {
+      allowed: true,
+      phase: "on_time",
+      recordStatus: "Hadir",
+      badgeText: `🟢 Tepat Waktu`,
+      badgeColor: "#065f46",
+      badgeBg: "#ecfdf5",
+      badgeBorder: "#a7f3d0",
+      message: `Sesi kelas ${schedule.kelas} sedang berlangsung. Anda melakukan presensi tepat waktu (toleransi s/d ${formatMinutesToTime(startMin + toleransi)}).`,
+      keterangan: "Tepat Waktu"
+    };
+  }
+
+  // 4. Melewati Batas Toleransi 15 Menit (Misal 07:46 s/d 10:00) -> TERLAMBAT
+  const lateMinutes = nowMin - startMin;
+  return {
+    allowed: true,
+    phase: "late",
+    recordStatus: "Terlambat",
+    badgeText: `🟠 Terlambat (${lateMinutes} mnt)`,
+    badgeColor: "#c2410c",
+    badgeBg: "#fff7ed",
+    badgeBorder: "#fed7aa",
+    message: `Peringatan Keterlambatan: Anda melewati batas toleransi ${toleransi} menit (jam mulai ${schedule.jam_mulai}, saat ini ${currentTimeStr}). Kehadiran Anda dicatat TERLAMBAT ${lateMinutes} menit.`,
+    keterangan: `Terlambat ${lateMinutes} menit`
+  };
+}
 
 export default function TeacherDashboard() {
   const router = useRouter();
@@ -36,6 +188,13 @@ export default function TeacherDashboard() {
   const [loading, setLoading] = useState(false);
   const [successNotice, setSuccessNotice] = useState(null);
   const [errorNotice, setErrorNotice] = useState(null);
+  const [nowDate, setNowDate] = useState(new Date());
+
+  // Real-time clock interval (updates every 1 second)
+  useEffect(() => {
+    const timer = setInterval(() => setNowDate(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const user = Auth.getCurrentUser();
@@ -46,19 +205,32 @@ export default function TeacherDashboard() {
     setCurrentUser(user);
 
     const loadData = async () => {
-      const setRes = await Api.request("GET", "getSettings");
-      if (setRes && setRes.settings) setSettings(setRes.settings);
-
       const day = getTodayDayName();
-      const schedRes = await Api.request("GET", "getSchedules", {
-        hari: day,
-        guru_id: user.id
-      });
-      if (schedRes && schedRes.schedules) {
-        setSchedules(schedRes.schedules);
-        if (schedRes.schedules.length > 0) {
-          setSelectedSchedule(schedRes.schedules[0]);
+      try {
+        const [setRes, schedRes] = await Promise.all([
+          Api.request("GET", "getSettings"),
+          Api.request("GET", "getSchedules", {
+            hari: day,
+            guru_id: user.id || user.nip
+          })
+        ]);
+
+        if (setRes && setRes.settings) setSettings(setRes.settings);
+
+        if (schedRes && schedRes.schedules) {
+          const teacherSchedules = schedRes.schedules.filter(
+            (s) =>
+              String(s.guru_id) === String(user.id) ||
+              String(s.nip) === String(user.nip) ||
+              String(s.guru_id) === String(user.nip)
+          );
+          setSchedules(teacherSchedules);
+          if (teacherSchedules.length > 0) {
+            setSelectedSchedule(teacherSchedules[0]);
+          }
         }
+      } catch (err) {
+        console.error("Gagal memuat jadwal guru:", err);
       }
 
       // Sinkronisasi foto & profil guru jika baru saja diubah oleh admin
@@ -82,9 +254,19 @@ export default function TeacherDashboard() {
     loadData();
   }, [router]);
 
+  const activeSchedule = attendanceType === "jadwal" ? selectedSchedule : null;
+  const timingEval = evaluateAttendanceTiming(activeSchedule, settings, nowDate);
+
   const handleAttendanceSubmit = async () => {
     setErrorNotice(null);
 
+    // 1. Validasi Waktu Sesi Kelas & Aturan Toleransi
+    if (!timingEval.allowed) {
+      setErrorNotice(timingEval.message);
+      return;
+    }
+
+    // 2. Validasi GPS & Radius Geofencing
     if (!gpsLocation) {
       setErrorNotice("Sinyal GPS belum terdeteksi. Harap tunggu radar geofencing.");
       return;
@@ -118,9 +300,9 @@ export default function TeacherDashboard() {
           ? `${selectedSchedule.jam_mulai} - ${selectedSchedule.jam_selesai}`
           : "Harian",
         jam_absen: jamAbsen,
-        status: "Hadir",
+        status: timingEval.recordStatus,
         koordinat: gpsLocation.string,
-        keterangan: notes || "Tepat Waktu",
+        keterangan: notes ? `${notes} • ${timingEval.keterangan}` : timingEval.keterangan,
         foto: ""
       };
 
@@ -136,7 +318,9 @@ export default function TeacherDashboard() {
         setSuccessNotice({
           time: jamAbsen,
           type: attendanceType === "jadwal" ? `Sesi ${selectedSchedule?.kelas}` : "Harian",
-          coords: gpsLocation.string
+          coords: gpsLocation.string,
+          status: timingEval.recordStatus,
+          keterangan: timingEval.keterangan
         });
 
         setNotes("");
@@ -351,6 +535,7 @@ export default function TeacherDashboard() {
               <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
                 {schedules.map((item) => {
                   const isSelected = selectedSchedule && selectedSchedule.id === item.id;
+                  const itemTiming = evaluateAttendanceTiming(item, settings, nowDate);
                   return (
                     <motion.div
                       key={item.id}
@@ -387,31 +572,50 @@ export default function TeacherDashboard() {
                         >
                           {item.kelas}
                         </span>
-                        <span
-                          style={{
-                            fontFamily: "var(--font-mono)",
-                            fontSize: "0.82rem",
-                            color: isSelected ? "#4f46e5" : "var(--text-secondary)",
-                            fontWeight: 700,
-                            background: isSelected ? "#ffffff" : "var(--bg-muted)",
-                            padding: "0.2rem 0.55rem",
-                            borderRadius: "6px",
-                            boxShadow: isSelected ? "0 1px 4px rgba(79, 70, 229, 0.15)" : "none"
-                          }}
-                        >
-                          {item.jam_mulai} - {item.jam_selesai}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                          <span
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              fontSize: "0.82rem",
+                              color: isSelected ? "#4f46e5" : "var(--text-secondary)",
+                              fontWeight: 700,
+                              background: isSelected ? "#ffffff" : "var(--bg-muted)",
+                              padding: "0.2rem 0.55rem",
+                              borderRadius: "6px",
+                              boxShadow: isSelected ? "0 1px 4px rgba(79, 70, 229, 0.15)" : "none"
+                            }}
+                          >
+                            {item.jam_mulai} - {item.jam_selesai}
+                          </span>
+                        </div>
                       </div>
+
                       <div
                         style={{
                           display: "flex",
                           justifyContent: "space-between",
+                          alignItems: "center",
                           fontSize: "0.82rem",
-                          color: "var(--text-secondary)"
+                          color: "var(--text-secondary)",
+                          marginTop: "0.25rem"
                         }}
                       >
-                        <span style={{ fontWeight: 600, color: isSelected ? "#4338ca" : "inherit" }}>{item.mapel}</span>
-                        <span>{item.ruangan}</span>
+                        <span style={{ fontWeight: 600, color: isSelected ? "#4338ca" : "inherit" }}>
+                          {item.mapel} &bull; {item.ruangan}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 700,
+                            padding: "0.2rem 0.55rem",
+                            borderRadius: "6px",
+                            background: itemTiming.badgeBg,
+                            color: itemTiming.badgeColor,
+                            border: `1px solid ${itemTiming.badgeBorder || itemTiming.badgeColor}`
+                          }}
+                        >
+                          {itemTiming.badgeText}
+                        </span>
                       </div>
                     </motion.div>
                   );
@@ -427,11 +631,17 @@ export default function TeacherDashboard() {
             className="glass-panel"
             style={{ padding: "1.75rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-              <UserCheck size={20} color="#4f46e5" />
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--text-main)" }}>
-                Formulir Presensi Mengajar
-              </h2>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <UserCheck size={20} color="#4f46e5" />
+                <h2 style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--text-main)" }}>
+                  Formulir Presensi Mengajar
+                </h2>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", color: "#4f46e5", fontWeight: 700, background: "#eef2ff", padding: "0.3rem 0.65rem", borderRadius: "8px" }}>
+                <Clock size={14} />
+                <span>{nowDate.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+              </div>
             </div>
 
             <AnimatePresence>
@@ -466,7 +676,7 @@ export default function TeacherDashboard() {
               onLocationUpdate={(loc) => setGpsLocation(loc)}
             />
 
-            {/* Status Validasi Presensi Geofencing */}
+            {/* Status Validasi Presensi Geofencing & Jam Sesi */}
             <div
               style={{
                 background: "linear-gradient(135deg, #eef2ff 0%, #ecfeff 100%)",
@@ -475,31 +685,59 @@ export default function TeacherDashboard() {
                 padding: "1rem 1.15rem",
                 display: "flex",
                 flexDirection: "column",
-                gap: "0.5rem",
+                gap: "0.6rem",
                 boxShadow: "0 2px 10px rgba(99, 102, 241, 0.06)"
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  Status Sesi & Lokasi
+                  Status Sesi & Validasi Waktu
                 </span>
-                <span className="badge-status badge-hadir" style={{ fontSize: "0.72rem" }}>
-                  <ShieldCheck size={13} style={{ display: "inline", marginRight: "3px" }} />
-                  Verifikasi GPS
+                <span
+                  style={{
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    padding: "0.2rem 0.55rem",
+                    borderRadius: "6px",
+                    background: timingEval.badgeBg,
+                    color: timingEval.badgeColor,
+                    border: `1px solid ${timingEval.badgeBorder || timingEval.badgeColor}`
+                  }}
+                >
+                  {timingEval.badgeText}
                 </span>
               </div>
 
-              <div style={{ fontSize: "0.88rem", color: "var(--text-main)", fontWeight: 700 }}>
+              <div style={{ fontSize: "0.92rem", color: "var(--text-main)", fontWeight: 800 }}>
                 {selectedSchedule
-                  ? `${selectedSchedule.kelas} (${selectedSchedule.jam_mulai} - ${selectedSchedule.jam_selesai})`
+                  ? `${selectedSchedule.kelas} • ${selectedSchedule.mapel} (${selectedSchedule.jam_mulai} - ${selectedSchedule.jam_selesai})`
                   : "Presensi Kehadiran Harian Sekolah"}
+              </div>
+
+              {/* Banner Aturan Waktu Sesi */}
+              <div
+                style={{
+                  background: timingEval.badgeBg,
+                  border: `1px solid ${timingEval.badgeBorder || timingEval.badgeColor}`,
+                  borderRadius: "8px",
+                  padding: "0.65rem 0.85rem",
+                  fontSize: "0.8rem",
+                  color: timingEval.badgeColor,
+                  lineHeight: 1.35,
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "0.5rem"
+                }}
+              >
+                <Clock size={16} style={{ flexShrink: 0, marginTop: "2px" }} />
+                <span>{timingEval.message}</span>
               </div>
 
               <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.35rem" }}>
                 <MapPin size={13} color="#059669" />
                 <span>
                   {gpsLocation
-                    ? `Koordinat Terkunci: ${gpsLocation.string}`
+                    ? `GPS Terkunci: ${gpsLocation.string}`
                     : "Mendeteksi sinyal GPS perangkat..."}
                 </span>
               </div>
@@ -529,25 +767,54 @@ export default function TeacherDashboard() {
 
             {/* Submit Button */}
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={timingEval.allowed && !loading ? { scale: 1.02 } : {}}
+              whileTap={timingEval.allowed && !loading ? { scale: 0.98 } : {}}
               type="button"
               onClick={handleAttendanceSubmit}
-              className="btn-neon-primary"
-              disabled={loading}
+              disabled={loading || !timingEval.allowed}
               style={{
                 width: "100%",
                 padding: "0.95rem",
-                fontSize: "1rem",
-                marginTop: "0.5rem"
+                fontSize: "0.92rem",
+                fontWeight: 800,
+                marginTop: "0.5rem",
+                borderRadius: "var(--radius-md)",
+                border: "none",
+                cursor: loading || !timingEval.allowed ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.5rem",
+                transition: "all 0.2s ease",
+                background: !timingEval.allowed
+                  ? timingEval.badgeBg
+                  : timingEval.phase === "late"
+                  ? "linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%)"
+                  : "linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)",
+                color: !timingEval.allowed ? timingEval.badgeColor : "#ffffff",
+                boxShadow: timingEval.allowed
+                  ? timingEval.phase === "late"
+                    ? "0 4px 16px rgba(234, 88, 12, 0.35)"
+                    : "0 4px 16px rgba(5, 150, 105, 0.35)"
+                  : "none"
               }}
             >
               {loading ? (
                 <span>Menyimpan Presensi...</span>
+              ) : !timingEval.allowed ? (
+                <>
+                  <Timer size={18} />
+                  <span>{timingEval.badgeText} - Presensi Dikunci</span>
+                </>
+              ) : timingEval.phase === "late" ? (
+                <>
+                  <AlertTriangle size={18} />
+                  <span>KIRIM PRESENSI (TERCATAT TERLAMBAT)</span>
+                </>
               ) : (
                 <>
-                  <CheckCircle2 size={19} />
-                  <span>KIRIM PRESENSI SEKARANG</span>
+                  <CheckCircle2 size={18} />
+                  <span>KIRIM PRESENSI (HADIR TEPAT WAKTU)</span>
                 </>
               )}
             </motion.button>

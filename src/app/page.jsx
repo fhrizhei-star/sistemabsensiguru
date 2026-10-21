@@ -311,12 +311,33 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
+    // 1. Cek sesi login yang tersimpan jika pengguna mencentang 'Ingat Saya'
+    const currentUser = Auth.getCurrentUser();
+    if (currentUser) {
+      if (currentUser.role === "admin") {
+        router.replace("/admin");
+      } else {
+        router.replace("/user");
+      }
+      return;
+    }
+
+    // 2. Prefill username yang tersimpan jika ada
+    try {
+      const savedUser = localStorage.getItem("ABSENSI_REMEMBERED_USERNAME");
+      if (savedUser) {
+        setUsername(savedUser);
+        setRememberMe(true);
+      }
+    } catch (e) {}
+
+    // 3. Muat info sekolah
     Api.request("GET", "getSettings").then((res) => {
       if (res?.settings?.nama_sekolah) {
         setSchoolName(res.settings.nama_sekolah);
       }
     }).catch(() => {});
-  }, []);
+  }, [router]);
 
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
@@ -332,6 +353,13 @@ export default function LoginPage() {
     try {
       const res = await Api.request("POST", "login", {}, { username, password });
       if (res && res.success && res.user) {
+        // Simpan username untuk 'Ingat Saya' jika dicentang
+        if (rememberMe) {
+          localStorage.setItem("ABSENSI_REMEMBERED_USERNAME", username.trim());
+        } else {
+          localStorage.removeItem("ABSENSI_REMEMBERED_USERNAME");
+        }
+
         Auth.setCurrentUser(res.user, rememberMe);
         setWelcomeUser(res.user);
       } else {

@@ -30,8 +30,10 @@ export const Auth = {
     const dataStr = JSON.stringify(user);
     if (remember) {
       localStorage.setItem(AUTH_STORAGE_KEY, dataStr);
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
     } else {
       sessionStorage.setItem(AUTH_STORAGE_KEY, dataStr);
+      localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   },
 

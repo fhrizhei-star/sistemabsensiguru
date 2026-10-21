@@ -295,7 +295,11 @@ export const Api = {
       case "getSchedules": {
         let schedules = [...(db.schedules || [])];
         if (params.hari) schedules = schedules.filter((s) => s.hari === params.hari);
-        if (params.guru_id) schedules = schedules.filter((s) => s.guru_id === params.guru_id);
+        if (params.guru_id) {
+          schedules = schedules.filter(
+            (s) => s.guru_id === params.guru_id || s.nip === params.guru_id
+          );
+        }
         return { success: true, schedules };
       }
 
@@ -332,6 +336,18 @@ export const Api = {
       }
 
       case "recordAttendance": {
+        if (body.jadwal_id) {
+          const duplicate = (db.attendance || []).some(
+            (a) => String(a.jadwal_id) === String(body.jadwal_id) && String(a.user_id) === String(body.user_id) && a.tanggal === today
+          );
+          if (duplicate) {
+            return {
+              success: false,
+              message: "Bapak/Ibu Guru sudah melakukan presensi untuk kelas ini hari ini!"
+            };
+          }
+        }
+
         const newRecord = {
           id: "ATT" + Date.now(),
           tanggal: today,
