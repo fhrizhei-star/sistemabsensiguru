@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Auth } from "@/lib/auth";
-import { formatDriveUrl } from "@/lib/drive";
+import { formatDriveUrl, getAvatarUrl } from "@/lib/drive";
 import { Clock, School, LogOut, AlertTriangle } from "lucide-react";
 
 export default function Navbar({ role = "guru" }) {
@@ -190,18 +190,14 @@ export default function Navbar({ role = "guru" }) {
                     flexShrink: 0
                   }}
                 >
-                  {currentUser.foto_url ? (
-                    <img
-                      src={formatDriveUrl(currentUser.foto_url)}
-                      alt={currentUser.nama || "User"}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    (currentUser.nama || currentUser.username || "U")[0].toUpperCase()
-                  )}
+                  <img
+                    src={getAvatarUrl(currentUser.foto_url, currentUser.nama || currentUser.username)}
+                    alt={currentUser.nama || "User"}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    onError={(e) => {
+                      e.target.src = getAvatarUrl("", currentUser.nama || currentUser.username);
+                    }}
+                  />
                 </div>
                 <div style={{ textAlign: "left", lineHeight: 1.25 }} className="hidden-mobile">
                   <p

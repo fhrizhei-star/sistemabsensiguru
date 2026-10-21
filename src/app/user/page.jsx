@@ -9,7 +9,7 @@ import TeacherNav from "@/components/TeacherNav";
 import RadarScanner from "@/components/RadarScanner";
 import { Auth } from "@/lib/auth";
 import { Api } from "@/lib/api";
-import { formatDriveUrl } from "@/lib/drive";
+import { formatDriveUrl, getAvatarUrl } from "@/lib/drive";
 import { getTodayDateStr, getTodayDayName } from "@/lib/mockData";
 import {
   Calendar,
@@ -195,18 +195,14 @@ export default function TeacherDashboard() {
                 flexShrink: 0
               }}
             >
-              {currentUser.foto_url ? (
-                <img
-                  src={formatDriveUrl(currentUser.foto_url)}
-                  alt={currentUser.nama || "Guru"}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-              ) : (
-                (currentUser.nama || "G")[0].toUpperCase()
-              )}
+              <img
+                src={getAvatarUrl(currentUser.foto_url, currentUser.nama || currentUser.username)}
+                alt={currentUser.nama || "Guru"}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                onError={(e) => {
+                  e.target.src = getAvatarUrl("", currentUser.nama || currentUser.username);
+                }}
+              />
             </div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>

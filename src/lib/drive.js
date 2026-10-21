@@ -20,3 +20,10 @@ export function formatDriveUrl(url) {
 
   return trimmed;
 }
+
+export function getAvatarUrl(url, name = "Guru") {
+  const formatted = formatDriveUrl(url);
+  if (formatted && formatted.trim() !== "") return formatted;
+  const cleanName = encodeURIComponent((name || "Guru").replace(/[^a-zA-Z0-9 ]/g, "").trim() || "Guru");
+  return `https://ui-avatars.com/api/?name=${cleanName}&background=059669&color=ffffff&bold=true&size=256`;
+}

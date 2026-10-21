@@ -7,7 +7,7 @@ import Navbar from "@/components/Navbar";
 import AdminSidebar from "@/components/AdminSidebar";
 import { Auth } from "@/lib/auth";
 import { Api } from "@/lib/api";
-import { formatDriveUrl } from "@/lib/drive";
+import { formatDriveUrl, getAvatarUrl } from "@/lib/drive";
 import {
   Users,
   UserPlus,
@@ -335,18 +335,14 @@ export default function AdminGuruPage() {
                           boxShadow: `0 4px 14px ${theme.accent}35`
                         }}
                       >
-                        {teacher.foto_url ? (
-                          <img
-                            src={formatDriveUrl(teacher.foto_url)}
-                            alt={teacher.nama}
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          (teacher.nama || "G")[0].toUpperCase()
-                        )}
+                        <img
+                          src={getAvatarUrl(teacher.foto_url, teacher.nama)}
+                          alt={teacher.nama}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          onError={(e) => {
+                            e.target.src = getAvatarUrl("", teacher.nama);
+                          }}
+                        />
                       </div>
                       <div style={{ overflow: "hidden" }}>
                         <h3 style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--text-main)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>

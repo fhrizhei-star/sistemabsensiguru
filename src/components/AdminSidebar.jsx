@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Auth } from "@/lib/auth";
-import { formatDriveUrl } from "@/lib/drive";
+import { formatDriveUrl, getAvatarUrl } from "@/lib/drive";
 import {
   LayoutDashboard,
   Users,
@@ -83,18 +83,14 @@ export default function AdminSidebar() {
                 fontSize: "1.3rem"
               }}
             >
-              {currentUser.foto_url ? (
-                <img
-                  src={formatDriveUrl(currentUser.foto_url)}
-                  alt={currentUser.nama || "Admin"}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-              ) : (
-                (currentUser.nama || "A")[0].toUpperCase()
-              )}
+              <img
+                src={getAvatarUrl(currentUser.foto_url, currentUser.nama || "Admin")}
+                alt={currentUser.nama || "Admin"}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                onError={(e) => {
+                  e.target.src = getAvatarUrl("", currentUser.nama || "Admin");
+                }}
+              />
             </div>
 
             <div style={{ overflow: "hidden" }}>

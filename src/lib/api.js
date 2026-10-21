@@ -1,5 +1,5 @@
 import { MockDB, getTodayDateStr, getTodayDayName } from "./mockData";
-import { formatDriveUrl } from "./drive";
+import { formatDriveUrl, getAvatarUrl } from "./drive";
 
 export const DEFAULT_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycby0DdiBERSda-XSxlvdtQrr9h9JILecQhDWsrctfZu514jP-NRo3v6T6LrSKL39PrY35Q/exec";
@@ -142,7 +142,7 @@ export const Api = {
             ...u,
             nip: String(u.nip || "").replace(/^'/, ""),
             username: String(u.username || "").replace(/^'/, ""),
-            foto_url: formatDriveUrl(u.foto_url)
+            foto_url: getAvatarUrl(u.foto_url, u.nama)
           }));
           data.list = data.users;
         } else if (action === "getSchedules" || action === "getTeacherTodaySchedules") {
@@ -180,7 +180,7 @@ export const Api = {
             ...data.user,
             nip: String(data.user.nip || "").replace(/^'/, ""),
             username: String(data.user.username || "").replace(/^'/, ""),
-            foto_url: formatDriveUrl(data.user.foto_url)
+            foto_url: getAvatarUrl(data.user.foto_url, data.user.nama)
           };
         } else if (action === "getSettings" && data.settings) {
           if (!data.settings.google_script_url && scriptUrl) {

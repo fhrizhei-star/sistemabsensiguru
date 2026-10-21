@@ -39,11 +39,11 @@ function initDatabase() {
     sheetUsers.getRange(1, 1, 1, 13).setFontWeight("bold").setBackground("#062e24").setFontColor("#ffffff");
 
     // Sample data Guru & Admin
-    sheetUsers.appendRow(["U001", "admin", "admin123", "Bpk. Hendra Gunawan, S.Kom", "admin", "198001012005011001", "Kepala Tata Usaha / Admin", "Manajemen Kepegawaian", "admin@sekolah.sch.id", "081234567890", "aktif", new Date(), ""]);
-    sheetUsers.appendRow(["U002", "198501152010011002", "guru123", "Drs. Bambang Sudarsono, M.Pd", "guru", "198501152010011002", "Guru Madya", "Matematika", "bambang@sekolah.sch.id", "081234567891", "aktif", new Date(), ""]);
-    sheetUsers.appendRow(["U003", "199003202015022001", "guru123", "Siti Nurhaliza, S.Pd", "guru", "199003202015022001", "Guru Pertama", "Bahasa Indonesia", "siti@sekolah.sch.id", "081234567892", "aktif", new Date(), ""]);
-    sheetUsers.appendRow(["U004", "199208142019031005", "guru123", "Ahmad Fauzi, S.Kom", "guru", "199208142019031005", "Guru Pertama", "Informatika / TIK", "fauzi@sekolah.sch.id", "081234567893", "aktif", new Date(), ""]);
-    sheetUsers.appendRow(["U005", "198811052014022003", "guru123", "Dewi Lestari, S.Pd, M.Si", "guru", "198811052014022003", "Guru Muda", "Fisika", "dewi@sekolah.sch.id", "081234567894", "aktif", new Date(), ""]);
+    sheetUsers.appendRow(["U001", "admin", "admin123", "Bpk. Hendra Gunawan, S.Kom", "admin", "198001012005011001", "Kepala Tata Usaha / Admin", "Manajemen Kepegawaian", "admin@sekolah.sch.id", "081234567890", "aktif", new Date(), "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&auto=format&fit=crop&q=80"]);
+    sheetUsers.appendRow(["U002", "198501152010011002", "guru123", "Drs. Bambang Sudarsono, M.Pd", "guru", "198501152010011002", "Guru Madya", "Matematika", "bambang@sekolah.sch.id", "081234567891", "aktif", new Date(), "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80"]);
+    sheetUsers.appendRow(["U003", "199003202015022001", "guru123", "Siti Nurhaliza, S.Pd", "guru", "199003202015022001", "Guru Pertama", "Bahasa Indonesia", "siti@sekolah.sch.id", "081234567892", "aktif", new Date(), "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80"]);
+    sheetUsers.appendRow(["U004", "199208142019031005", "guru123", "Ahmad Fauzi, S.Kom", "guru", "199208142019031005", "Guru Pertama", "Informatika / TIK", "fauzi@sekolah.sch.id", "081234567893", "aktif", new Date(), "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop&q=80"]);
+    sheetUsers.appendRow(["U005", "198811052014022003", "guru123", "Dewi Lestari, S.Pd, M.Si", "guru", "198811052014022003", "Guru Muda", "Fisika", "dewi@sekolah.sch.id", "081234567894", "aktif", new Date(), "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80"]);
   }
 
   // 2. Sheet JADWAL_PELAJARAN
