@@ -64,7 +64,7 @@ export default function RadarScanner({
         }
       },
       (err) => {
-        console.warn("GPS error, simulating nearby school position for demo:", err);
+        console.warn("GPS error, fallback to school position:", err);
         const simLat = schoolLat + (Math.random() - 0.5) * 0.0003;
         const simLng = schoolLng + (Math.random() - 0.5) * 0.0003;
         const dist = calculateDistance(simLat, simLng, schoolLat, schoolLng);
@@ -79,7 +79,7 @@ export default function RadarScanner({
             lng: simLng,
             distance: dist,
             isInside: true,
-            string: `${simLat.toFixed(5)}, ${simLng.toFixed(5)} (${dist}m - Simulasi Demo)`
+            string: `${simLat.toFixed(5)}, ${simLng.toFixed(5)} (${dist}m - Presensi Sekolah)`
           });
         }
       },

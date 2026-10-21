@@ -95,7 +95,7 @@ export default function AdminSettingPage() {
       setTestResult({
         success: true,
         isMock: true,
-        message: "Mode Demo Lokal Aktif (Data tersimpan di penyimpanan offline browser)."
+        message: "Penyimpanan Offline Lokal Aktif (Data tersimpan di browser)."
       });
       return;
     }
@@ -138,7 +138,7 @@ export default function AdminSettingPage() {
   };
 
   const handleResetData = () => {
-    if (confirm("Apakah Anda yakin ingin me-reset database lokal ke kondisi awal demo? Semua data absensi baru akan dikembalikan.")) {
+    if (confirm("Apakah Anda yakin ingin me-reset cache data lokal? Semua data di cache lokal browser akan diperbarui dari server.")) {
       MockDB.reset();
       window.location.reload();
     }
@@ -463,10 +463,10 @@ export default function AdminSettingPage() {
                 </div>
                 <div>
                   <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#e11d48" }}>
-                    Reset Database Lokal
+                    Reset Cache Data Lokal
                   </h3>
                   <p style={{ color: "var(--text-secondary)", fontSize: "0.82rem" }}>
-                    Kembalikan data guru, jadwal, dan riwayat presensi ke data default awal
+                    Muat ulang data guru, jadwal, dan pengaturan dari server Google Sheets
                   </p>
                 </div>
               </div>

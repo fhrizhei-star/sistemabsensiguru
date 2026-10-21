@@ -760,27 +760,6 @@ export default function AdminGuruPage() {
                         </p>
                       </div>
                     </div>
-
-                    {/* Fallback link input jika ingin memakai link langsung */}
-                    <div style={{ marginTop: "0.25rem", borderTop: "1px solid #e2e8f0", paddingTop: "0.6rem" }}>
-                      <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", display: "block", marginBottom: "0.25rem" }}>
-                        Atau tempel link gambar / Google Drive langsung:
-                      </span>
-                      <input
-                        type="text"
-                        value={formData.foto_url && !formData.foto_url.startsWith("data:image") ? formData.foto_url : ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          const formatted = formatDriveUrl(val);
-                          setFormData((prev) => ({ ...prev, foto_url: formatted }));
-                          setFotoPreview(formatted);
-                          setFotoBase64("");
-                        }}
-                        placeholder="https://drive.google.com/file/d/... atau https://..."
-                        className="neon-input"
-                        style={{ fontSize: "0.78rem", padding: "0.45rem 0.75rem" }}
-                      />
-                    </div>
                   </div>
                 </div>
 

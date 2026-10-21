@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, RefreshCw, Check, X, ShieldAlert, Sparkles } from "lucide-react";
+import { Camera, RefreshCw, Check, X, ShieldAlert, Upload } from "lucide-react";
 
 export default function CameraSelfie({ isOpen, onClose, onCapture }) {
   const videoRef = useRef(null);
@@ -87,39 +87,6 @@ export default function CameraSelfie({ isOpen, onClose, onCapture }) {
       }
       setIsScanning(false);
     }, 400);
-  };
-
-  const generateDemoSelfie = () => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      canvas.width = 480;
-      canvas.height = 480;
-      const ctx = canvas.getContext("2d");
-
-      // Draw clean academic light selfie frame
-      const gradient = ctx.createLinearGradient(0, 0, 480, 480);
-      gradient.addColorStop(0, "#d1fae5");
-      gradient.addColorStop(1, "#ecfdf5");
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 480, 480);
-
-      ctx.fillStyle = "#059669";
-      ctx.beginPath();
-      ctx.arc(240, 190, 80, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(240, 400, 140, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "#065f46";
-      ctx.font = "bold 20px sans-serif";
-      ctx.fillText(`TERVERIFIKASI: ${new Date().toLocaleTimeString()}`, 30, 440);
-
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-      setCapturedImage(dataUrl);
-      setCameraError(null);
-    }
   };
 
   const handleRetake = () => {
@@ -313,14 +280,40 @@ export default function CameraSelfie({ isOpen, onClose, onCapture }) {
                 <p style={{ color: "#ffffff", fontSize: "0.85rem", marginBottom: "1.25rem" }}>
                   {cameraError}
                 </p>
-                <button
-                  type="button"
-                  onClick={generateDemoSelfie}
-                  className="btn-neon-primary"
-                  style={{ fontSize: "0.85rem" }}
-                >
-                  <Sparkles size={16} /> Gunakan Foto Simulasi Guru
-                </button>
+                <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={startCamera}
+                    className="btn-neon-secondary"
+                    style={{ fontSize: "0.85rem" }}
+                  >
+                    <RefreshCw size={16} /> Coba Buka Kamera Lagi
+                  </button>
+                  <label
+                    className="btn-neon-primary"
+                    style={{ fontSize: "0.85rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.4rem", padding: "0.5rem 1rem", borderRadius: "10px" }}
+                  >
+                    <Upload size={16} /> Unggah Foto Selfie
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="user"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            const result = reader.result;
+                            setCapturedImage(result);
+                            setCameraError(null);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
             ) : (
               <video

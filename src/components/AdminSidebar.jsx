@@ -203,28 +203,6 @@ export default function AdminSidebar() {
             );
           })}
         </nav>
-
-        {/* School System Status Widget with Rainbow Accent */}
-        <div
-          style={{
-            marginTop: "auto",
-            padding: "0.85rem 1rem",
-            background: "linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%)",
-            border: "1px solid #a7f3d0",
-            borderRadius: "var(--radius-md)",
-            fontSize: "0.78rem"
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.25rem" }}>
-            <span style={{ color: "var(--text-muted)" }}>Status Server</span>
-            <span style={{ color: "#059669", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.35rem" }}>
-              <span className="pulse-dot" /> Online
-            </span>
-          </div>
-          <div style={{ color: "var(--text-secondary)", fontSize: "0.72rem" }}>
-            Vercel Cloud Active
-          </div>
-        </div>
       </aside>
 
       {/* Mobile Bottom Navigation for Admin */}

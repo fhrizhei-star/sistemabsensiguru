@@ -13,7 +13,6 @@ import {
   EyeOff,
   ArrowRight,
   AlertCircle,
-  Sparkles,
   CheckCircle,
   GraduationCap
 } from "lucide-react";
@@ -321,12 +320,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickDemo = (user, pass) => {
-    setUsername(user);
-    setPassword(pass);
-    setErrorMsg("");
-  };
-
   return (
     <>
       <AnimatePresence>
@@ -620,74 +613,6 @@ export default function LoginPage() {
               )}
             </motion.button>
           </form>
-
-          {/* 1-Click Quick Demo Login */}
-          <div
-            style={{
-              marginTop: "1.75rem",
-              paddingTop: "1.25rem",
-              borderTop: "1px solid #d1fae5"
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "0.4rem",
-                marginBottom: "0.85rem",
-                fontSize: "0.78rem",
-                color: "#6b7280",
-                fontWeight: 700,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase"
-              }}
-            >
-              <Sparkles size={14} color="#059669" /> Demo Akun Cepat
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                type="button"
-                onClick={() => handleQuickDemo("admin", "admin123")}
-                style={{
-                  background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
-                  border: "1.5px solid #86efac",
-                  borderRadius: "var(--radius-md)",
-                  padding: "0.75rem 0.85rem",
-                  color: "var(--text-main)",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  boxShadow: "0 2px 8px rgba(16, 185, 129, 0.1)"
-                }}
-              >
-                <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "#065f46" }}>Admin Tata Usaha</div>
-                <div style={{ fontSize: "0.72rem", color: "#059669", fontWeight: 600 }}>admin / admin123</div>
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                type="button"
-                onClick={() => handleQuickDemo("198501152010011002", "guru123")}
-                style={{
-                  background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
-                  border: "1.5px solid #86efac",
-                  borderRadius: "var(--radius-md)",
-                  padding: "0.75rem 0.85rem",
-                  color: "var(--text-main)",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  boxShadow: "0 2px 8px rgba(16, 185, 129, 0.1)"
-                }}
-              >
-                <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "#065f46" }}>Guru Matematika</div>
-                <div style={{ fontSize: "0.72rem", color: "#059669", fontWeight: 600 }}>Drs. Bambang</div>
-              </motion.button>
-            </div>
-          </div>
         </motion.div>
       </div>
     </>
