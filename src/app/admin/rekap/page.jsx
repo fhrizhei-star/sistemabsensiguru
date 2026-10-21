@@ -22,6 +22,7 @@ import {
   ChevronDown,
   ExternalLink
 } from "lucide-react";
+import { LOGO_KEMENAG, LOGO_SEKOLAH } from "@/lib/logos";
 
 // --- Format tanggal Indonesia ---
 function formatTanggalIndonesia(dateStr) {
@@ -59,44 +60,72 @@ function OfficialSchoolDocument({ data, settings, filterDate, filterMonth, mode 
       fontSize: "9.5pt",
       lineHeight: 1.35
     }}>
-      {/* ===== KOP SURAT ===== */}
+      {/* ===== KOP SURAT RESMI ===== */}
       <div style={{
         display: "flex",
         alignItems: "center",
-        gap: "1.25rem",
+        justifyContent: "space-between",
+        gap: "1rem",
         paddingBottom: "0.5rem"
       }}>
-        {/* Logo Sekolah */}
+        {/* 1. Logo Kementerian Agama (Sebelah Kiri) */}
         <div style={{
-          width: "72px",
-          height: "72px",
-          borderRadius: "50%",
-          border: "2.5px solid #065f46",
-          background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+          width: "82px",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           flexShrink: 0
         }}>
-          <span style={{ fontSize: "2rem" }}>🏫</span>
+          <img
+            src={LOGO_KEMENAG}
+            alt="Logo Kementerian Agama"
+            style={{
+              width: "72px",
+              height: "auto",
+              maxHeight: "82px",
+              objectFit: "contain",
+              display: "block"
+            }}
+          />
         </div>
 
-        {/* Info Sekolah */}
-        <div style={{ textAlign: "center", flex: 1 }}>
-          <div style={{ fontSize: "10pt", fontWeight: 700, color: "#111", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "1px" }}>
+        {/* 2. Info Resmi Instansi & Madrasah (Tengah) */}
+        <div style={{ textAlign: "center", flex: 1, padding: "0 0.5rem" }}>
+          <div style={{ fontSize: "10.5pt", fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: "0.04em", lineHeight: 1.25 }}>
             KEMENTERIAN AGAMA REPUBLIK INDONESIA
           </div>
-          <div style={{ fontSize: "9.5pt", fontWeight: 700, color: "#222", textTransform: "uppercase", letterSpacing: "0.03em" }}>
-            KANTOR KEMENTERIAN AGAMA KABUPATEN GOWA
+          <div style={{ fontSize: "10pt", fontWeight: 700, color: "#111", textTransform: "uppercase", letterSpacing: "0.03em", marginTop: "2px", lineHeight: 1.25 }}>
+            KANTOR KEMENTERIAN AGAMA {settings.kota ? settings.kota.toUpperCase() : "KABUPATEN GOWA"}
           </div>
-          <div style={{ fontSize: "14.5pt", fontWeight: 900, color: "#000", letterSpacing: "0.02em", margin: "2px 0", lineHeight: 1.2 }}>
-            {settings.nama_sekolah || "MTSN 3 BANDAR LAMPUNG"}
+          <div style={{ fontSize: "14pt", fontWeight: 900, color: "#000", letterSpacing: "0.02em", margin: "3px 0", lineHeight: 1.2, textTransform: "uppercase" }}>
+            {settings.nama_sekolah || "MADRASAH TSANAWIYAH NEGERI GOWA"}
           </div>
-          <div style={{ fontSize: "9pt", color: "#333", fontStyle: "italic", marginTop: "3px" }}>
-            <span>{settings.alamat_sekolah || "Jl. Pendidikan Nasional No. 45, Jakarta"}</span>
+          <div style={{ fontSize: "8.5pt", color: "#222", fontStyle: "italic", marginTop: "2px", lineHeight: 1.3 }}>
+            <span>{settings.alamat_sekolah || "Jl. Pendidikan Nasional, Kabupaten Gowa, Sulawesi Selatan"}</span>
             <span style={{ margin: "0 6px", fontStyle: "normal" }}>•</span>
             <span>Telp: {settings.no_telp || settings.telepon || settings.telepon_sekolah || "(0411) 861234"}</span>
           </div>
+        </div>
+
+        {/* 3. Logo Sekolah / Madrasah (Sebelah Kanan) */}
+        <div style={{
+          width: "82px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0
+        }}>
+          <img
+            src={LOGO_SEKOLAH}
+            alt="Logo Sekolah"
+            style={{
+              width: "72px",
+              height: "auto",
+              maxHeight: "82px",
+              objectFit: "contain",
+              display: "block"
+            }}
+          />
         </div>
       </div>
 

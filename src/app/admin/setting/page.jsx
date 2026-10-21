@@ -23,7 +23,7 @@ export default function AdminSettingPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
   const [settings, setSettings] = useState({
-    nama_sekolah: "SMA NEGERI 1 TELADAN",
+    nama_sekolah: "MTsN GOWA",
     alamat_sekolah: "Jl. Pendidikan Nasional No. 45, Jakarta",
     kota: "Kabupaten Gowa",
     npsn: "20123456",

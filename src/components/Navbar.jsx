@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Auth } from "@/lib/auth";
+import { Api } from "@/lib/api";
 import { formatDriveUrl, getAvatarUrl } from "@/lib/drive";
 import { Clock, School, LogOut, AlertTriangle } from "lucide-react";
 
@@ -14,10 +15,17 @@ export default function Navbar({ role = "guru" }) {
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [schoolName, setSchoolName] = useState("MTsN GOWA");
 
   useEffect(() => {
     const user = Auth.getCurrentUser();
     setCurrentUser(user);
+
+    Api.request("GET", "getSettings").then((res) => {
+      if (res?.settings?.nama_sekolah) {
+        setSchoolName(res.settings.nama_sekolah);
+      }
+    }).catch(() => {});
 
     const updateClock = () => {
       const now = new Date();
@@ -91,15 +99,20 @@ export default function Navbar({ role = "guru" }) {
                 width: "44px",
                 height: "44px",
                 borderRadius: "14px",
-                background: "linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)",
-                border: "1.5px solid #a5b4fc",
+                background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)",
+                border: "1.5px solid #a7f3d0",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 4px 14px rgba(79, 70, 229, 0.28)"
+                boxShadow: "0 4px 14px rgba(5, 150, 105, 0.2)",
+                padding: "4px"
               }}
             >
-              <School size={24} color="#ffffff" />
+              <img
+                src="/img/logo-sekolah.png"
+                alt="Logo Sekolah"
+                style={{ width: "32px", height: "32px", objectFit: "contain" }}
+              />
             </motion.div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
@@ -120,12 +133,12 @@ export default function Navbar({ role = "guru" }) {
                 style={{
                   fontSize: "0.76rem",
                   fontWeight: 700,
-                  color: "#4f46e5",
+                  color: "#059669",
                   letterSpacing: "0.03em",
                   textTransform: "uppercase"
                 }}
               >
-                SMA NEGERI 1 TELADAN
+                {schoolName}
               </p>
             </div>
           </Link>

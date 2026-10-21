@@ -249,7 +249,7 @@ function WelcomeScreen({ user, onDone }) {
         >
           <GraduationCap size={16} color="#6ee7b7" />
           <span style={{ fontSize: "0.82rem", color: "#d1fae5", fontWeight: 700, letterSpacing: "0.04em" }}>
-            SMA NEGERI 1 TELADAN
+            {user?.school || "MTsN GOWA"}
           </span>
         </motion.div>
 
@@ -300,6 +300,7 @@ export default function LoginPage() {
   const [welcomeUser, setWelcomeUser] = useState(null);
   const [authMode, setAuthMode] = useState("login"); // "login" | "register"
   const [successMsg, setSuccessMsg] = useState("");
+  const [schoolName, setSchoolName] = useState("MTsN GOWA");
   const [regForm, setRegForm] = useState({
     nama: "",
     nip: "",
@@ -308,6 +309,14 @@ export default function LoginPage() {
     mapel: "",
     no_hp: ""
   });
+
+  useEffect(() => {
+    Api.request("GET", "getSettings").then((res) => {
+      if (res?.settings?.nama_sekolah) {
+        setSchoolName(res.settings.nama_sekolah);
+      }
+    }).catch(() => {});
+  }, []);
 
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
@@ -479,19 +488,24 @@ export default function LoginPage() {
               whileHover={{ scale: 1.06, rotate: 3 }}
               transition={{ type: "spring", stiffness: 300 }}
               style={{
-                width: "72px",
-                height: "72px",
+                width: "76px",
+                height: "76px",
                 borderRadius: "22px",
-                background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
-                border: "2px solid #6ee7b7",
+                background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)",
+                border: "2px solid #a7f3d0",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 margin: "0 auto 1.25rem",
-                boxShadow: "0 6px 22px rgba(5, 150, 105, 0.35)"
+                boxShadow: "0 6px 22px rgba(5, 150, 105, 0.25)",
+                padding: "8px"
               }}
             >
-              <School size={36} color="#ffffff" />
+              <img
+                src="/img/logo-sekolah.png"
+                alt="Logo Sekolah"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
             </motion.div>
 
             <h1
@@ -507,7 +521,7 @@ export default function LoginPage() {
               SISTEM ABSENSI GURU
             </h1>
             <p style={{ color: "#059669", fontWeight: 700, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              SMA NEGERI 1 TELADAN
+              {schoolName}
             </p>
           </div>
 

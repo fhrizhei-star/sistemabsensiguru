@@ -20,7 +20,7 @@ export function getTodayDayName() {
 
 export const INITIAL_MOCK_DATA = {
   settings: {
-    nama_sekolah: "SMA NEGERI 1 TELADAN",
+    nama_sekolah: "MTsN GOWA",
     alamat_sekolah: "Jl. Pendidikan Nasional No. 45, Jakarta",
     kota: "Kabupaten Gowa",
     npsn: "20123456",

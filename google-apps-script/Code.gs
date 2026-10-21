@@ -107,7 +107,7 @@ function initDatabase() {
     sheetSettings.appendRow(["key", "value", "deskripsi"]);
     sheetSettings.getRange(1, 1, 1, 3).setFontWeight("bold").setBackground("#4f46e5").setFontColor("#ffffff");
 
-    sheetSettings.appendRow(["nama_sekolah", "SMA NEGERI 1 TELADAN", "Nama Sekolah / Instansi"]);
+    sheetSettings.appendRow(["nama_sekolah", "MTsN GOWA", "Nama Sekolah / Instansi"]);
     sheetSettings.appendRow(["alamat_sekolah", "Jl. Pendidikan Nasional No. 45, Jakarta", "Alamat Sekolah"]);
     sheetSettings.appendRow(["kepala_sekolah", "Drs. H. Mulyadi, M.Pd", "Nama Kepala Sekolah"]);
     sheetSettings.appendRow(["nip_kepsek", "196805121994031004", "NIP Kepala Sekolah"]);

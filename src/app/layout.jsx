@@ -2,7 +2,7 @@ import "./globals.css";
 import ThemeBackground from "@/components/ThemeBackground";
 
 export const metadata = {
-  title: "Sistem Presensi Guru Modern & Geofencing - SMA Negeri 1 Teladan",
+  title: "Sistem Presensi Guru Modern & Geofencing - MTsN GOWA",
   description: "Platform Presensi Guru & Tenaga Pendidik Berbasis Jadwal Pelajaran, Kamera Biometrik Selfie, dan Radar Geofencing GPS.",
   icons: {
     icon: "/favicon.png",
