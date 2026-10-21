@@ -34,7 +34,7 @@ export const INITIAL_MOCK_DATA = {
     lat_sekolah: -6.2088,
     lng_sekolah: 106.8456,
     radius_meter: 250,
-    google_script_url: "https://script.google.com/macros/s/AKfycbwerFB3CM8t3nf2YxmyTq-MWwr539yp7_ojIYDZmO_XAZv4GkJXBrfuNRaj3h3QWHZxWw/exec"
+    google_script_url: "https://script.google.com/macros/s/AKfycby0DdiBERSda-XSxlvdtQrr9h9JILecQhDWsrctfZu514jP-NRo3v6T6LrSKL39PrY35Q/exec"
   },
   users: [
     {
@@ -296,6 +296,15 @@ export const MockDB = {
       if (!Array.isArray(data.schedules) || !Array.isArray(data.users)) {
         this.save(INITIAL_MOCK_DATA);
         return JSON.parse(JSON.stringify(INITIAL_MOCK_DATA));
+      }
+      if (
+        data.settings &&
+        (!data.settings.google_script_url ||
+          data.settings.google_script_url.includes("AKfycbwerFB3CM8t3nf2YxmyTq-MWwr539yp7_ojIYDZmO_XAZv4GkJXBrfuNRaj3h3QWHZxWw") ||
+          data.settings.google_script_url.includes("GANTI_DENGAN_URL"))
+      ) {
+        data.settings.google_script_url = INITIAL_MOCK_DATA.settings.google_script_url;
+        this.save(data);
       }
       return data;
     } catch (e) {

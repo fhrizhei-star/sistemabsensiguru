@@ -24,12 +24,15 @@ export async function OPTIONS() {
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const scriptUrl =
+    let scriptUrl =
       searchParams.get("script_url") ||
       request.headers.get("x-script-url") ||
       process.env.GOOGLE_SCRIPT_URL ||
       DEFAULT_SCRIPT_URL;
+
+    if (!scriptUrl || scriptUrl.includes("GANTI_DENGAN_URL") || scriptUrl.includes("AKfycbwerFB3CM8t3nf2YxmyTq-MWwr539yp7_ojIYDZmO_XAZv4GkJXBrfuNRaj3h3QWHZxWw")) {
+      scriptUrl = DEFAULT_SCRIPT_URL;
+    }
 
     if (!scriptUrl || scriptUrl.includes("GANTI_DENGAN_URL")) {
       return NextResponse.json(
@@ -69,12 +72,15 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const scriptUrl =
+    let scriptUrl =
       searchParams.get("script_url") ||
       request.headers.get("x-script-url") ||
       process.env.GOOGLE_SCRIPT_URL ||
       DEFAULT_SCRIPT_URL;
+
+    if (!scriptUrl || scriptUrl.includes("GANTI_DENGAN_URL") || scriptUrl.includes("AKfycbwerFB3CM8t3nf2YxmyTq-MWwr539yp7_ojIYDZmO_XAZv4GkJXBrfuNRaj3h3QWHZxWw")) {
+      scriptUrl = DEFAULT_SCRIPT_URL;
+    }
 
     if (!scriptUrl || scriptUrl.includes("GANTI_DENGAN_URL")) {
       return NextResponse.json(
