@@ -24,6 +24,7 @@ export async function OPTIONS() {
 
 export async function GET(request) {
   try {
+    const { searchParams } = new URL(request.url);
     let scriptUrl =
       searchParams.get("script_url") ||
       request.headers.get("x-script-url") ||
@@ -72,6 +73,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const { searchParams } = new URL(request.url);
     let scriptUrl =
       searchParams.get("script_url") ||
       request.headers.get("x-script-url") ||
