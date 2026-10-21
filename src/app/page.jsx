@@ -14,7 +14,11 @@ import {
   ArrowRight,
   AlertCircle,
   CheckCircle,
-  GraduationCap
+  GraduationCap,
+  UserPlus,
+  BookOpen,
+  Phone,
+  ArrowLeft
 } from "lucide-react";
 
 // --- Welcome Screen Component ---
@@ -294,10 +298,21 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [welcomeUser, setWelcomeUser] = useState(null);
+  const [authMode, setAuthMode] = useState("login"); // "login" | "register"
+  const [successMsg, setSuccessMsg] = useState("");
+  const [regForm, setRegForm] = useState({
+    nama: "",
+    nip: "",
+    username: "",
+    password: "",
+    mapel: "",
+    no_hp: ""
+  });
 
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
     setErrorMsg("");
+    setSuccessMsg("");
 
     if (!username.trim() || !password.trim()) {
       setErrorMsg("Harap masukkan NIP / Username dan Password!");
@@ -315,6 +330,60 @@ export default function LoginPage() {
       }
     } catch (err) {
       setErrorMsg("Terjadi gangguan server. Silakan coba kembali.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    if (e) e.preventDefault();
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    if (
+      !regForm.nama.trim() ||
+      !regForm.nip.trim() ||
+      !regForm.username.trim() ||
+      !regForm.password.trim() ||
+      !regForm.mapel.trim()
+    ) {
+      setErrorMsg("Harap lengkapi semua data wajib (Nama, NIP, Mapel, Username, Password)!");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        nama: regForm.nama.trim(),
+        nip: regForm.nip.trim(),
+        username: regForm.username.trim(),
+        password: regForm.password.trim(),
+        mapel: regForm.mapel.trim(),
+        no_hp: regForm.no_hp.trim() || "-",
+        jabatan: "Guru Pertama",
+        role: "guru", // Locked strictly to guru for public registration
+        status: "aktif"
+      };
+
+      const res = await Api.request("POST", "saveUser", {}, { ...payload, user: payload });
+      if (res && res.success) {
+        setSuccessMsg("Pendaftaran berhasil! Akun guru Anda telah aktif. Silakan masuk.");
+        setUsername(payload.username);
+        setPassword(payload.password);
+        setAuthMode("login");
+        setRegForm({
+          nama: "",
+          nip: "",
+          username: "",
+          password: "",
+          mapel: "",
+          no_hp: ""
+        });
+      } else {
+        setErrorMsg("Gagal mendaftar: " + (res?.message || "Terjadi kesalahan"));
+      }
+    } catch (err) {
+      setErrorMsg("Terjadi gangguan server saat pendaftaran. Silakan coba kembali.");
     } finally {
       setLoading(false);
     }
@@ -442,6 +511,33 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {/* Success Alert */}
+          <AnimatePresence>
+            {successMsg && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, y: -10 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -10 }}
+                style={{
+                  background: "#ecfdf5",
+                  border: "1px solid #a7f3d0",
+                  color: "#065f46",
+                  padding: "0.75rem 1rem",
+                  borderRadius: "var(--radius-md)",
+                  fontSize: "0.85rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  marginBottom: "1.25rem",
+                  fontWeight: 600
+                }}
+              >
+                <CheckCircle size={18} color="#059669" style={{ flexShrink: 0 }} />
+                <span>{successMsg}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Error Alert */}
           <AnimatePresence>
             {errorMsg && (
@@ -468,8 +564,9 @@ export default function LoginPage() {
             )}
           </AnimatePresence>
 
-          {/* Login Form */}
-          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+          {/* Login or Register Form */}
+          {authMode === "login" ? (
+            <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
             <div>
               <label
                 style={{
@@ -576,43 +673,267 @@ export default function LoginPage() {
               <span style={{ color: "#059669", cursor: "pointer", fontWeight: 600 }}>Lupa sandi?</span>
             </div>
 
+            {/* Submit Button */}
             <motion.button
               whileHover={{ scale: 1.02, boxShadow: "0 8px 24px rgba(5, 150, 105, 0.4)" }}
               whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%",
-                marginTop: "0.5rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "0.6rem",
-                padding: "0.85rem 1.5rem",
-                background: loading
-                  ? "#d1d5db"
-                  : "linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "var(--radius-md)",
-                fontWeight: 800,
-                fontSize: "0.95rem",
-                cursor: loading ? "not-allowed" : "pointer",
-                boxShadow: "0 4px 16px rgba(5, 150, 105, 0.3)",
-                letterSpacing: "0.02em",
-                transition: "all 0.2s"
-              }}
-            >
-              {loading ? (
-                <span>Memverifikasi Akun...</span>
-              ) : (
-                <>
-                  <span>Masuk ke Sistem</span>
-                  <ArrowRight size={18} />
-                </>
-              )}
-            </motion.button>
-          </form>
+                type="submit"
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  marginTop: "0.5rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.6rem",
+                  padding: "0.85rem 1.5rem",
+                  background: loading
+                    ? "#d1d5db"
+                    : "linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "var(--radius-md)",
+                  fontWeight: 800,
+                  fontSize: "0.95rem",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  boxShadow: "0 4px 16px rgba(5, 150, 105, 0.3)",
+                  letterSpacing: "0.02em",
+                  transition: "all 0.2s"
+                }}
+              >
+                {loading ? (
+                  <span>Memverifikasi Akun...</span>
+                ) : (
+                  <>
+                    <span>Masuk ke Sistem</span>
+                    <ArrowRight size={18} />
+                  </>
+                )}
+              </motion.button>
+            </form>
+          ) : (
+            /* Registration Form (Teacher Self-Registration) */
+            <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: "0.95rem" }}>
+              <div
+                style={{
+                  padding: "0.65rem 0.85rem",
+                  background: "linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)",
+                  border: "1px solid #a7f3d0",
+                  borderRadius: "10px",
+                  fontSize: "0.78rem",
+                  color: "#065f46",
+                  lineHeight: 1.35
+                }}
+              >
+                <strong>Pendaftaran Akun Guru:</strong> Akun yang didaftarkan memiliki hak akses sebagai tenaga pendidik untuk presensi kehadiran dan jadwal mengajar.
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#065f46", marginBottom: "0.3rem" }}>
+                  Nama Lengkap Guru (dengan Gelar) *
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type="text"
+                    required
+                    value={regForm.nama}
+                    onChange={(e) => setRegForm({ ...regForm, nama: e.target.value })}
+                    placeholder="Contoh: Dra. Hj. Marlina, M.Pd"
+                    className="neon-input"
+                    style={{ paddingLeft: "2.5rem", borderColor: "#a7f3d0" }}
+                  />
+                  <User size={16} color="#059669" style={{ position: "absolute", left: "0.9rem", top: "50%", transform: "translateY(-50%)" }} />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#065f46", marginBottom: "0.3rem" }}>
+                    NIP / No. Pegawai *
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type="text"
+                      required
+                      value={regForm.nip}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setRegForm({
+                          ...regForm,
+                          nip: val,
+                          username: regForm.username ? regForm.username : val
+                        });
+                      }}
+                      placeholder="1985..."
+                      className="neon-input"
+                      style={{ paddingLeft: "2.4rem", borderColor: "#a7f3d0" }}
+                    />
+                    <GraduationCap size={16} color="#059669" style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)" }} />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#065f46", marginBottom: "0.3rem" }}>
+                    Mata Pelajaran *
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type="text"
+                      required
+                      value={regForm.mapel}
+                      onChange={(e) => setRegForm({ ...regForm, mapel: e.target.value })}
+                      placeholder="Matematika"
+                      className="neon-input"
+                      style={{ paddingLeft: "2.4rem", borderColor: "#a7f3d0" }}
+                    />
+                    <BookOpen size={16} color="#059669" style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)" }} />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#065f46", marginBottom: "0.3rem" }}>
+                    Username Login *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={regForm.username}
+                    onChange={(e) => setRegForm({ ...regForm, username: e.target.value })}
+                    placeholder="Username atau NIP"
+                    className="neon-input"
+                    style={{ borderColor: "#a7f3d0" }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#065f46", marginBottom: "0.3rem" }}>
+                    Password Login *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={regForm.password}
+                    onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
+                    placeholder="Buat password"
+                    className="neon-input"
+                    style={{ borderColor: "#a7f3d0" }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#065f46", marginBottom: "0.3rem" }}>
+                  Nomor HP / WhatsApp (Opsional)
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type="text"
+                    value={regForm.no_hp}
+                    onChange={(e) => setRegForm({ ...regForm, no_hp: e.target.value })}
+                    placeholder="0812..."
+                    className="neon-input"
+                    style={{ paddingLeft: "2.4rem", borderColor: "#a7f3d0" }}
+                  />
+                  <Phone size={16} color="#059669" style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)" }} />
+                </div>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.02, boxShadow: "0 8px 24px rgba(5, 150, 105, 0.4)" }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  marginTop: "0.4rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.6rem",
+                  padding: "0.85rem 1.5rem",
+                  background: loading
+                    ? "#d1d5db"
+                    : "linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "var(--radius-md)",
+                  fontWeight: 800,
+                  fontSize: "0.95rem",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  boxShadow: "0 4px 16px rgba(5, 150, 105, 0.3)"
+                }}
+              >
+                {loading ? (
+                  <span>Mendaftarkan Guru...</span>
+                ) : (
+                  <>
+                    <UserPlus size={18} />
+                    <span>Daftarkan Akun Guru</span>
+                  </>
+                )}
+              </motion.button>
+            </form>
+          )}
+
+          {/* Toggle between Login and Registration */}
+          <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: "1px solid #d1fae5", textAlign: "center" }}>
+            {authMode === "login" ? (
+              <div>
+                <p style={{ fontSize: "0.82rem", color: "#4b5563", marginBottom: "0.5rem" }}>
+                  Tenaga pendidik belum memiliki akun?
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("register");
+                    setErrorMsg("");
+                    setSuccessMsg("");
+                  }}
+                  className="btn-neon-secondary"
+                  style={{
+                    width: "100%",
+                    fontSize: "0.85rem",
+                    padding: "0.65rem 1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.5rem",
+                    color: "#059669",
+                    borderColor: "#a7f3d0",
+                    background: "#ffffff"
+                  }}
+                >
+                  <UserPlus size={16} /> Daftar Akun Guru Baru
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode("login");
+                  setErrorMsg("");
+                  setSuccessMsg("");
+                }}
+                className="btn-neon-secondary"
+                style={{
+                  width: "100%",
+                  fontSize: "0.85rem",
+                  padding: "0.65rem 1rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                  color: "#065f46",
+                  borderColor: "#a7f3d0",
+                  background: "#ffffff"
+                }}
+              >
+                <ArrowLeft size={16} /> Kembali ke Halaman Masuk
+              </button>
+            )}
+          </div>
         </motion.div>
       </div>
     </>

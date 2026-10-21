@@ -40,11 +40,13 @@ export default function AdminGuruPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [filterRole, setFilterRole] = useState("all");
   const [formData, setFormData] = useState({
     nama: "",
     nip: "",
     username: "",
     password: "",
+    role: "guru",
     mapel: "",
     jabatan: "Guru Pertama",
     no_hp: "",
@@ -64,7 +66,7 @@ export default function AdminGuruPage() {
   }, [router]);
 
   const fetchTeachers = async () => {
-    const res = await Api.request("GET", "getUsers", { role: "guru" });
+    const res = await Api.request("GET", "getUsers");
     if (res && res.users) {
       setTeachers(res.users);
     }
@@ -149,6 +151,7 @@ export default function AdminGuruPage() {
         nip: teacher.nip || "",
         username: teacher.username || "",
         password: teacher.password || "",
+        role: teacher.role || "guru",
         mapel: teacher.mapel || "",
         jabatan: teacher.jabatan || "Guru Pertama",
         no_hp: teacher.no_hp || "",
@@ -165,6 +168,7 @@ export default function AdminGuruPage() {
         nip: "",
         username: "",
         password: "guru" + Math.floor(100 + Math.random() * 900),
+        role: "guru",
         mapel: "",
         jabatan: "Guru Pertama",
         no_hp: "",
@@ -188,7 +192,7 @@ export default function AdminGuruPage() {
         foto: fotoBase64 || formData.foto_url,
         foto_base64: fotoBase64 || "",
         foto_url: fotoBase64 || formData.foto_url,
-        role: "guru",
+        role: formData.role || "guru",
         id: editingTeacher ? editingTeacher.id : null
       };
 
@@ -228,11 +232,12 @@ export default function AdminGuruPage() {
 
   const filteredTeachers = teachers.filter((t) => {
     const q = searchQuery.toLowerCase();
-    return (
+    const matchQuery =
       (t.nama && t.nama.toLowerCase().includes(q)) ||
       (t.nip && t.nip.includes(q)) ||
-      (t.mapel && t.mapel.toLowerCase().includes(q))
-    );
+      (t.mapel && t.mapel.toLowerCase().includes(q));
+    const matchRole = filterRole === "all" || (t.role || "guru") === filterRole;
+    return matchQuery && matchRole;
   });
 
   if (!currentUser) return null;
@@ -275,27 +280,60 @@ export default function AdminGuruPage() {
             </motion.button>
           </div>
 
-          {/* Search bar */}
+          {/* Search bar and Role Filter */}
           <div
             style={{
-              position: "relative",
-              maxWidth: "440px",
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "1rem",
               marginBottom: "1.5rem"
             }}
           >
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama guru, NIP, atau mata pelajaran..."
-              className="neon-input"
-              style={{ paddingLeft: "2.75rem" }}
-            />
-            <Search
-              size={18}
-              color="#94a3b8"
-              style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)" }}
-            />
+            <div style={{ position: "relative", width: "100%", maxWidth: "380px" }}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nama guru, NIP, atau mata pelajaran..."
+                className="neon-input"
+                style={{ paddingLeft: "2.75rem" }}
+              />
+              <Search
+                size={18}
+                color="#94a3b8"
+                style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)" }}
+              />
+            </div>
+
+            {/* Filter Pills */}
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              {[
+                { id: "all", label: `Semua (${teachers.length})` },
+                { id: "guru", label: `Guru (${teachers.filter((u) => (u.role || "guru") === "guru").length})` },
+                { id: "admin", label: `Admin TU (${teachers.filter((u) => u.role === "admin").length})` }
+              ].map((pill) => (
+                <button
+                  key={pill.id}
+                  type="button"
+                  onClick={() => setFilterRole(pill.id)}
+                  style={{
+                    padding: "0.45rem 0.85rem",
+                    borderRadius: "999px",
+                    fontSize: "0.8rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    border: filterRole === pill.id ? "1.5px solid #059669" : "1px solid var(--border-light)",
+                    background: filterRole === pill.id ? "#059669" : "#ffffff",
+                    color: filterRole === pill.id ? "#ffffff" : "var(--text-secondary)",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Teacher Cards Grid */}
@@ -391,9 +429,20 @@ export default function AdminGuruPage() {
                       borderTop: "1px solid rgba(0, 0, 0, 0.06)"
                     }}
                   >
-                    <span className={`badge-status ${teacher.status === "aktif" ? "badge-hadir" : "badge-alpha"}`}>
-                      {teacher.status || "Aktif"}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      <span className={`badge-status ${teacher.status === "aktif" ? "badge-hadir" : "badge-alpha"}`}>
+                        {teacher.status || "Aktif"}
+                      </span>
+                      {teacher.role === "admin" ? (
+                        <span style={{ fontSize: "0.7rem", padding: "0.2rem 0.5rem", borderRadius: "8px", background: "#eef2ff", color: "#4f46e5", fontWeight: 800, border: "1px solid #c7d2fe" }}>
+                          Admin TU
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: "0.7rem", padding: "0.2rem 0.5rem", borderRadius: "8px", background: "#ecfdf5", color: "#059669", fontWeight: 800, border: "1px solid #a7f3d0" }}>
+                          Guru
+                        </span>
+                      )}
+                    </div>
 
                     <div style={{ display: "flex", gap: "0.5rem" }}>
                       <button
@@ -580,6 +629,25 @@ export default function AdminGuruPage() {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
                     <div>
+                      <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#065f46", marginBottom: "0.3rem" }}>
+                        Hak Akses Akun (Role) *
+                      </label>
+                      <select
+                        value={formData.role}
+                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                        className="neon-input"
+                        style={{
+                          background: "#ffffff",
+                          fontWeight: 700,
+                          borderColor: formData.role === "admin" ? "#818cf8" : "#86efac",
+                          color: formData.role === "admin" ? "#4f46e5" : "#059669"
+                        }}
+                      >
+                        <option value="guru">👨‍🏫 Guru Pengajar (Portal Presensi)</option>
+                        <option value="admin">👨‍💼 Admin Tata Usaha (Full Dashboard)</option>
+                      </select>
+                    </div>
+                    <div>
                       <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
                         Jabatan / Golongan
                       </label>
@@ -600,6 +668,9 @@ export default function AdminGuruPage() {
                         <option value="Staf Tata Usaha">Staf Tata Usaha</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
                     <div>
                       <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
                         Status Kepegawaian
@@ -610,9 +681,21 @@ export default function AdminGuruPage() {
                         className="neon-input"
                         style={{ background: "#ffffff" }}
                       >
-                        <option value="aktif">Aktif Mengajar</option>
+                        <option value="aktif">Aktif Mengajar / Bekerja</option>
                         <option value="nonaktif">Nonaktif / Cuti</option>
                       </select>
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
+                        Nomor HP / WhatsApp
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.no_hp}
+                        onChange={(e) => setFormData({ ...formData, no_hp: e.target.value })}
+                        placeholder="0812..."
+                        className="neon-input"
+                      />
                     </div>
                   </div>
 
