@@ -192,10 +192,21 @@ export default function AdminGuruPage() {
         id: editingTeacher ? editingTeacher.id : null
       };
 
-      const res = await Api.request("POST", "saveUser", {}, { user: payload });
+      const res = await Api.request("POST", "saveUser", {}, { ...payload, user: payload });
       if (res && res.success) {
         setModalOpen(false);
-        fetchTeachers();
+        const savedFoto = res.foto_url || payload.foto_url;
+        if (savedFoto && editingTeacher) {
+          setTeachers((prev) =>
+            prev.map((t) => (t.id === editingTeacher.id ? { ...t, ...payload, foto_url: savedFoto } : t))
+          );
+        } else if (savedFoto && res.id) {
+          setTeachers((prev) => [
+            { ...payload, id: res.id, foto_url: savedFoto },
+            ...prev
+          ]);
+        }
+        await fetchTeachers();
       } else {
         alert("Gagal menyimpan data guru: " + (res?.message || "Terjadi kesalahan"));
       }
@@ -338,6 +349,7 @@ export default function AdminGuruPage() {
                         <img
                           src={getAvatarUrl(teacher.foto_url, teacher.nama)}
                           alt={teacher.nama}
+                          referrerPolicy="no-referrer"
                           style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           onError={(e) => {
                             e.target.src = getAvatarUrl("", teacher.nama);
@@ -718,6 +730,7 @@ export default function AdminGuruPage() {
                           <img
                             src={formatDriveUrl(fotoPreview)}
                             alt="Preview Foto Guru"
+                            referrerPolicy="no-referrer"
                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                             onError={(e) => {
                               e.target.style.display = 'none';

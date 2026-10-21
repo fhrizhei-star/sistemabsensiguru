@@ -547,7 +547,8 @@ function getSchedulesHandler(hari, guru_id, kelas, mapel) {
   return { success: true, schedules: list, list: list };
 }
 
-function saveScheduleHandler(data) {
+function saveScheduleHandler(raw) {
+  const data = (raw && raw.schedule) ? raw.schedule : (raw || {});
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_SCHEDULES);
   if (!sheet) {

@@ -86,6 +86,7 @@ export default function AdminSidebar() {
               <img
                 src={getAvatarUrl(currentUser.foto_url, currentUser.nama || "Admin")}
                 alt={currentUser.nama || "Admin"}
+                referrerPolicy="no-referrer"
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 onError={(e) => {
                   e.target.src = getAvatarUrl("", currentUser.nama || "Admin");

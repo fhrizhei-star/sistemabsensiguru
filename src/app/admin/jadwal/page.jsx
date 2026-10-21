@@ -123,10 +123,26 @@ export default function AdminJadwalPage() {
       nip: t?.nip || "-"
     };
 
-    const res = await Api.request("POST", "saveSchedule", {}, { schedule: payload });
+    const res = await Api.request("POST", "saveSchedule", {}, { ...payload, schedule: payload });
     if (res && res.success) {
       setModalOpen(false);
-      fetchData();
+      const targetDay = payload.hari || selectedDay;
+      const newId = res.id || payload.id;
+
+      if (targetDay !== selectedDay) {
+        setSelectedDay(targetDay);
+      } else {
+        if (editingSched) {
+          setSchedules((prev) =>
+            prev.map((s) => (s.id === editingSched.id ? { ...s, ...payload } : s))
+          );
+        } else if (newId) {
+          setSchedules((prev) => [...prev, { ...payload, id: newId }]);
+        }
+      }
+      await fetchData();
+    } else {
+      alert("Gagal menyimpan jadwal: " + (res?.message || "Terjadi kesalahan"));
     }
   };
 
@@ -134,7 +150,8 @@ export default function AdminJadwalPage() {
     const res = await Api.request("POST", "deleteSchedule", {}, { id });
     if (res && res.success) {
       setDeleteConfirmId(null);
-      fetchData();
+      setSchedules((prev) => prev.filter((s) => s.id !== id));
+      await fetchData();
     }
   };
 

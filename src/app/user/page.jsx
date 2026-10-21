@@ -198,6 +198,7 @@ export default function TeacherDashboard() {
               <img
                 src={getAvatarUrl(currentUser.foto_url, currentUser.nama || currentUser.username)}
                 alt={currentUser.nama || "Guru"}
+                referrerPolicy="no-referrer"
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 onError={(e) => {
                   e.target.src = getAvatarUrl("", currentUser.nama || currentUser.username);
