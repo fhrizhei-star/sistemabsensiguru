@@ -118,18 +118,33 @@ function initDatabase() {
     sheetSettings.appendRow(["lat_sekolah", "-6.2088", "Latitude sekolah"]);
     sheetSettings.appendRow(["lng_sekolah", "106.8456", "Longitude sekolah"]);
     sheetSettings.appendRow(["radius_meter", "250", "Radius toleransi presensi dalam meter"]);
+    sheetSettings.appendRow(["telegram_bot_token", "", "Token Bot Telegram (@BotFather)"]);
+    sheetSettings.appendRow(["telegram_chat_id", "", "Chat ID Grup Telegram Guru / Staf"]);
+    sheetSettings.appendRow(["telegram_notif_aktif", "true", "Aktifkan Pengingat Kelas 5 Menit ke Telegram (true/false)"]);
+    sheetSettings.appendRow(["telegram_notif_absen", "true", "Notifikasi Realtime saat Guru Absen ke Telegram (true/false)"]);
+    sheetSettings.appendRow(["web_url", "https://absensi-sekolah.vercel.app", "Link Website Absensi Sekolah"]);
   } else {
     const sRows = sheetSettings.getDataRange().getValues();
-    let hasTelp = false;
+    const existingKeys = {};
     for (let i = 1; i < sRows.length; i++) {
-      if (sRows[i][0] === "no_telp") { hasTelp = true; break; }
+      existingKeys[sRows[i][0]] = true;
     }
-    if (!hasTelp) {
-      sheetSettings.appendRow(["no_telp", "(0411) 861234", "Nomor Telepon Sekolah"]);
+    const defaultSettings = [
+      ["no_telp", "(0411) 861234", "Nomor Telepon Sekolah"],
+      ["telegram_bot_token", "", "Token Bot Telegram (@BotFather)"],
+      ["telegram_chat_id", "", "Chat ID Grup Telegram Guru / Staf"],
+      ["telegram_notif_aktif", "true", "Aktifkan Pengingat Kelas 5 Menit ke Telegram (true/false)"],
+      ["telegram_notif_absen", "true", "Notifikasi Realtime saat Guru Absen ke Telegram (true/false)"],
+      ["web_url", "https://absensi-sekolah.vercel.app", "Link Website Absensi Sekolah"]
+    ];
+    for (let k = 0; k < defaultSettings.length; k++) {
+      if (!existingKeys[defaultSettings[k][0]]) {
+        sheetSettings.appendRow(defaultSettings[k]);
+      }
     }
   }
 
-  return { success: true, message: "Database Absensi Mengajar Guru Google Sheets berhasil disiapkan!" };
+  return { success: true, message: "Database Absensi Mengajar Guru berhasil disiapkan!" };
 }
 
 // Router untuk GET Request
@@ -143,7 +158,7 @@ function doGet(e) {
         result = initDatabase();
         break;
       case "test":
-        result = { success: true, message: "Google Apps Script Absensi Guru aktif!", timestamp: new Date() };
+        result = { success: true, message: "Server Database Absensi Guru aktif!", timestamp: new Date() };
         break;
       case "getSettings":
         result = getSettingsHandler();
@@ -178,6 +193,18 @@ function doGet(e) {
         break;
       case "getDashboardStats":
         result = getDashboardStatsHandler(e.parameter.tanggal);
+        break;
+      case "testTelegram":
+        result = testTelegramHandler(e.parameter.customMessage);
+        break;
+      case "checkReminders":
+        result = checkUpcomingClassesAndRemind();
+        break;
+      case "setupTelegramTrigger":
+        result = setupTelegramTrigger();
+        break;
+      case "removeTelegramTrigger":
+        result = removeTelegramTrigger();
         break;
       default:
         result = { success: false, message: "Aksi GET tidak dikenali: " + action };
@@ -231,6 +258,18 @@ function doPost(e) {
       case "updateSettings":
         result = updateSettingsHandler(data.settings);
         break;
+      case "testTelegram":
+        result = testTelegramHandler(data.customMessage);
+        break;
+      case "checkReminders":
+        result = checkUpcomingClassesAndRemind();
+        break;
+      case "setupTelegramTrigger":
+        result = setupTelegramTrigger();
+        break;
+      case "removeTelegramTrigger":
+        result = removeTelegramTrigger();
+        break;
       default:
         result = { success: false, message: "Aksi POST tidak dikenali: " + action };
     }
@@ -255,6 +294,18 @@ function formatGasTime(val) {
     return (match[1].length === 1 ? "0" + match[1] : match[1]) + ":" + match[2];
   }
   return s;
+}
+
+function parseGasMinutes(tStr) {
+  if (!tStr) return null;
+  const cleaned = String(tStr).trim().replace(".", ":");
+  const parts = cleaned.split(":");
+  if (parts.length >= 2) {
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (!isNaN(h) && !isNaN(m)) return h * 60 + m;
+  }
+  return null;
 }
 
 // ================= HANDLERS ================= //
@@ -551,6 +602,28 @@ function recordClassAttendanceHandler(data) {
       finalKeterangan,
       new Date()
     ]);
+
+    // Kirim notifikasi realtime Telegram saat guru absen (jika diaktifkan)
+    try {
+      const setRes = getSettingsHandler();
+      const st = setRes.settings || {};
+      const isNotifAbsen = String(st.telegram_notif_absen).toLowerCase() === "true" || st.telegram_notif_absen === true;
+      if (isNotifAbsen && st.telegram_bot_token && st.telegram_chat_id) {
+        const notifStatusIcon = finalStatus === "Hadir" ? "✅" : "⚠️";
+        const notifMsg =
+          notifStatusIcon + " <b>PRESENSI KELAS BERHASIL</b>\n" +
+          "━━━━━━━━━━━━━━━━━━━━━━\n" +
+          "👨‍🏫 <b>" + (data.nama || "-") + "</b>\n" +
+          "📚 <b>Mata Pelajaran:</b> " + (data.mapel || "-") + "\n" +
+          "🏫 <b>Kelas:</b> " + (data.kelas || "-") + "\n" +
+          "⏱️ <b>Jam Presensi:</b> " + timeNowStr + " (" + finalStatus + ")\n" +
+          "📌 <b>Keterangan:</b> " + finalKeterangan + "\n" +
+          "━━━━━━━━━━━━━━━━━━━━━━";
+        sendTelegramMessage(notifMsg);
+      }
+    } catch (eNotif) {
+      Logger.log("Gagal kirim notifikasi presensi ke Telegram: " + eNotif.toString());
+    }
 
     return {
       success: true,
@@ -1105,4 +1178,264 @@ function deleteUserHandler(id) {
 function createJsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ================= MODUL NOTIFIKASI TELEGRAM ================= //
+
+/**
+ * Mengirim pesan dengan format HTML ke Telegram Bot
+ */
+function sendTelegramMessage(text, customChatId) {
+  try {
+    const settingsRes = getSettingsHandler();
+    const settings = settingsRes.settings || {};
+    const botToken = settings.telegram_bot_token;
+    const chatId = customChatId || settings.telegram_chat_id;
+
+    if (!botToken || !chatId) {
+      Logger.log("Telegram Bot Token atau Chat ID belum disetel di Pengaturan.");
+      return { success: false, message: "Bot Token atau Chat ID belum disetel di pengaturan." };
+    }
+
+    const url = "https://api.telegram.org/bot" + botToken.trim() + "/sendMessage";
+    const payload = {
+      chat_id: String(chatId).trim(),
+      text: text,
+      parse_mode: "HTML",
+      disable_web_page_preview: true
+    };
+
+    const options = {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const res = UrlFetchApp.fetch(url, options);
+    const resJson = JSON.parse(res.getContentText());
+    if (resJson.ok) {
+      return { success: true, message: "Notifikasi Telegram berhasil dikirim!", data: resJson.result };
+    } else {
+      return { success: false, message: "Gagal dari Telegram: " + (resJson.description || "Unknown error") };
+    }
+  } catch (err) {
+    Logger.log("Error sendTelegramMessage: " + err.toString());
+    return { success: false, message: "Error pengiriman Telegram: " + err.toString() };
+  }
+}
+
+/**
+ * Uji coba kirim pesan dari dashboard pengaturan admin
+ */
+function testTelegramHandler(customMsg) {
+  const settingsRes = getSettingsHandler();
+  const settings = settingsRes.settings || {};
+  if (!settings.telegram_bot_token || !settings.telegram_chat_id) {
+    return {
+      success: false,
+      message: "Bot Token dan Chat ID Grup wajib diisi terlebih dahulu!"
+    };
+  }
+
+  const schoolName = settings.nama_sekolah || "Sistem Absensi Guru";
+  const nowStr = Utilities.formatDate(new Date(), "GMT+8", "dd-MM-yyyy HH:mm:ss");
+  const msg = customMsg ||
+    "🔔 <b>UJI COBA NOTIFIKASI TELEGRAM BERHASIL!</b>\n" +
+    "━━━━━━━━━━━━━━━━━━━━━━\n" +
+    "🏫 <b>" + schoolName + "</b>\n" +
+    "Sistem Absensi Guru sukses terhubung ke grup Telegram ini.\n" +
+    "⏱️ <i>Waktu Server: " + nowStr + " WITA</i>\n\n" +
+    "Pengingat jadwal mengajar otomatis <b>5 menit sebelum kelas dimulai</b> siap aktif! 🚀\n" +
+    "━━━━━━━━━━━━━━━━━━━━━━";
+
+  return sendTelegramMessage(msg);
+}
+
+/**
+ * Pengecekan Jadwal Mengajar Otomatis (Dijalankan via Trigger setiap 5 menit)
+ * Mencari guru yang akan mengajar 1 - 7 menit ke depan dan mengirim pesan ke grup Telegram.
+ */
+function checkUpcomingClassesAndRemind() {
+  try {
+    const settingsRes = getSettingsHandler();
+    const settings = settingsRes.settings || {};
+
+    const isAktif = String(settings.telegram_notif_aktif).toLowerCase() === "true" || settings.telegram_notif_aktif === true;
+    if (!isAktif) {
+      Logger.log("Pengingat jadwal Telegram dinonaktifkan di pengaturan.");
+      return { success: false, message: "Pengingat Telegram dinonaktifkan di pengaturan." };
+    }
+
+    if (!settings.telegram_bot_token || !settings.telegram_chat_id) {
+      Logger.log("Token Bot atau Chat ID belum disetel.");
+      return { success: false, message: "Token Bot atau Chat ID belum disetel." };
+    }
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const tz = ss.getSpreadsheetTimeZone() || "GMT+8";
+
+    const now = new Date();
+    const todayStr = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+    const currentTimeStr = Utilities.formatDate(now, tz, "HH:mm");
+    const currentMinutes = parseGasMinutes(currentTimeStr);
+
+    const dayNum = Number(Utilities.formatDate(now, tz, "u"));
+    const indoDays = { 1: "Senin", 2: "Selasa", 3: "Rabu", 4: "Kamis", 5: "Jumat", 6: "Sabtu", 7: "Minggu" };
+    const currentDay = indoDays[dayNum] || getDayNameIndo(now);
+
+    if (currentMinutes === null) {
+      return { success: false, message: "Format waktu saat ini tidak valid." };
+    }
+
+    const sheetSch = ss.getSheetByName(SHEET_SCHEDULES);
+    if (!sheetSch) {
+      return { success: false, message: "Sheet JADWAL_PELAJARAN tidak ditemukan." };
+    }
+
+    const schRows = sheetSch.getDataRange().getValues();
+    const schDisplayRows = sheetSch.getDataRange().getDisplayValues();
+    const cache = PropertiesService.getScriptProperties();
+    const webUrl = settings.web_url || "https://absensi-sekolah.vercel.app";
+
+    let remindedCount = 0;
+    const details = [];
+
+    Logger.log("=== PENGECEKAN JADWAL MENGAJAR ===");
+    Logger.log("Timezone Spreadsheet: " + tz);
+    Logger.log("Hari: " + currentDay + " | Waktu Sekarang: " + currentTimeStr + " | Tanggal: " + todayStr);
+    Logger.log("Total jadwal di database: " + (schRows.length - 1));
+
+    for (let i = 1; i < schRows.length; i++) {
+      const row = schRows[i];
+      const dispRow = schDisplayRows[i];
+      const jId = String(row[0] || "");
+      const jNamaGuru = String(row[2] || "");
+      const jMapel = String(row[4] || "");
+      const jKelas = String(row[5] || "");
+      const jHari = String(dispRow[6] || row[6] || "").trim();
+      const jJamKe = String(row[7] || "");
+
+      // Ambil jam mulai & selesai langsung dari teks tampilan cell agar akurat
+      let jJamMulai = String(dispRow[8] || "").trim();
+      if (!jJamMulai || !jJamMulai.includes(":")) {
+        jJamMulai = formatGasTime(row[8]);
+      }
+      let jJamSelesai = String(dispRow[9] || "").trim();
+      if (!jJamSelesai || !jJamSelesai.includes(":")) {
+        jJamSelesai = formatGasTime(row[9]);
+      }
+      const jRuangan = String(row[10] || "-");
+
+      // Cek apakah hari mengajar sesuai hari ini
+      if (jHari.toLowerCase() !== currentDay.toLowerCase()) {
+        continue;
+      }
+
+      const startMinutes = parseGasMinutes(jJamMulai);
+      if (startMinutes === null) {
+        Logger.log("Jadwal [" + jId + "] jam mulai '" + jJamMulai + "' gagal diparse.");
+        continue;
+      }
+
+      // Hitung selisih waktu: berapa menit lagi kelas dimulai
+      const diffMinutes = startMinutes - currentMinutes;
+
+      Logger.log("Jadwal [" + jId + "] " + jNamaGuru + " (" + jKelas + " - " + jMapel + ") Mulai: " + jJamMulai + " | Selisih: " + diffMinutes + " menit");
+
+      // Rentang toleransi: -2 s/d 10 menit sebelum jam mulai
+      // Toleransi -2 s/d 10 menit mencegah pesan terlewat jika trigger server Google terlambat 1-2 menit
+      if (diffMinutes >= -2 && diffMinutes <= 10) {
+        const cacheKey = "REMIND_" + jId + "_" + todayStr;
+        if (cache.getProperty(cacheKey)) {
+          Logger.log("-> Jadwal [" + jId + "] sudah pernah diingatkan hari ini (" + cache.getProperty(cacheKey) + "). Lewati.");
+          continue;
+        }
+
+        const waktuKeterangan = diffMinutes > 0 ? (diffMinutes + " MENIT LAGI DIMULAI") : "SEGERA / SEDANG DIMULAI";
+        const text =
+          "⏰ <b>PENGINGAT KELAS (" + waktuKeterangan + ")</b>\n" +
+          "━━━━━━━━━━━━━━━━━━━━━━\n" +
+          "👨‍🏫 <b>" + jNamaGuru + "</b>\n" +
+          "📚 <b>Mata Pelajaran:</b> " + jMapel + "\n" +
+          "🏫 <b>Kelas:</b> " + jKelas + " (<i>" + jRuangan + "</i>)\n" +
+          "⏱️ <b>Jam:</b> " + jJamMulai + " - " + jJamSelesai + " (" + jJamKe + ")\n" +
+          "━━━━━━━━━━━━━━━━━━━━━━\n" +
+          "📌 <i>Bapak/Ibu Guru dimohon bersiap memasuki ruang kelas dan melakukan presensi.</i>\n\n" +
+          "👉 <a href=\"" + webUrl + "\">Buka Web Presensi Guru</a>";
+
+        const sendRes = sendTelegramMessage(text);
+        if (sendRes.success) {
+          cache.setProperty(cacheKey, "SENT_" + currentTimeStr);
+          remindedCount++;
+          details.push(jNamaGuru + " (" + jKelas + " - " + jMapel + ")");
+          Logger.log("-> Pengingat Telegram BERHASIL DIKIRIM untuk " + jNamaGuru);
+        } else {
+          Logger.log("-> GAGAL kirim ke Telegram: " + sendRes.message);
+        }
+      }
+    }
+
+    Logger.log("Hasil akhir: " + remindedCount + " pengingat terkirim.");
+
+    return {
+      success: true,
+      message: "Pengecekan selesai. Notifikasi terkirim: " + remindedCount,
+      count: remindedCount,
+      details: details
+    };
+  } catch (err) {
+    Logger.log("Error checkUpcomingClassesAndRemind: " + err.toString());
+    return { success: false, message: "Error sistem: " + err.toString() };
+  }
+}
+
+/**
+ * Pasang Trigger Google Apps Script Otomatis Setiap 5 Menit
+ * Sekaligus mengirim pesan konfirmasi langsung ke Telegram saat berhasil dipasang.
+ */
+function setupTelegramTrigger() {
+  removeTelegramTrigger(); // Hapus trigger lama agar tidak menumpuk
+  ScriptApp.newTrigger("checkUpcomingClassesAndRemind")
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+
+  Logger.log("Trigger checkUpcomingClassesAndRemind berhasil dipasang setiap 5 menit.");
+
+  // Kirim notifikasi konfirmasi langsung ke Telegram
+  const confirmMsg =
+    "🤖 <b>TRIGGER OTOMATIS BERHASIL DIAKTIFKAN!</b>\n" +
+    "━━━━━━━━━━━━━━━━━━━━━━\n" +
+    "Sistem pengingat otomatis telah aktif.\n" +
+    "Sistem akan otomatis mengecek jadwal mengajar setiap 5 menit dan mengirimkan pengingat sebelum kelas dimulai.\n" +
+    "━━━━━━━━━━━━━━━━━━━━━━";
+
+  const sendRes = sendTelegramMessage(confirmMsg);
+  if (sendRes.success) {
+    Logger.log("Pesan konfirmasi berhasil terkirim ke Telegram!");
+  } else {
+    Logger.log("Catatan: Trigger aktif, namun pesan konfirmasi belum masuk ke Telegram. Penyebab: " + sendRes.message);
+  }
+
+  return {
+    success: true,
+    message: "Trigger pengingat 5 menit berhasil aktif dan berjalan otomatis setiap 5 menit!",
+    telegramStatus: sendRes
+  };
+}
+
+/**
+ * Matikan Trigger Pengingat Otomatis
+ */
+function removeTelegramTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  let count = 0;
+  for (let i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "checkUpcomingClassesAndRemind") {
+      ScriptApp.deleteTrigger(triggers[i]);
+      count++;
+    }
+  }
+  return { success: true, message: count + " trigger pengingat berhasil dinonaktifkan." };
 }

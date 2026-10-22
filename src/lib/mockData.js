@@ -34,7 +34,12 @@ export const INITIAL_MOCK_DATA = {
     lat_sekolah: -6.2088,
     lng_sekolah: 106.8456,
     radius_meter: 250,
-    google_script_url: "https://script.google.com/macros/s/AKfycby0DdiBERSda-XSxlvdtQrr9h9JILecQhDWsrctfZu514jP-NRo3v6T6LrSKL39PrY35Q/exec"
+    google_script_url: "https://script.google.com/macros/s/AKfycby0DdiBERSda-XSxlvdtQrr9h9JILecQhDWsrctfZu514jP-NRo3v6T6LrSKL39PrY35Q/exec",
+    telegram_bot_token: "",
+    telegram_chat_id: "",
+    telegram_notif_aktif: true,
+    telegram_notif_absen: true,
+    web_url: "https://absensi-sekolah.vercel.app"
   },
   users: [
     {

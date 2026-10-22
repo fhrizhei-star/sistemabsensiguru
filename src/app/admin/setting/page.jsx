@@ -16,7 +16,14 @@ import {
   Navigation,
   Globe,
   RefreshCw,
-  School
+  School,
+  Send,
+  Bell,
+  MessageSquare,
+  HelpCircle,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 
 export default function AdminSettingPage() {
@@ -37,12 +44,20 @@ export default function AdminSettingPage() {
     lat_sekolah: -6.2088,
     lng_sekolah: 106.8456,
     radius_meter: 250,
-    google_script_url: Api.getScriptUrl()
+    google_script_url: Api.getScriptUrl(),
+    telegram_bot_token: "",
+    telegram_chat_id: "",
+    telegram_notif_aktif: true,
+    telegram_notif_absen: true,
+    web_url: "https://absensi-sekolah.vercel.app"
   });
   const [loading, setLoading] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [savedNotice, setSavedNotice] = useState(false);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramTestResult, setTelegramTestResult] = useState(null);
+  const [showTelegramGuide, setShowTelegramGuide] = useState(false);
 
   useEffect(() => {
     const user = Auth.getCurrentUser();
@@ -104,12 +119,61 @@ export default function AdminSettingPage() {
       const res = await fetch(`/api/proxy?action=getSettings&script_url=${encodeURIComponent(settings.google_script_url)}`);
       const data = await res.json();
       if (data && (data.success !== false || data.status === "success")) {
-        setTestResult({ success: true, message: "Koneksi ke Google Apps Script BERHASIL!" });
+        setTestResult({ success: true, message: "Koneksi ke Server Database BERHASIL!" });
       } else {
-        setTestResult({ success: false, message: "Google Script merespons tetapi data tidak cocok: " + (data.message || "") });
+        setTestResult({ success: false, message: "Server merespons tetapi data tidak cocok: " + (data.message || "") });
       }
     } catch (e) {
-      setTestResult({ success: false, message: "Gagal terhubung ke Google Apps Script: " + e.message });
+      setTestResult({ success: false, message: "Gagal terhubung ke Server Database: " + e.message });
+    }
+  };
+
+  const handleTestTelegram = async () => {
+    if (!settings.telegram_bot_token || !settings.telegram_chat_id) {
+      alert("Harap isi Token Bot Telegram dan Chat ID Grup terlebih dahulu!");
+      return;
+    }
+    setTelegramLoading(true);
+    setTelegramTestResult({ loading: true });
+
+    try {
+      // 1. Simpan pengaturan dulu ke backend & cache lokal
+      const db = MockDB.load();
+      db.settings = { ...db.settings, ...settings };
+      MockDB.save(db);
+      await Api.request("POST", "updateSettings", {}, { settings });
+
+      // 2. Kirim pesan test ke Telegram
+      const schoolName = settings.nama_sekolah || "Sistem Absensi Guru";
+      const nowStr = new Date().toLocaleString("id-ID", { dateStyle: "full", timeStyle: "medium" });
+      const customMsg = 
+        `🔔 <b>UJI COBA NOTIFIKASI TELEGRAM BERHASIL!</b>\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🏫 <b>${schoolName}</b>\n` +
+        `Sistem Absensi Guru sukses terhubung ke grup Telegram ini.\n` +
+        `⏱️ <i>Waktu Uji Coba: ${nowStr}</i>\n\n` +
+        `Pengingat jadwal kelas otomatis <b>5 menit sebelum mulai</b> siap aktif! 🚀\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━`;
+
+      const res = await Api.request("POST", "testTelegram", {}, { customMessage: customMsg });
+      if (res && res.success) {
+        setTelegramTestResult({
+          success: true,
+          message: "Sukses! Pesan uji coba berhasil dikirim ke grup Telegram. Silakan periksa aplikasi Telegram Anda."
+        });
+      } else {
+        setTelegramTestResult({
+          success: false,
+          message: "Gagal mengirim: " + (res?.message || "Pastikan bot sudah dimasukkan ke dalam grup dan memiliki izin kirim pesan.")
+        });
+      }
+    } catch (err) {
+      setTelegramTestResult({
+        success: false,
+        message: "Terjadi kesalahan koneksi: " + err.message
+      });
+    } finally {
+      setTelegramLoading(false);
     }
   };
 
@@ -169,7 +233,7 @@ export default function AdminSettingPage() {
                 Pengaturan Sistem & Geofencing
               </h1>
               <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
-                Konfigurasi profil sekolah, batas toleransi radius GPS, dan Google Apps Script
+                Konfigurasi profil sekolah, batas toleransi radius GPS, dan Server Database
               </p>
             </div>
 
@@ -379,18 +443,18 @@ export default function AdminSettingPage() {
               </div>
             </div>
 
-            {/* Section 3: Integrasi Google Apps Script */}
+            {/* Section 3: Integrasi Server Database Cloud */}
             <div className="glass-panel" style={{ padding: "1.75rem", border: "1.5px solid #bae6fd", background: "linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.5rem" }}>
                 <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#e0f2fe", border: "1px solid #bae6fd", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Globe size={20} color="#0284c7" />
                 </div>
                 <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)" }}>
-                  Integrasi Google Apps Script (Opsional)
+                  Integrasi Server Database Cloud (Opsional)
                 </h2>
               </div>
               <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: "1.25rem", paddingLeft: "2.8rem" }}>
-                Masukkan URL Web App dari Google Apps Script untuk sinkronisasi data presensi guru ke Google Spreadsheet sekolah secara realtime. Kosongkan jika ingin menggunakan penyimpanan database browser.
+                Masukkan URL Endpoint Server Database untuk sinkronisasi data presensi guru secara realtime. Kosongkan jika ingin menggunakan penyimpanan database browser.
               </p>
 
               <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
@@ -398,7 +462,7 @@ export default function AdminSettingPage() {
                   type="text"
                   value={settings.google_script_url || ""}
                   onChange={(e) => setSettings({ ...settings, google_script_url: e.target.value })}
-                  placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                  placeholder="https://.../exec"
                   className="neon-input"
                   style={{ flex: 1, minWidth: "260px" }}
                 />
@@ -438,12 +502,226 @@ export default function AdminSettingPage() {
                     fontWeight: 600
                   }}
                 >
-                  {testResult.loading ? "Sedang menguji koneksi ke Google Apps Script..." : testResult.message}
+                  {testResult.loading ? "Sedang menguji koneksi ke Server Database..." : testResult.message}
                 </div>
               )}
             </div>
 
-            {/* Section 4: Reset Database */}
+            {/* Section 4: Integrasi Notifikasi Telegram (Pengingat 5 Menit & Grup) */}
+            <div
+              className="glass-panel"
+              style={{
+                padding: "1.75rem",
+                border: "1.5px solid #38bdf8",
+                background: "linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.5rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "#e0f2fe", border: "1px solid #38bdf8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Send size={20} color="#0284c7" />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)" }}>
+                      Notifikasi Pengingat Telegram (Grup Guru)
+                    </h2>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowTelegramGuide(!showTelegramGuide)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#0284c7",
+                    fontSize: "0.84rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.3rem",
+                    padding: "0.4rem 0.75rem",
+                    borderRadius: "8px",
+                    background: "#ffffff"
+                  }}
+                >
+                  <HelpCircle size={16} />
+                  <span>{showTelegramGuide ? "Tutup Panduan" : "Panduan Kilat Setup (2 Menit)"}</span>
+                  {showTelegramGuide ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+              </div>
+
+              <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: "1.25rem", paddingLeft: "3rem" }}>
+                Kirim pengingat otomatis ke grup Telegram guru <strong>5 menit sebelum jam pelajaran dimulai</strong>, dan kirim notifikasi instan ketika guru selesai melakukan presensi.
+              </p>
+
+              {/* Panduan Accordion */}
+              <AnimatePresence>
+                {showTelegramGuide && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    style={{
+                      background: "#ffffff",
+                      border: "1px dashed #38bdf8",
+                      borderRadius: "10px",
+                      padding: "1.25rem",
+                      marginBottom: "1.5rem",
+                      fontSize: "0.85rem",
+                      lineHeight: "1.6",
+                      color: "var(--text-main)"
+                    }}
+                  >
+                    <h4 style={{ fontWeight: 800, color: "#0284c7", marginBottom: "0.5rem" }}>
+                      🚀 Cara Mudah Membuat Bot & Mengambil Chat ID Grup Telegram:
+                    </h4>
+                    <ol style={{ paddingLeft: "1.2rem", margin: 0 }}>
+                      <li>
+                        <strong>Buat Bot Telegram:</strong> Buka Telegram, cari bot resmi{" "}
+                        <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" style={{ color: "#0284c7", fontWeight: 700, textDecoration: "underline" }}>
+                          @BotFather <ExternalLink size={12} style={{ display: "inline" }} />
+                        </a>
+                        , kirim <code>/newbot</code>, lalu ikuti instruksinya. Salin <strong>HTTP API Token</strong> yang diberikan dan tempel ke kolom <strong>Token Bot Telegram</strong> di bawah.
+                      </li>
+                      <li>
+                        <strong>Buat / Buka Grup Guru:</strong> Buat grup Telegram guru sekolah Anda (atau gunakan grup yang sudah ada), lalu <strong>masukkan bot yang baru dibuat ke dalam grup tersebut</strong>.
+                      </li>
+                      <li>
+                        <strong>Jadikan Bot Sebagai Admin Grup</strong> agar bot memiliki hak penuh untuk mengirim pesan.
+                      </li>
+                      <li>
+                        <strong>Dapatkan Chat ID Grup:</strong> Masukkan bot pembantu{" "}
+                        <a href="https://t.me/RawDataBot" target="_blank" rel="noreferrer" style={{ color: "#0284c7", fontWeight: 700, textDecoration: "underline" }}>
+                          @RawDataBot <ExternalLink size={12} style={{ display: "inline" }} />
+                        </a>{" "}
+                        ke grup tersebut. Cari tulisan <code>&quot;chat&quot;: &#123; &quot;id&quot;: -100xxxxxxxxxx &#125;</code>. Salin seluruh angka tersebut (termasuk tanda minus <code>-</code> di depannya), lalu tempel ke kolom <strong>Chat ID Grup</strong> di bawah (setelah itu @RawDataBot bisa dikeluarkan dari grup).
+                      </li>
+                      <li>
+                        Klik tombol <strong>&quot;Uji Coba Kirim Pesan&quot;</strong> untuk memastikan notifikasi masuk ke grup!
+                      </li>
+                    </ol>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Form Input Telegram */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem", marginBottom: "1.25rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.3rem" }}>
+                    Token Bot Telegram (@BotFather)
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.telegram_bot_token || ""}
+                    onChange={(e) => setSettings({ ...settings, telegram_bot_token: e.target.value })}
+                    placeholder="Contoh: 7123456789:AAFsK9m0Zq..."
+                    className="neon-input"
+                  />
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                    Didapatkan setelah mengetik <code>/newbot</code> di @BotFather
+                  </span>
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.3rem" }}>
+                    Chat ID Grup Telegram Guru / Staf
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.telegram_chat_id || ""}
+                    onChange={(e) => setSettings({ ...settings, telegram_chat_id: e.target.value })}
+                    placeholder="Contoh: -1002345678901"
+                    className="neon-input"
+                  />
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                    ID grup biasanya diawali tanda minus (contoh: <code>-100...</code>)
+                  </span>
+                </div>
+              </div>
+
+              {/* Toggle Options */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.25rem", background: "#ffffff", padding: "1rem", borderRadius: "10px", border: "1px solid #e0f2fe" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer", fontSize: "0.88rem", fontWeight: 600, color: "var(--text-main)" }}>
+                  <input
+                    type="checkbox"
+                    checked={String(settings.telegram_notif_aktif) === "true" || settings.telegram_notif_aktif === true}
+                    onChange={(e) => setSettings({ ...settings, telegram_notif_aktif: e.target.checked })}
+                    style={{ width: "18px", height: "18px", accentColor: "#0284c7" }}
+                  />
+                  <span>⏰ Aktifkan <strong>Pengingat Jadwal Mengajar 5 Menit Sebelum Mulai</strong></span>
+                </label>
+
+                <label style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer", fontSize: "0.88rem", fontWeight: 600, color: "var(--text-main)" }}>
+                  <input
+                    type="checkbox"
+                    checked={String(settings.telegram_notif_absen) === "true" || settings.telegram_notif_absen === true}
+                    onChange={(e) => setSettings({ ...settings, telegram_notif_absen: e.target.checked })}
+                    style={{ width: "18px", height: "18px", accentColor: "#0284c7" }}
+                  />
+                  <span>📢 Kirim <strong>Notifikasi Realtime ke Grup saat Guru Melakukan Presensi</strong></span>
+                </label>
+              </div>
+
+              {/* Tombol Uji Coba */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+                <button
+                  type="button"
+                  onClick={handleTestTelegram}
+                  disabled={telegramLoading}
+                  className="btn-neon-secondary"
+                  style={{
+                    padding: "0.65rem 1.25rem",
+                    fontSize: "0.85rem",
+                    borderColor: "#38bdf8",
+                    color: "#0284c7",
+                    background: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem"
+                  }}
+                >
+                  <Send size={15} />
+                  {telegramLoading ? "Sedang Mengirim Pesan Uji Coba..." : "Uji Coba Kirim Pesan ke Telegram"}
+                </button>
+                <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                  (Akan mengirim 1 pesan tes langsung ke grup Telegram Anda)
+                </span>
+              </div>
+
+              {telegramTestResult && (
+                <div
+                  style={{
+                    padding: "0.85rem 1rem",
+                    borderRadius: "8px",
+                    background: telegramTestResult.loading
+                      ? "var(--bg-muted)"
+                      : telegramTestResult.success
+                      ? "#ecfdf5"
+                      : "#fff1f2",
+                    border: `1px solid ${
+                      telegramTestResult.loading
+                        ? "var(--border-light)"
+                        : telegramTestResult.success
+                        ? "#a7f3d0"
+                        : "#fecdd3"
+                    }`,
+                    color: telegramTestResult.loading
+                      ? "var(--text-main)"
+                      : telegramTestResult.success
+                      ? "#065f46"
+                      : "#be123c",
+                    fontSize: "0.85rem",
+                    fontWeight: 600
+                  }}
+                >
+                  {telegramTestResult.loading ? "Sedang menghubungi Telegram API..." : telegramTestResult.message}
+                </div>
+              )}
+            </div>
+
+            {/* Section 5: Reset Database */}
             <div
               className="glass-panel"
               style={{
@@ -466,7 +744,7 @@ export default function AdminSettingPage() {
                     Reset Cache Data Lokal
                   </h3>
                   <p style={{ color: "var(--text-secondary)", fontSize: "0.82rem" }}>
-                    Muat ulang data guru, jadwal, dan pengaturan dari server Google Sheets
+                    Muat ulang data guru, jadwal, dan pengaturan dari server pusat
                   </p>
                 </div>
               </div>

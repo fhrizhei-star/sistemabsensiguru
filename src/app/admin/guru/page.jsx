@@ -20,8 +20,10 @@ import {
   Camera,
   Upload,
   X,
-  Loader2
+  Loader2,
+  BookOpen
 } from "lucide-react";
+import { DAFTAR_MAPEL } from "@/lib/constants";
 
 const GURU_CARD_THEMES = [
   { border: "#c7d2fe", bg: "linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)", accent: "#4f46e5", ring: "#818cf8" },
@@ -614,16 +616,38 @@ export default function AdminGuruPage() {
                     </div>
                     <div>
                       <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                        Mata Pelajaran
+                        Mata Pelajaran Utama *
                       </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.mapel}
-                        onChange={(e) => setFormData({ ...formData, mapel: e.target.value })}
-                        placeholder="Contoh: Matematika"
+                      <select
+                        value={DAFTAR_MAPEL.includes(formData.mapel) ? formData.mapel : (formData.mapel ? "custom" : "")}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "custom") {
+                            setFormData({ ...formData, mapel: "" });
+                          } else {
+                            setFormData({ ...formData, mapel: val });
+                          }
+                        }}
                         className="neon-input"
-                      />
+                        style={{ background: "#ffffff", cursor: "pointer", fontWeight: 600 }}
+                      >
+                        <option value="">-- Pilih Mata Pelajaran --</option>
+                        {DAFTAR_MAPEL.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                        <option value="custom">✏️ Ketik Mapel Lainnya...</option>
+                      </select>
+                      {(!DAFTAR_MAPEL.includes(formData.mapel) || formData.mapel === "") && (
+                        <input
+                          type="text"
+                          required
+                          value={formData.mapel}
+                          onChange={(e) => setFormData({ ...formData, mapel: e.target.value })}
+                          placeholder="Ketik mata pelajaran guru..."
+                          className="neon-input"
+                          style={{ marginTop: "0.35rem" }}
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -769,7 +793,7 @@ export default function AdminGuruPage() {
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <label style={{ fontSize: "0.84rem", fontWeight: 700, color: "var(--text-main)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                        <Camera size={16} color="var(--primary)" /> Pasfoto Guru (Otomatis ke Google Drive)
+                        <Camera size={16} color="var(--primary)" /> Pasfoto Guru (Penyimpanan Cloud)
                       </label>
                       {fotoPreview && (
                         <button
@@ -852,7 +876,7 @@ export default function AdminGuruPage() {
                           <Upload size={15} /> Pilih File dari Komputer / HP
                         </label>
                         <p style={{ fontSize: "0.74rem", color: "var(--text-secondary)", margin: 0, lineHeight: 1.35 }}>
-                          Pilih pasfoto guru. Sistem akan <strong>otomatis menyimpannya ke Google Drive sekolah</strong> saat Anda klik Simpan.
+                          Pilih pasfoto guru. Sistem akan <strong>otomatis mengunggah dan menyimpannya secara aman ke server cloud</strong> saat Anda klik Simpan.
                         </p>
                       </div>
                     </div>

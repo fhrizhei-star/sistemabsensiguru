@@ -419,7 +419,7 @@ export default function AdminDashboardPage() {
                 },
                 {
                   title: "Pengaturan Geofencing & Sekolah",
-                  desc: "Konfigurasi koordinat GPS sekolah dan Google Sheets",
+                  desc: "Konfigurasi koordinat GPS sekolah dan server database",
                   href: "/admin/setting",
                   icon: School,
                   color: "#059669"

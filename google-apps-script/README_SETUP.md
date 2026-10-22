@@ -57,3 +57,40 @@ Setelah database diinisialisasi otomatis oleh script, akun berikut langsung akti
 | **Guru** | `199003202015022001` | `guru123` | Siti Nurhaliza, S.Pd | Bahasa Indonesia |
 | **Guru** | `199208142019031005` | `guru123` | Ahmad Fauzi, S.Kom | Informatika / TIK |
 | **Guru** | `198811052014022003` | `guru123` | Dewi Lestari, S.Pd, M.Si | Fisika |
+
+---
+
+## Langkah 6: Mengaktifkan Notifikasi Telegram Pengingat 5 Menit (Opsi A)
+
+Sistem sudah dilengkapi dengan fitur pengingat otomatis **5 menit sebelum jam pelajaran dimulai** yang dikirimkan langsung ke Grup Telegram Guru/Staf Sekolah (100% Gratis Selamanya).
+
+### 1. Buat Bot Telegram
+1. Buka aplikasi Telegram di HP atau Laptop.
+2. Cari akun resmi **`@BotFather`** lalu klik **Start**.
+3. Ketik perintah: `/newbot`
+4. Masukkan nama bot, contoh: `Absensi MTsN Gowa`
+5. Masukkan username bot berakhiran `bot`, contoh: `mtsn_gowa_absensibot`
+6. BotFather akan memberikan **HTTP API Token** (contoh: `7123456789:AAFsK9m0Zq...`). Salin token ini.
+
+### 2. Dapatkan Chat ID Grup Telegram
+1. Buat grup Telegram guru sekolah (atau gunakan grup guru yang sudah ada).
+2. Masukkan bot yang baru Anda buat ke dalam grup tersebut.
+3. Jadikan bot sebagai **Admin grup**.
+4. Masukkan bot pembantu **`@RawDataBot`** ke dalam grup.
+5. Bot tersebut akan mengirimkan data JSON. Cari tulisan `"chat": { "id": -100xxxxxxxxxx }`.
+6. Salin seluruh nomor ID tersebut (pastikan menyertakan tanda minus `-` di depannya).
+7. Keluarkan `@RawDataBot` dari grup.
+
+### 3. Simpan di Halaman Pengaturan Web
+1. Masuk ke halaman **Admin > Pengaturan**.
+2. Masukkan **Token Bot** dan **Chat ID Grup** pada bagian *Notifikasi Pengingat Telegram*.
+3. Klik tombol **Uji Coba Kirim Pesan ke Telegram**. Bot akan langsung mengirimkan pesan tes ke grup!
+4. Klik tombol **Simpan Pengaturan**.
+
+### 4. Pasang Trigger Otomatis 5 Menit di Apps Script
+Agar Apps Script otomatis mengecek jadwal setiap 5 menit:
+1. Buka kembali editor **Google Apps Script**.
+2. Pada dropdown fungsi di toolbar atas (sebelah tombol *Debug* dan *Run*), pilih fungsi: **`setupTelegramTrigger`**.
+3. Klik tombol **Run** (Jalankan).
+4. Selesai! Sekarang sistem akan berjalan otomatis setiap 5 menit di latar belakang untuk mengingatkan guru yang memiliki jadwal mengajar 5 menit ke depan.
+

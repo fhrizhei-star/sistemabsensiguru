@@ -37,7 +37,7 @@ export async function GET(request) {
 
     if (!scriptUrl || scriptUrl.includes("GANTI_DENGAN_URL")) {
       return NextResponse.json(
-        { success: false, message: "Google Apps Script URL belum dikonfigurasi." },
+        { success: false, message: "URL Server Database belum dikonfigurasi." },
         { headers: getCORSHeaders() }
       );
     }
@@ -86,7 +86,7 @@ export async function POST(request) {
 
     if (!scriptUrl || scriptUrl.includes("GANTI_DENGAN_URL")) {
       return NextResponse.json(
-        { success: false, message: "Google Apps Script URL belum dikonfigurasi." },
+        { success: false, message: "URL Server Database belum dikonfigurasi." },
         { headers: getCORSHeaders() }
       );
     }

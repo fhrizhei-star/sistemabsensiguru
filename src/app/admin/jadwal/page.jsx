@@ -13,8 +13,17 @@ import {
   Edit2,
   Trash2,
   MapPin,
-  AlertTriangle
+  AlertTriangle,
+  Clock,
+  BookOpen,
+  School
 } from "lucide-react";
+import {
+  DAFTAR_KELAS,
+  DAFTAR_MAPEL,
+  DAFTAR_RUANGAN,
+  DAFTAR_SESI_JAM
+} from "@/lib/constants";
 
 const DAYS = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 
@@ -38,13 +47,13 @@ export default function AdminJadwalPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [formData, setFormData] = useState({
     hari: "Senin",
-    kelas: "X MIPA 1",
+    kelas: "VII.1",
     guru_id: "",
-    mapel: "",
-    jam_ke: "Jam Ke 1 - 2",
+    mapel: DAFTAR_MAPEL[0],
+    jam_ke: "Jam Ke I - II",
     jam_mulai: "07:30",
-    jam_selesai: "09:00",
-    ruangan: "R. Kelas X-1"
+    jam_selesai: "08:50",
+    ruangan: "R. Kelas VII.1"
   });
 
   useEffect(() => {
@@ -69,7 +78,7 @@ export default function AdminJadwalPage() {
         setFormData((prev) => ({
           ...prev,
           guru_id: tRes.users[0].id,
-          mapel: tRes.users[0].mapel || ""
+          mapel: tRes.users[0].mapel || prev.mapel || DAFTAR_MAPEL[0]
         }));
       }
     }
@@ -80,25 +89,26 @@ export default function AdminJadwalPage() {
       setEditingSched(sched);
       setFormData({
         hari: sched.hari || selectedDay,
-        kelas: sched.kelas || "X MIPA 1",
+        kelas: sched.kelas || "VII.1",
         guru_id: sched.guru_id || (teachers[0]?.id || ""),
-        mapel: sched.mapel || "",
-        jam_ke: sched.jam_ke || "Jam Ke 1 - 2",
+        mapel: sched.mapel || (teachers[0]?.mapel || DAFTAR_MAPEL[0]),
+        jam_ke: sched.jam_ke || "Jam Ke I - II",
         jam_mulai: sched.jam_mulai || "07:30",
-        jam_selesai: sched.jam_selesai || "09:00",
-        ruangan: sched.ruangan || "R. Kelas"
+        jam_selesai: sched.jam_selesai || "08:50",
+        ruangan: sched.ruangan || `R. Kelas ${sched.kelas || "VII.1"}`
       });
     } else {
       setEditingSched(null);
+      const isJumat = selectedDay === "Jumat";
       setFormData({
         hari: selectedDay,
-        kelas: "X MIPA 1",
+        kelas: "VII.1",
         guru_id: teachers[0]?.id || "",
-        mapel: teachers[0]?.mapel || "",
-        jam_ke: "Jam Ke 1 - 2",
-        jam_mulai: "07:30",
-        jam_selesai: "09:00",
-        ruangan: "R. Kelas X-1"
+        mapel: teachers[0]?.mapel || DAFTAR_MAPEL[0],
+        jam_ke: "Jam Ke I - II",
+        jam_mulai: isJumat ? "07:00" : "07:30",
+        jam_selesai: isJumat ? "08:20" : "08:50",
+        ruangan: "R. Kelas VII.1"
       });
     }
     setModalOpen(true);
@@ -106,11 +116,31 @@ export default function AdminJadwalPage() {
 
   const handleTeacherSelect = (teacherId) => {
     const t = teachers.find((item) => item.id === teacherId);
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       guru_id: teacherId,
-      mapel: t?.mapel || formData.mapel
-    });
+      mapel: t?.mapel || prev.mapel
+    }));
+  };
+
+  const handleKelasChange = (newKelas) => {
+    setFormData((prev) => ({
+      ...prev,
+      kelas: newKelas,
+      ruangan: !prev.ruangan || prev.ruangan.startsWith("R. Kelas") ? `R. Kelas ${newKelas}` : prev.ruangan
+    }));
+  };
+
+  const handleSesiChange = (sesiLabel) => {
+    const sesi = DAFTAR_SESI_JAM.find((s) => s.label === sesiLabel);
+    if (sesi) {
+      setFormData((prev) => ({
+        ...prev,
+        jam_ke: sesi.jam_ke,
+        jam_mulai: sesi.jam_mulai,
+        jam_selesai: sesi.jam_selesai
+      }));
+    }
   };
 
   const handleSaveSchedule = async (e) => {
@@ -408,7 +438,9 @@ export default function AdminJadwalPage() {
               style={{
                 position: "relative",
                 width: "100%",
-                maxWidth: "500px",
+                maxWidth: "540px",
+                maxHeight: "92vh",
+                overflowY: "auto",
                 background: "#ffffff",
                 border: "1px solid var(--border-light)",
                 borderRadius: "var(--radius-xl)",
@@ -430,7 +462,7 @@ export default function AdminJadwalPage() {
                       value={formData.hari}
                       onChange={(e) => setFormData({ ...formData, hari: e.target.value })}
                       className="neon-input"
-                      style={{ cursor: "pointer" }}
+                      style={{ cursor: "pointer", background: "#ffffff" }}
                     >
                       {DAYS.map((d) => (
                         <option key={d} value={d}>{d}</option>
@@ -439,16 +471,122 @@ export default function AdminJadwalPage() {
                   </div>
                   <div>
                     <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                      Kelas
+                      Pilih Kelas *
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.kelas}
-                      onChange={(e) => setFormData({ ...formData, kelas: e.target.value })}
-                      placeholder="Contoh: X MIPA 1"
+                    <select
+                      value={DAFTAR_KELAS.includes(formData.kelas) ? formData.kelas : "custom"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "custom") {
+                          handleKelasChange("");
+                        } else {
+                          handleKelasChange(val);
+                        }
+                      }}
                       className="neon-input"
-                    />
+                      style={{ cursor: "pointer", background: "#ffffff", fontWeight: 700 }}
+                    >
+                      <optgroup label="── Tingkat Kelas VII (7) ──">
+                        {DAFTAR_KELAS.filter(k => k.startsWith("VII.")).map(k => (
+                          <option key={k} value={k}>Kelas {k}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="── Tingkat Kelas VIII (8) ──">
+                        {DAFTAR_KELAS.filter(k => k.startsWith("VIII.")).map(k => (
+                          <option key={k} value={k}>Kelas {k}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="── Tingkat Kelas IX (9) ──">
+                        {DAFTAR_KELAS.filter(k => k.startsWith("IX.")).map(k => (
+                          <option key={k} value={k}>Kelas {k}</option>
+                        ))}
+                      </optgroup>
+                      <option value="custom">✏️ Kelas Lainnya...</option>
+                    </select>
+                    {!DAFTAR_KELAS.includes(formData.kelas) && (
+                      <input
+                        type="text"
+                        required
+                        value={formData.kelas}
+                        onChange={(e) => handleKelasChange(e.target.value)}
+                        placeholder="Ketik nama kelas..."
+                        className="neon-input"
+                        style={{ marginTop: "0.4rem" }}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Template Sesi Jam (I - VIII) */}
+                <div style={{ background: "#f8fafc", padding: "0.85rem", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.35rem" }}>
+                    <Clock size={15} color="#0284c7" /> Pilih Sesi Jam Pelajaran (I - VIII)
+                  </label>
+                  <select
+                    onChange={(e) => handleSesiChange(e.target.value)}
+                    className="neon-input"
+                    style={{ background: "#ffffff", cursor: "pointer", fontSize: "0.85rem" }}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>-- Pilih Jam Ke I s/d VIII (Otomatis Isi Waktu) --</option>
+                    <optgroup label="── Blok 2 Jam Pelajaran (Senin - Kamis & Sabtu) ──">
+                      {DAFTAR_SESI_JAM.filter(s => s.kategori.startsWith("Blok 2 Jam")).map(s => (
+                        <option key={s.label} value={s.label}>{s.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="── Khusus Hari Jumat (I - VI) ──">
+                      {DAFTAR_SESI_JAM.filter(s => s.kategori.startsWith("Jumat")).map(s => (
+                        <option key={s.label} value={s.label}>{s.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="── Sesi Tunggal / Per 1 Jam (I s/d VIII) ──">
+                      {DAFTAR_SESI_JAM.filter(s => s.kategori.startsWith("Sesi 1 Jam")).map(s => (
+                        <option key={s.label} value={s.label}>{s.label}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: "0.6rem", marginTop: "0.65rem" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.2rem" }}>
+                        Label Sesi
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.jam_ke}
+                        onChange={(e) => setFormData({ ...formData, jam_ke: e.target.value })}
+                        placeholder="Contoh: Jam Ke I - II"
+                        className="neon-input"
+                        style={{ fontSize: "0.82rem", padding: "0.45rem 0.65rem" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.2rem" }}>
+                        Jam Mulai
+                      </label>
+                      <input
+                        type="time"
+                        required
+                        value={formData.jam_mulai}
+                        onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })}
+                        className="neon-input"
+                        style={{ fontSize: "0.82rem", padding: "0.45rem 0.65rem" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.2rem" }}>
+                        Jam Selesai
+                      </label>
+                      <input
+                        type="time"
+                        required
+                        value={formData.jam_selesai}
+                        onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })}
+                        className="neon-input"
+                        style={{ fontSize: "0.82rem", padding: "0.45rem 0.65rem" }}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -460,7 +598,7 @@ export default function AdminJadwalPage() {
                     value={formData.guru_id}
                     onChange={(e) => handleTeacherSelect(e.target.value)}
                     className="neon-input"
-                    style={{ cursor: "pointer" }}
+                    style={{ cursor: "pointer", background: "#ffffff" }}
                   >
                     {teachers.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -472,56 +610,79 @@ export default function AdminJadwalPage() {
 
                 <div>
                   <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                    Mata Pelajaran
+                    Mata Pelajaran *
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.mapel}
-                    onChange={(e) => setFormData({ ...formData, mapel: e.target.value })}
-                    placeholder="Contoh: Matematika"
+                  <select
+                    value={DAFTAR_MAPEL.includes(formData.mapel) ? formData.mapel : "custom"}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "custom") {
+                        setFormData({ ...formData, mapel: "" });
+                      } else {
+                        setFormData({ ...formData, mapel: val });
+                      }
+                    }}
                     className="neon-input"
-                  />
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                      Jam Mulai
-                    </label>
+                    style={{ cursor: "pointer", background: "#ffffff" }}
+                  >
+                    <option value="">-- Pilih Mata Pelajaran --</option>
+                    {DAFTAR_MAPEL.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                    <option value="custom">✏️ Ketik Mapel Lainnya...</option>
+                  </select>
+                  {!DAFTAR_MAPEL.includes(formData.mapel) && (
                     <input
-                      type="time"
+                      type="text"
                       required
-                      value={formData.jam_mulai}
-                      onChange={(e) => setFormData({ ...formData, jam_mulai: e.target.value })}
+                      value={formData.mapel}
+                      onChange={(e) => setFormData({ ...formData, mapel: e.target.value })}
+                      placeholder="Ketik mata pelajaran..."
                       className="neon-input"
+                      style={{ marginTop: "0.4rem" }}
                     />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                      Jam Selesai
-                    </label>
-                    <input
-                      type="time"
-                      required
-                      value={formData.jam_selesai}
-                      onChange={(e) => setFormData({ ...formData, jam_selesai: e.target.value })}
-                      className="neon-input"
-                    />
-                  </div>
+                  )}
                 </div>
 
                 <div>
                   <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                    Ruangan Kelas / Lab
+                    Ruangan Kelas / Fasilitas
                   </label>
-                  <input
-                    type="text"
-                    value={formData.ruangan}
-                    onChange={(e) => setFormData({ ...formData, ruangan: e.target.value })}
-                    placeholder="Contoh: R. Kelas X-1 / Lab Komputer"
+                  <select
+                    value={DAFTAR_RUANGAN.includes(formData.ruangan) ? formData.ruangan : "custom"}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "custom") {
+                        setFormData({ ...formData, ruangan: "" });
+                      } else {
+                        setFormData({ ...formData, ruangan: val });
+                      }
+                    }}
                     className="neon-input"
-                  />
+                    style={{ cursor: "pointer", background: "#ffffff" }}
+                  >
+                    <optgroup label="── Ruang Kelas (VII, VIII, IX) ──">
+                      {DAFTAR_RUANGAN.filter(r => r.startsWith("R. Kelas")).map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="── Laboratorium & Fasilitas ──">
+                      {DAFTAR_RUANGAN.filter(r => !r.startsWith("R. Kelas")).map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </optgroup>
+                    <option value="custom">✏️ Ketik Ruangan Lainnya...</option>
+                  </select>
+                  {!DAFTAR_RUANGAN.includes(formData.ruangan) && (
+                    <input
+                      type="text"
+                      value={formData.ruangan}
+                      onChange={(e) => setFormData({ ...formData, ruangan: e.target.value })}
+                      placeholder="Contoh: R. Kelas VII.1 / Lab Komputer"
+                      className="neon-input"
+                      style={{ marginTop: "0.4rem" }}
+                    />
+                  )}
                 </div>
 
                 <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
