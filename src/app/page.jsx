@@ -20,6 +20,7 @@ import {
   Phone,
   ArrowLeft
 } from "lucide-react";
+import { DAFTAR_MAPEL } from "@/lib/constants";
 
 // --- Welcome Screen Component ---
 function WelcomeScreen({ user, onDone }) {
@@ -309,6 +310,7 @@ export default function LoginPage() {
     mapel: "",
     no_hp: ""
   });
+  const [isCustomMapel, setIsCustomMapel] = useState(false);
 
   useEffect(() => {
     // 1. Cek sesi login yang tersimpan jika pengguna mencentang 'Ingat Saya'
@@ -416,6 +418,7 @@ export default function LoginPage() {
           mapel: "",
           no_hp: ""
         });
+        setIsCustomMapel(false);
       } else {
         setErrorMsg("Gagal mendaftar: " + (res?.message || "Terjadi kesalahan"));
       }
@@ -819,17 +822,57 @@ export default function LoginPage() {
                     Mata Pelajaran *
                   </label>
                   <div style={{ position: "relative" }}>
-                    <input
-                      type="text"
+                    <select
                       required
-                      value={regForm.mapel}
-                      onChange={(e) => setRegForm({ ...regForm, mapel: e.target.value })}
-                      placeholder="Matematika"
+                      value={DAFTAR_MAPEL.includes(regForm.mapel) ? regForm.mapel : (isCustomMapel ? "custom" : (regForm.mapel ? "custom" : ""))}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "custom") {
+                          setIsCustomMapel(true);
+                          setRegForm({ ...regForm, mapel: "" });
+                        } else {
+                          setIsCustomMapel(false);
+                          setRegForm({ ...regForm, mapel: val });
+                        }
+                      }}
                       className="neon-input"
-                      style={{ paddingLeft: "2.4rem", borderColor: "#a7f3d0" }}
-                    />
-                    <BookOpen size={16} color="#059669" style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)" }} />
+                      style={{
+                        paddingLeft: "2.4rem",
+                        borderColor: "#a7f3d0",
+                        background: "#ffffff",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        fontSize: "0.85rem",
+                        color: "var(--text-main)"
+                      }}
+                    >
+                      <option value="">-- Pilih Mata Pelajaran --</option>
+                      {DAFTAR_MAPEL.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                      <option value="custom">✏️ Ketik Mapel Lainnya...</option>
+                    </select>
+                    <BookOpen size={16} color="#059669" style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
                   </div>
+
+                  {isCustomMapel && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      style={{ marginTop: "0.4rem" }}
+                    >
+                      <input
+                        type="text"
+                        required
+                        value={regForm.mapel}
+                        onChange={(e) => setRegForm({ ...regForm, mapel: e.target.value })}
+                        placeholder="Ketik mata pelajaran Anda..."
+                        className="neon-input"
+                        style={{ borderColor: "#a7f3d0", fontSize: "0.85rem" }}
+                        autoFocus
+                      />
+                    </motion.div>
+                  )}
                 </div>
               </div>
 
