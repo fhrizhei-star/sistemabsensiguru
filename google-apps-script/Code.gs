@@ -122,7 +122,7 @@ function initDatabase() {
     sheetSettings.appendRow(["telegram_chat_id", "", "Chat ID Grup Telegram Guru / Staf"]);
     sheetSettings.appendRow(["telegram_notif_aktif", "true", "Aktifkan Pengingat Kelas 5 Menit ke Telegram (true/false)"]);
     sheetSettings.appendRow(["telegram_notif_absen", "true", "Notifikasi Realtime saat Guru Absen ke Telegram (true/false)"]);
-    sheetSettings.appendRow(["web_url", "https://absensi-sekolah.vercel.app", "Link Website Absensi Sekolah"]);
+    sheetSettings.appendRow(["web_url", "https://sistemabsensiguru.vercel.app", "Link Website Absensi Sekolah"]);
   } else {
     const sRows = sheetSettings.getDataRange().getValues();
     const existingKeys = {};
@@ -135,7 +135,7 @@ function initDatabase() {
       ["telegram_chat_id", "", "Chat ID Grup Telegram Guru / Staf"],
       ["telegram_notif_aktif", "true", "Aktifkan Pengingat Kelas 5 Menit ke Telegram (true/false)"],
       ["telegram_notif_absen", "true", "Notifikasi Realtime saat Guru Absen ke Telegram (true/false)"],
-      ["web_url", "https://absensi-sekolah.vercel.app", "Link Website Absensi Sekolah"]
+      ["web_url", "https://sistemabsensiguru.vercel.app", "Link Website Absensi Sekolah"]
     ];
     for (let k = 0; k < defaultSettings.length; k++) {
       if (!existingKeys[defaultSettings[k][0]]) {
@@ -331,6 +331,9 @@ function getSettingsHandler() {
   if (settings.jam_masuk_akhir) settings.jam_masuk_akhir = formatGasTime(settings.jam_masuk_akhir);
   if (settings.jam_pulang) settings.jam_pulang = formatGasTime(settings.jam_pulang);
   if (!settings.no_telp) settings.no_telp = "(0411) 861234";
+  if (!settings.web_url || settings.web_url.indexOf("absensi-sekolah.vercel.app") !== -1) {
+    settings.web_url = "https://sistemabsensiguru.vercel.app";
+  }
 
   return { success: true, settings: settings };
 }
@@ -1296,7 +1299,10 @@ function checkUpcomingClassesAndRemind() {
     const schRows = sheetSch.getDataRange().getValues();
     const schDisplayRows = sheetSch.getDataRange().getDisplayValues();
     const cache = PropertiesService.getScriptProperties();
-    const webUrl = settings.web_url || "https://absensi-sekolah.vercel.app";
+    let webUrl = settings.web_url || "https://sistemabsensiguru.vercel.app";
+    if (!webUrl || webUrl.indexOf("absensi-sekolah.vercel.app") !== -1) {
+      webUrl = "https://sistemabsensiguru.vercel.app";
+    }
 
     let remindedCount = 0;
     const details = [];

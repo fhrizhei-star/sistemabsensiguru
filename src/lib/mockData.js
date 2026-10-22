@@ -39,7 +39,7 @@ export const INITIAL_MOCK_DATA = {
     telegram_chat_id: "",
     telegram_notif_aktif: true,
     telegram_notif_absen: true,
-    web_url: "https://absensi-sekolah.vercel.app"
+    web_url: "https://sistemabsensiguru.vercel.app"
   },
   users: [
     {

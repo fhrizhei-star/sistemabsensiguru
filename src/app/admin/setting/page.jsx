@@ -49,7 +49,7 @@ export default function AdminSettingPage() {
     telegram_chat_id: "",
     telegram_notif_aktif: true,
     telegram_notif_absen: true,
-    web_url: "https://absensi-sekolah.vercel.app"
+    web_url: "https://sistemabsensiguru.vercel.app"
   });
   const [loading, setLoading] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -639,6 +639,23 @@ export default function AdminSettingPage() {
                     ID grup biasanya diawali tanda minus (contoh: <code>-100...</code>)
                   </span>
                 </div>
+              </div>
+
+              {/* URL Website Absensi untuk Tombol Link di Telegram */}
+              <div style={{ marginBottom: "1.25rem" }}>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.3rem" }}>
+                  Link Website Absensi di Pesan Telegram
+                </label>
+                <input
+                  type="url"
+                  value={settings.web_url || "https://sistemabsensiguru.vercel.app"}
+                  onChange={(e) => setSettings({ ...settings, web_url: e.target.value })}
+                  placeholder="https://sistemabsensiguru.vercel.app"
+                  className="neon-input"
+                />
+                <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                  Tautan yang akan disematkan pada pesan pengingat jadwal mengajar Telegram agar guru dapat langsung membuka web.
+                </span>
               </div>
 
               {/* Toggle Options */}
