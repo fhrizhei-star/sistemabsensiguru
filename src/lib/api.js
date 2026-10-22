@@ -8,14 +8,16 @@ function formatTimeString(val) {
   if (!val) return "";
   const s = String(val).trim();
   if (/^\d{2}:\d{2}$/.test(s)) return s;
-  if (s.includes("GMT") || s.includes("1899")) {
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) {
-      const h = String(d.getHours()).padStart(2, "0");
-      const m = String(d.getMinutes()).padStart(2, "0");
-      return `${h}:${m}`;
-    }
+
+  // Jika string memuat format waktu seperti "07:30:00" atau "Sat Dec 30 1899 07:30:00 GMT..."
+  // Ekstrak langsung HH:mm murni dari teks agar tidak bergeser karena konversi zona waktu (WIB vs WITA)
+  const timeRegexMatch = s.match(/(?:^|\s|T)(\d{1,2})[:.](\d{2})(?::\d{2})?/);
+  if (timeRegexMatch) {
+    const h = timeRegexMatch[1].padStart(2, "0");
+    const m = timeRegexMatch[2];
+    return `${h}:${m}`;
   }
+
   const match = s.match(/(\d{1,2})[:.](\d{2})/);
   if (match) {
     return `${match[1].padStart(2, "0")}:${match[2]}`;

@@ -414,8 +414,8 @@ function getTeacherTodaySchedulesHandler(userId, tanggal, hariParam) {
   const targetDateStr = tanggal || Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
   const targetDay = hariParam || getDayNameIndo(new Date(targetDateStr));
 
-  // Ambil semua jadwal guru ini
-  const schRows = sheetSch.getDataRange().getValues();
+  // Ambil semua jadwal guru ini (gunakan getDisplayValues agar jam tidak terdistorsi timezone)
+  const schRows = sheetSch.getDataRange().getDisplayValues();
   const schedules = [];
 
   for (let i = 1; i < schRows.length; i++) {
@@ -644,7 +644,7 @@ function getSchedulesHandler(hari, guru_id, kelas, mapel) {
   let sheet = ss.getSheetByName(SHEET_SCHEDULES);
   if (!sheet) return { success: true, list: [] };
 
-  const rows = sheet.getDataRange().getValues();
+  const rows = sheet.getDataRange().getDisplayValues();
   const list = [];
 
   for (let i = 1; i < rows.length; i++) {
@@ -698,8 +698,8 @@ function saveScheduleHandler(raw) {
         if (data.kelas) sheet.getRange(i + 1, 6).setValue(data.kelas);
         if (data.hari) sheet.getRange(i + 1, 7).setValue(data.hari);
         if (data.jam_ke) sheet.getRange(i + 1, 8).setValue(data.jam_ke);
-        if (data.jam_mulai) sheet.getRange(i + 1, 9).setValue(data.jam_mulai);
-        if (data.jam_selesai) sheet.getRange(i + 1, 10).setValue(data.jam_selesai);
+        if (data.jam_mulai) sheet.getRange(i + 1, 9).setValue("'" + String(data.jam_mulai).replace(/^'/, ""));
+        if (data.jam_selesai) sheet.getRange(i + 1, 10).setValue("'" + String(data.jam_selesai).replace(/^'/, ""));
         if (data.ruangan) sheet.getRange(i + 1, 11).setValue(data.ruangan);
 
         return { success: true, message: "Jadwal pelajaran berhasil diperbarui!" };
@@ -717,8 +717,8 @@ function saveScheduleHandler(raw) {
       data.kelas,
       data.hari,
       data.jam_ke || "Jam Ke 1 - 2",
-      data.jam_mulai,
-      data.jam_selesai,
+      "'" + String(data.jam_mulai || "").replace(/^'/, ""),
+      "'" + String(data.jam_selesai || "").replace(/^'/, ""),
       data.ruangan || "-",
       new Date()
     ]);
