@@ -283,6 +283,48 @@ export const INITIAL_MOCK_DATA = {
       status: "Disetujui",
       created_at: new Date().toISOString()
     }
+  ],
+  lkb: [
+    {
+      id: "LKB1001",
+      user_id: "U002",
+      nama: "Drs. Bambang Sudarsono, M.Pd",
+      nip: "198501152010011002",
+      mapel_jabatan: "Guru Madya / Matematika",
+      bulan: "Oktober",
+      tahun: "2026",
+      judul: "LKB Bulan Oktober 2026 - Matematika",
+      file_name: "LKB_Bambang_Oktober_2026.pdf",
+      file_url: "https://drive.google.com",
+      file_drive_id: "",
+      file_size: "1.4 MB",
+      catatan: "Laporan kegiatan belajar mengajar bulan Oktober beserta rekap nilai tugas",
+      status: "Disetujui",
+      alasan_penolakan: "",
+      diverifikasi_oleh: "Bpk. Hendra Gunawan, S.Kom",
+      diverifikasi_pada: "2026-10-31 14:20",
+      created_at: "2026-10-30 09:15"
+    },
+    {
+      id: "LKB1002",
+      user_id: "U003",
+      nama: "Siti Nurhaliza, S.Pd",
+      nip: "199003202015022001",
+      mapel_jabatan: "Guru Pertama / Bahasa Indonesia",
+      bulan: "November",
+      tahun: "2026",
+      judul: "LKB Bulan November 2026 - Bahasa Indonesia",
+      file_name: "LKB_Siti_November_2026.pdf",
+      file_url: "https://drive.google.com",
+      file_drive_id: "",
+      file_size: "2.1 MB",
+      catatan: "Laporan kinerja mengajar dan modul ajar kurikulum merdeka",
+      status: "Menunggu Verifikasi",
+      alasan_penolakan: "",
+      diverifikasi_oleh: "",
+      diverifikasi_pada: "",
+      created_at: "2026-11-01 10:30"
+    }
   ]
 };
 

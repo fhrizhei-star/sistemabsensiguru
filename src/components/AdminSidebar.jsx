@@ -12,6 +12,7 @@ import {
   CalendarDays,
   FileSpreadsheet,
   CheckCircle2,
+  FileCheck,
   Sliders,
   ChevronRight
 } from "lucide-react";
@@ -22,6 +23,7 @@ const MENU_ITEMS = [
   { href: "/admin/jadwal", label: "Jadwal Pelajaran", shortLabel: "Jadwal", icon: CalendarDays, color: "#f59e0b", bg: "#fffbeb", border: "#fde68a" },
   { href: "/admin/rekap", label: "Rekap Presensi", shortLabel: "Rekap", icon: FileSpreadsheet, color: "#10b981", bg: "#ecfdf5", border: "#a7f3d0" },
   { href: "/admin/izin", label: "Verifikasi Izin", shortLabel: "Izin", icon: CheckCircle2, color: "#0284c7", bg: "#f0f9ff", border: "#bae6fd" },
+  { href: "/admin/lkb", label: "Verifikasi LKB", shortLabel: "LKB", icon: FileCheck, color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
   { href: "/admin/setting", label: "Pengaturan Sistem", shortLabel: "Setting", icon: Sliders, color: "#8b5cf6", bg: "#f5f3ff", border: "#ddd6fe" }
 ];
 

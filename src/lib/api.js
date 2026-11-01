@@ -165,6 +165,13 @@ export const Api = {
             status: l.status === "Menunggu" ? "Menunggu Verifikasi" : l.status
           }));
           data.list = data.leaves;
+        } else if (action === "getLkb") {
+          data.lkb = (data.lkb || data.list || []).map((item) => ({
+            ...item,
+            nip: String(item.nip || "").replace(/^'/, ""),
+            status: item.status === "Menunggu" ? "Menunggu Verifikasi" : item.status
+          }));
+          data.list = data.lkb;
         } else if (action === "getDashboardStats") {
           if (data.stats) {
             data.stats = {
@@ -391,6 +398,88 @@ export const Api = {
           return { success: true, message: `Status izin berhasil diubah menjadi ${status}` };
         }
         return { success: false, message: "Data izin tidak ditemukan" };
+      }
+
+      case "getLkb": {
+        let list = [...(db.lkb || [])];
+        if (params.user_id) list = list.filter((l) => l.user_id === params.user_id);
+        if (params.bulan && params.bulan !== "Semua") {
+          list = list.filter((l) => (l.bulan || "").toLowerCase() === params.bulan.toLowerCase());
+        }
+        if (params.tahun && params.tahun !== "Semua") {
+          list = list.filter((l) => String(l.tahun) === String(params.tahun));
+        }
+        if (params.status && params.status !== "Semua") {
+          list = list.filter((l) => l.status === params.status);
+        }
+        return { success: true, lkb: list.reverse(), list: list.reverse() };
+      }
+
+      case "submitLkb": {
+        if (!db.lkb) db.lkb = [];
+        const payload = body || {};
+
+        if (payload.lkb_id) {
+          const idx = db.lkb.findIndex((l) => l.id === payload.lkb_id);
+          if (idx !== -1) {
+            db.lkb[idx] = {
+              ...db.lkb[idx],
+              ...payload,
+              status: "Menunggu Verifikasi",
+              alasan_penolakan: "",
+              diverifikasi_oleh: "",
+              diverifikasi_pada: "",
+              created_at: new Date().toISOString()
+            };
+            MockDB.save(db);
+            return {
+              success: true,
+              message: "Revisi file LKB berhasil diunggah dan menunggu verifikasi admin",
+              id: payload.lkb_id
+            };
+          }
+        }
+
+        const newLkb = {
+          id: "LKB" + Date.now(),
+          status: "Menunggu Verifikasi",
+          alasan_penolakan: "",
+          diverifikasi_oleh: "",
+          diverifikasi_pada: "",
+          created_at: new Date().toISOString(),
+          file_url: payload.file_url || "https://drive.google.com",
+          file_name: payload.file_name || "LKB_Dokumen.pdf",
+          file_size: payload.file_size || "1.2 MB",
+          ...payload
+        };
+        db.lkb.push(newLkb);
+        MockDB.save(db);
+        return { success: true, message: "File LKB berhasil diunggah", id: newLkb.id };
+      }
+
+      case "updateLkbStatus": {
+        if (!db.lkb) db.lkb = [];
+        const idx = db.lkb.findIndex((l) => l.id === body?.id);
+        if (idx !== -1) {
+          db.lkb[idx].status = body.status;
+          db.lkb[idx].alasan_penolakan = body.alasan_penolakan || "";
+          db.lkb[idx].diverifikasi_oleh = body.diverifikasi_oleh || "Admin";
+          db.lkb[idx].diverifikasi_pada = new Date().toISOString();
+          MockDB.save(db);
+          return {
+            success: true,
+            message: `Status LKB berhasil diperbarui menjadi: ${body.status}`
+          };
+        }
+        return { success: false, message: "Data LKB tidak ditemukan" };
+      }
+
+      case "deleteLkb": {
+        if (!db.lkb) db.lkb = [];
+        const id = body?.id || params.id;
+        db.lkb = db.lkb.filter((l) => l.id !== id);
+        MockDB.save(db);
+        return { success: true, message: "Dokumen LKB berhasil dihapus" };
       }
 
       default:

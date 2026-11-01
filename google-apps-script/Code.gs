@@ -21,6 +21,7 @@ const SHEET_SCHEDULES = "JADWAL_PELAJARAN";
 const SHEET_ATTENDANCE = "ABSENSI_GURU";
 const SHEET_LEAVES = "IZIN_CUTI_GURU";
 const SHEET_SETTINGS = "PENGATURAN";
+const SHEET_LKB = "LKB_GURU";
 
 function onOpen() {
   initDatabase();
@@ -144,6 +145,18 @@ function initDatabase() {
     }
   }
 
+  // 6. Sheet LKB_GURU (Laporan Kinerja Bulanan Guru & Tenaga Kependidikan)
+  let sheetLkb = ss.getSheetByName(SHEET_LKB);
+  if (!sheetLkb) {
+    sheetLkb = ss.insertSheet(SHEET_LKB);
+    sheetLkb.appendRow([
+      "id", "user_id", "nama", "nip", "mapel_jabatan", "bulan", "tahun", "judul",
+      "file_name", "file_url", "file_drive_id", "file_size", "catatan", "status",
+      "alasan_penolakan", "diverifikasi_oleh", "diverifikasi_pada", "created_at"
+    ]);
+    sheetLkb.getRange(1, 1, 1, 18).setFontWeight("bold").setBackground("#6366f1").setFontColor("#ffffff");
+  }
+
   return { success: true, message: "Database Absensi Mengajar Guru berhasil disiapkan!" };
 }
 
@@ -190,6 +203,9 @@ function doGet(e) {
         break;
       case "getLeaves":
         result = getLeavesHandler(e.parameter.user_id);
+        break;
+      case "getLkb":
+        result = getLkbHandler(e.parameter.user_id, e.parameter.bulan, e.parameter.tahun, e.parameter.status);
         break;
       case "getDashboardStats":
         result = getDashboardStatsHandler(e.parameter.tanggal);
@@ -248,6 +264,15 @@ function doPost(e) {
         break;
       case "updateLeaveStatus":
         result = updateLeaveStatusHandler(data.id, data.status);
+        break;
+      case "submitLkb":
+        result = submitLkbHandler(data);
+        break;
+      case "updateLkbStatus":
+        result = updateLkbStatusHandler(data.id, data.status, data.alasan_penolakan, data.diverifikasi_oleh);
+        break;
+      case "deleteLkb":
+        result = deleteLkbHandler(data.id);
         break;
       case "saveUser":
         result = saveUserHandler(data);
@@ -1013,6 +1038,313 @@ function updateLeaveStatusHandler(id, status) {
   }
 
   return { success: false, message: "Data pengajuan tidak ditemukan" };
+}
+
+// ================= MODUL LKB (LEMBAR / LAPORAN KINERJA BULANAN) ================= //
+
+/**
+ * Helper untuk mengunggah dokumen LKB ke Google Drive
+ * Menyimpan file ke folder "DOKUMEN_LKB_GURU"
+ */
+function uploadLkbDocumentToDrive(base64Data, originalFileName, teacherName) {
+  try {
+    if (!base64Data || typeof base64Data !== "string") return null;
+
+    if (base64Data.indexOf("http://") === 0 || base64Data.indexOf("https://") === 0) {
+      return { fileUrl: base64Data, fileId: "", fileName: originalFileName || "Dokumen_LKB", fileSize: "-" };
+    }
+
+    let contentType = "application/pdf";
+    let pureBase64 = base64Data;
+
+    if (base64Data.indexOf(";base64,") !== -1) {
+      const parts = base64Data.split(";base64,");
+      contentType = parts[0].replace("data:", "") || "application/pdf";
+      pureBase64 = parts[1];
+    }
+
+    const bytes = Utilities.base64Decode(pureBase64);
+    
+    // Tentukan ekstensi
+    let ext = "pdf";
+    if (contentType.indexOf("word") !== -1 || contentType.indexOf("officedocument.wordprocessingml") !== -1) {
+      ext = "docx";
+    } else if (contentType.indexOf("excel") !== -1 || contentType.indexOf("spreadsheetml") !== -1) {
+      ext = "xlsx";
+    } else if (contentType.indexOf("zip") !== -1) {
+      ext = "zip";
+    } else if (originalFileName && originalFileName.lastIndexOf(".") !== -1) {
+      ext = originalFileName.split(".").pop().toLowerCase();
+    }
+
+    const cleanTeacher = (teacherName || "Guru").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const timestamp = Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd_HHmmss");
+    const cleanOrigName = (originalFileName || ("LKB." + ext)).replace(/[^a-zA-Z0-9._-]/g, "_");
+    const finalFileName = "LKB_" + cleanTeacher + "_" + timestamp + "_" + cleanOrigName;
+
+    const blob = Utilities.newBlob(bytes, contentType, finalFileName);
+
+    const FOLDER_NAME = "DOKUMEN_LKB_GURU";
+    let folder;
+    const folderIter = DriveApp.getFoldersByName(FOLDER_NAME);
+    if (folderIter.hasNext()) {
+      folder = folderIter.next();
+    } else {
+      folder = DriveApp.createFolder(FOLDER_NAME);
+    }
+
+    try {
+      folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (e) {}
+
+    const file = folder.createFile(blob);
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (e) {}
+
+    const fileId = file.getId();
+    const fileUrl = "https://drive.google.com/file/d/" + fileId + "/view?usp=sharing";
+    
+    let fileSizeStr = "-";
+    if (bytes.length < 1024 * 1024) {
+      fileSizeStr = (bytes.length / 1024).toFixed(1) + " KB";
+    } else {
+      fileSizeStr = (bytes.length / (1024 * 1024)).toFixed(2) + " MB";
+    }
+
+    return {
+      fileUrl: fileUrl,
+      fileId: fileId,
+      fileName: finalFileName,
+      fileSize: fileSizeStr
+    };
+  } catch (err) {
+    Logger.log("Gagal upload dokumen LKB ke Google Drive: " + err.toString());
+    return null;
+  }
+}
+
+function submitLkbHandler(data) {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName(SHEET_LKB);
+    if (!sheet) {
+      initDatabase();
+      sheet = ss.getSheetByName(SHEET_LKB);
+    }
+
+    let fileUrl = data.file_url || "";
+    let fileId = data.file_drive_id || "";
+    let fileName = data.file_name || "Dokumen_LKB.pdf";
+    let fileSize = data.file_size || "-";
+
+    if (data.file_base64) {
+      const uploadRes = uploadLkbDocumentToDrive(data.file_base64, data.file_name, data.nama);
+      if (uploadRes) {
+        fileUrl = uploadRes.fileUrl;
+        fileId = uploadRes.fileId;
+        fileName = uploadRes.fileName;
+        fileSize = uploadRes.fileSize;
+      }
+    }
+
+    // Jika mode revisi LKB yang sudah ada (data.lkb_id)
+    if (data.lkb_id) {
+      const rows = sheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]) === String(data.lkb_id)) {
+          if (fileUrl) {
+            sheet.getRange(i + 1, 9).setValue(fileName);
+            sheet.getRange(i + 1, 10).setValue(fileUrl);
+            sheet.getRange(i + 1, 11).setValue(fileId);
+            sheet.getRange(i + 1, 12).setValue(fileSize);
+          }
+          if (data.judul) sheet.getRange(i + 1, 8).setValue(data.judul);
+          if (data.bulan) sheet.getRange(i + 1, 6).setValue(data.bulan);
+          if (data.tahun) sheet.getRange(i + 1, 7).setValue(data.tahun);
+          if (data.catatan !== undefined) sheet.getRange(i + 1, 13).setValue(data.catatan);
+          
+          sheet.getRange(i + 1, 14).setValue("Menunggu Verifikasi");
+          sheet.getRange(i + 1, 15).setValue("");
+          sheet.getRange(i + 1, 18).setValue(new Date());
+
+          return {
+            success: true,
+            message: "Revisi dokumen LKB berhasil diunggah dan menunggu verifikasi admin",
+            id: data.lkb_id,
+            file_url: fileUrl
+          };
+        }
+      }
+    }
+
+    const newId = "LKB" + new Date().getTime();
+    sheet.appendRow([
+      newId,
+      data.user_id,
+      data.nama,
+      data.nip || "-",
+      data.mapel_jabatan || data.mapel || "-",
+      data.bulan,
+      data.tahun,
+      data.judul || ("LKB " + data.bulan + " " + data.tahun),
+      fileName,
+      fileUrl,
+      fileId,
+      fileSize,
+      data.catatan || "",
+      "Menunggu Verifikasi",
+      "", // alasan penolakan
+      "", // diverifikasi oleh
+      "", // diverifikasi pada
+      new Date()
+    ]);
+
+    // Kirim notifikasi Telegram ke grup jika aktif
+    try {
+      const msg = "📑 <b>DOKUMEN LKB BARU DIUNGGAH</b>\n" +
+        "━━━━━━━━━━━━━━━━━━━━━━\n" +
+        "👤 <b>Guru:</b> " + (data.nama || "-") + "\n" +
+        "🏷️ <b>NIP:</b> " + (data.nip || "-") + "\n" +
+        "📅 <b>Periode:</b> " + data.bulan + " " + data.tahun + "\n" +
+        "📄 <b>Judul:</b> " + (data.judul || fileName) + "\n" +
+        "⏳ <b>Status:</b> Menunggu Verifikasi Admin\n" +
+        "━━━━━━━━━━━━━━━━━━━━━━\n" +
+        "Silakan buka portal admin untuk memeriksa dokumen.";
+      sendTelegramMessage(msg);
+    } catch (eTel) {}
+
+    return {
+      success: true,
+      message: "Dokumen LKB berhasil diunggah dan disimpan ke server",
+      id: newId,
+      file_url: fileUrl
+    };
+  } catch (err) {
+    return { success: false, message: "Gagal memproses unggah LKB: " + err.toString() };
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (e) {}
+  }
+}
+
+function getLkbHandler(userId, bulan, tahun, status) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_LKB);
+  if (!sheet) return { success: true, list: [], lkb: [] };
+
+  const rows = sheet.getDataRange().getValues();
+  const list = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const rowUserId = String(rows[i][1]);
+    const rowBulan = String(rows[i][5]);
+    const rowTahun = String(rows[i][6]);
+    const rowStatus = String(rows[i][13]);
+
+    if (userId && rowUserId !== String(userId)) continue;
+    if (bulan && bulan !== "Semua" && rowBulan.toLowerCase() !== String(bulan).toLowerCase()) continue;
+    if (tahun && tahun !== "Semua" && rowTahun !== String(tahun)) continue;
+    if (status && status !== "Semua" && rowStatus !== String(status)) continue;
+
+    const rowTglVerif = rows[i][16];
+    const rowTglUpload = rows[i][17];
+
+    list.push({
+      id: String(rows[i][0]),
+      user_id: rowUserId,
+      nama: String(rows[i][2]),
+      nip: String(rows[i][3]).replace(/^'/, ""),
+      mapel_jabatan: String(rows[i][4]),
+      bulan: rowBulan,
+      tahun: rowTahun,
+      judul: String(rows[i][7]),
+      file_name: String(rows[i][8]),
+      file_url: String(rows[i][9]),
+      file_drive_id: String(rows[i][10]),
+      file_size: String(rows[i][11]),
+      catatan: String(rows[i][12]),
+      status: rowStatus || "Menunggu Verifikasi",
+      alasan_penolakan: String(rows[i][14] || ""),
+      diverifikasi_oleh: String(rows[i][15] || ""),
+      diverifikasi_pada: rowTglVerif ? (rowTglVerif instanceof Date ? Utilities.formatDate(rowTglVerif, "GMT+8", "yyyy-MM-dd HH:mm") : String(rowTglVerif)) : "",
+      created_at: rowTglUpload ? (rowTglUpload instanceof Date ? Utilities.formatDate(rowTglUpload, "GMT+8", "yyyy-MM-dd HH:mm") : String(rowTglUpload)) : ""
+    });
+  }
+
+  list.sort(function(a, b) {
+    return b.id > a.id ? 1 : -1;
+  });
+
+  return { success: true, list: list, lkb: list };
+}
+
+function updateLkbStatusHandler(id, status, alasanPenolakan, diverifikasiOleh) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_LKB);
+  if (!sheet) return { success: false, message: "Sheet LKB tidak ditemukan" };
+
+  const rows = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(id)) {
+      sheet.getRange(i + 1, 14).setValue(status);
+      sheet.getRange(i + 1, 15).setValue(alasanPenolakan || "");
+      sheet.getRange(i + 1, 16).setValue(diverifikasiOleh || "Admin");
+      sheet.getRange(i + 1, 17).setValue(new Date());
+
+      const namaGuru = String(rows[i][2]);
+      const bulanLkb = String(rows[i][5]);
+      const tahunLkb = String(rows[i][6]);
+
+      // Kirim notifikasi status Telegram
+      try {
+        const statusIcon = status === "Disetujui" ? "✅" : "❌";
+        let msg = statusIcon + " <b>HASIL VERIFIKASI DOKUMEN LKB</b>\n" +
+          "━━━━━━━━━━━━━━━━━━━━━━\n" +
+          "👤 <b>Guru:</b> " + namaGuru + "\n" +
+          "📅 <b>Periode:</b> " + bulanLkb + " " + tahunLkb + "\n" +
+          "📌 <b>Status:</b> " + status + "\n";
+        if (status === "Ditolak" && alasanPenolakan) {
+          msg += "⚠️ <b>Catatan Perbaikan:</b> " + alasanPenolakan + "\n";
+        }
+        msg += "━━━━━━━━━━━━━━━━━━━━━━";
+        sendTelegramMessage(msg);
+      } catch (eTel) {}
+
+      return {
+        success: true,
+        message: "Status LKB berhasil diperbarui menjadi: " + status
+      };
+    }
+  }
+
+  return { success: false, message: "Data pengajuan LKB tidak ditemukan" };
+}
+
+function deleteLkbHandler(id) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_LKB);
+  if (!sheet) return { success: false, message: "Sheet LKB tidak ditemukan" };
+
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(id)) {
+      const fileId = String(rows[i][10]);
+      if (fileId) {
+        try {
+          DriveApp.getFileById(fileId).setTrashed(true);
+        } catch (e) {}
+      }
+      sheet.deleteRow(i + 1);
+      return { success: true, message: "Dokumen LKB berhasil dihapus" };
+    }
+  }
+  return { success: false, message: "Data LKB tidak ditemukan" };
 }
 
 function getUsersHandler(role) {

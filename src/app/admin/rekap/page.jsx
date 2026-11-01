@@ -10,7 +10,6 @@ import { Api } from "@/lib/api";
 import { getTodayDateStr } from "@/lib/mockData";
 import {
   FileSpreadsheet,
-  Download,
   Printer,
   Eye,
   X,
@@ -27,29 +26,70 @@ import { LOGO_KEMENAG, LOGO_SEKOLAH } from "@/lib/logos";
 // --- Format tanggal Indonesia ---
 function formatTanggalIndonesia(dateStr) {
   if (!dateStr) return "-";
-  const [y, m, d] = dateStr.split("-");
-  const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-  return `${parseInt(d)} ${bulan[parseInt(m) - 1]} ${y}`;
+  if (dateStr instanceof Date) {
+    if (isNaN(dateStr.getTime())) return "-";
+    const d = dateStr.getDate();
+    const m = dateStr.getMonth();
+    const y = dateStr.getFullYear();
+    const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    return `${d} ${bulan[m]} ${y}`;
+  }
+  const s = String(dateStr).trim();
+  if (!s || s === "null" || s === "undefined") return "-";
+  // Deteksi format YYYY-MM-DD
+  const mYmd = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (mYmd) {
+    const y = mYmd[1];
+    const m = parseInt(mYmd[2], 10) - 1;
+    const d = parseInt(mYmd[3], 10);
+    const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    return `${d} ${bulan[m] || mYmd[2]} ${y}`;
+  }
+  // Deteksi format DD-MM-YYYY
+  const mDmy = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+  if (mDmy) {
+    const d = parseInt(mDmy[1], 10);
+    const m = parseInt(mDmy[2], 10) - 1;
+    const y = mDmy[3];
+    const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    return `${d} ${bulan[m] || mDmy[2]} ${y}`;
+  }
+  return s;
 }
 
 function getMonthYear(dateStr) {
   if (!dateStr) return "-";
-  const [y, m, d] = dateStr.split("-");
-  const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-  return `${bulan[parseInt(m) - 1]} ${y}`;
+  if (dateStr instanceof Date) {
+    if (isNaN(dateStr.getTime())) return "-";
+    const m = dateStr.getMonth();
+    const y = dateStr.getFullYear();
+    const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    return `${bulan[m]} ${y}`;
+  }
+  const s = String(dateStr).trim();
+  const mYmd = s.match(/^(\d{4})[-/](\d{1,2})/);
+  if (mYmd) {
+    const y = mYmd[1];
+    const m = parseInt(mYmd[2], 10) - 1;
+    const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    return `${bulan[m] || mYmd[2]} ${y}`;
+  }
+  return s;
 }
 
 // --- Komponen Dokumen Cetak Format Resmi Sekolah ---
-function OfficialSchoolDocument({ data, settings, filterDate, filterMonth, mode }) {
+function OfficialSchoolDocument({ data = [], settings = {}, filterDate, filterMonth, mode }) {
+  const safeData = Array.isArray(data) ? data : [];
+  const safeSettings = settings || {};
   const todayStr = formatTanggalIndonesia(getTodayDateStr());
   const periodeLabel = mode === "bulanan"
-    ? `Bulan: ${getMonthYear(filterMonth + "-01")}`
+    ? `Bulan: ${getMonthYear(filterMonth ? filterMonth + "-01" : "")}`
     : `Tanggal: ${formatTanggalIndonesia(filterDate)}`;
 
   // Hitung ringkasan
-  const totalHadir = data.filter(r => r.status === "Hadir").length;
-  const totalTerlambat = data.filter(r => r.status === "Terlambat").length;
-  const totalIzin = data.filter(r => r.status === "Izin" || r.status === "Sakit").length;
+  const totalHadir = safeData.filter(r => r && r.status === "Hadir").length;
+  const totalTerlambat = safeData.filter(r => r && r.status === "Terlambat").length;
+  const totalIzin = safeData.filter(r => r && (r.status === "Izin" || r.status === "Sakit")).length;
 
   return (
     <div className="official-school-document" style={{
@@ -95,15 +135,15 @@ function OfficialSchoolDocument({ data, settings, filterDate, filterMonth, mode 
             KEMENTERIAN AGAMA REPUBLIK INDONESIA
           </div>
           <div style={{ fontSize: "10pt", fontWeight: 700, color: "#111", textTransform: "uppercase", letterSpacing: "0.03em", marginTop: "2px", lineHeight: 1.25 }}>
-            KANTOR KEMENTERIAN AGAMA {settings.kota ? settings.kota.toUpperCase() : "KABUPATEN GOWA"}
+            KANTOR KEMENTERIAN AGAMA {safeSettings.kota ? safeSettings.kota.toUpperCase() : "KABUPATEN GOWA"}
           </div>
           <div style={{ fontSize: "14pt", fontWeight: 900, color: "#000", letterSpacing: "0.02em", margin: "3px 0", lineHeight: 1.2, textTransform: "uppercase" }}>
-            {settings.nama_sekolah || "MADRASAH TSANAWIYAH NEGERI GOWA"}
+            {safeSettings.nama_sekolah || "MADRASAH TSANAWIYAH NEGERI GOWA"}
           </div>
           <div style={{ fontSize: "8.5pt", color: "#222", fontStyle: "italic", marginTop: "2px", lineHeight: 1.3 }}>
-            <span>{settings.alamat_sekolah || "Jl. Pendidikan Nasional, Kabupaten Gowa, Sulawesi Selatan"}</span>
+            <span>{safeSettings.alamat_sekolah || "Jl. Pendidikan Nasional, Kabupaten Gowa, Sulawesi Selatan"}</span>
             <span style={{ margin: "0 6px", fontStyle: "normal" }}>•</span>
-            <span>Telp: {settings.no_telp || settings.telepon || settings.telepon_sekolah || "(0411) 861234"}</span>
+            <span>Telp: {safeSettings.no_telp || safeSettings.telepon || safeSettings.telepon_sekolah || "(0411) 861234"}</span>
           </div>
         </div>
 
@@ -151,7 +191,7 @@ function OfficialSchoolDocument({ data, settings, filterDate, filterMonth, mode 
         fontSize: "8.5pt"
       }}>
         <div style={{ border: "1px solid #999", padding: "4px 10px", borderRadius: "4px" }}>
-          <strong>Total Data:</strong> {data.length}
+          <strong>Total Data:</strong> {safeData.length}
         </div>
         <div style={{ border: "1px solid #059669", background: "#f0fdf4", color: "#065f46", padding: "4px 10px", borderRadius: "4px" }}>
           <strong>Hadir:</strong> {totalHadir}
@@ -189,13 +229,13 @@ function OfficialSchoolDocument({ data, settings, filterDate, filterMonth, mode 
           </tr>
         </thead>
         <tbody>
-          {data.length === 0 ? (
+          {safeData.length === 0 ? (
             <tr>
               <td colSpan={mode === "bulanan" ? 9 : 8} style={{ textAlign: "center", padding: "1.5rem", color: "#666", fontStyle: "italic", border: "1px solid #333" }}>
                 Tidak ada data presensi untuk periode ini
               </td>
             </tr>
-          ) : data.map((row, idx) => (
+          ) : safeData.map((row, idx) => (
             <tr key={row.id || idx} style={{
               background: idx % 2 === 0 ? "#ffffff" : "#f9fbf9",
               pageBreakInside: "avoid"
@@ -239,21 +279,21 @@ function OfficialSchoolDocument({ data, settings, filterDate, filterMonth, mode 
             Mengetahui,
           </div>
           <div style={{ fontSize: "9pt", fontWeight: 700, color: "#000" }}>
-            Kepala {settings.nama_sekolah || "SMA Negeri 1 Teladan"}
+            Kepala {safeSettings.nama_sekolah || "MTsN GOWA"}
           </div>
           <div style={{ height: "65px", margin: "8px auto", borderBottom: "1px solid #000", width: "70%" }} />
           <div style={{ fontSize: "9.5pt", fontWeight: 800, color: "#000" }}>
-            {settings.kepala_sekolah || "___________________________"}
+            {safeSettings.kepala_sekolah || "___________________________"}
           </div>
           <div style={{ fontSize: "8pt", color: "#333" }}>
-            NIP. {settings.nip_kepsek || "___________________________"}
+            NIP. {safeSettings.nip_kepsek || "___________________________"}
           </div>
         </div>
 
         {/* Kanan: Tata Usaha / Operator */}
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: "8.5pt", color: "#333", marginBottom: "2px" }}>
-            {settings.kota || "Jakarta"}, {todayStr}
+            {safeSettings.kota || "Kabupaten Gowa"}, {todayStr}
           </div>
           <div style={{ fontSize: "9pt", fontWeight: 700, color: "#000" }}>
             Operator / Tata Usaha
@@ -272,9 +312,11 @@ function OfficialSchoolDocument({ data, settings, filterDate, filterMonth, mode 
 }
 
 // --- Print Preview Modal ---
-function PrintPreviewModal({ data, settings, filterDate, filterMonth, mode, orientation, setOrientation, onClose }) {
+function PrintPreviewModal({ data = [], settings = {}, filterDate, filterMonth, mode, orientation, setOrientation, onClose }) {
+  const safeData = Array.isArray(data) ? data : [];
+  const safeSettings = settings || {};
   const periodeLabel = mode === "bulanan"
-    ? `Bulan: ${getMonthYear(filterMonth + "-01")}`
+    ? `Bulan: ${getMonthYear(filterMonth ? filterMonth + "-01" : "")}`
     : `Tanggal: ${formatTanggalIndonesia(filterDate)}`;
 
   const handlePrint = () => {
@@ -508,43 +550,244 @@ export default function AdminRekapPage() {
   };
 
   // Filter untuk tampilan tabel
-  const filtered = attendance.filter((item) => {
-    if (filterDate && item.tanggal !== filterDate) return false;
+  const filtered = (attendance || []).filter((item) => {
+    if (!item) return false;
+    const itemTgl = String(item.tanggal || "").trim();
+    if (filterDate && itemTgl !== filterDate) return false;
     if (filterGuru !== "Semua" && item.user_id !== filterGuru) return false;
     if (filterStatus !== "Semua" && item.status !== filterStatus) return false;
     return true;
   });
 
   // Filter untuk cetak (harian atau bulanan)
-  const printData = attendance.filter((item) => {
+  const printData = (attendance || []).filter((item) => {
+    if (!item) return false;
+    const itemTgl = String(item.tanggal || "").trim();
     if (printMode === "harian") {
-      if (filterDate && item.tanggal !== filterDate) return false;
+      if (filterDate && itemTgl !== filterDate) return false;
     } else {
-      if (!item.tanggal.startsWith(filterMonth)) return false;
+      if (filterMonth && !itemTgl.startsWith(filterMonth)) return false;
     }
     if (filterGuru !== "Semua" && item.user_id !== filterGuru) return false;
     if (filterStatus !== "Semua" && item.status !== filterStatus) return false;
     return true;
   });
 
-  const exportCSV = () => {
-    const headers = ["No", "Tanggal", "Nama Guru", "NIP", "Mata Pelajaran", "Kelas", "Jam Absen", "Status", "Keterangan"];
-    const rows = filtered.map((a, i) => [
-      i + 1, a.tanggal,
-      `"${a.nama || ""}"`, `"${a.nip || ""}"`,
-      `"${a.mapel || ""}"`, `"${a.kelas || ""}"`,
-      a.jam_absen || "", a.status, `"${a.keterangan || ""}"`
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+  const exportExcelRapi = () => {
+    const exportDataset = printData && printData.length > 0 ? printData : filtered;
+
+    const periodeStr = printMode === "bulanan"
+      ? `Bulan ${getMonthYear(filterMonth ? filterMonth + "-01" : "")}`
+      : `Tanggal ${formatTanggalIndonesia(filterDate)}`;
+
+    const totalHadir = exportDataset.filter(r => r.status === "Hadir").length;
+    const totalTerlambat = exportDataset.filter(r => r.status === "Terlambat").length;
+    const totalIzin = exportDataset.filter(r => r.status === "Izin").length;
+    const totalSakit = exportDataset.filter(r => r.status === "Sakit").length;
+    const totalSesi = exportDataset.length;
+    const persentaseHadir = totalSesi > 0 ? (((totalHadir + totalTerlambat) / totalSesi) * 100).toFixed(1) : "0";
+
+    const kota = settings.kota || "Kabupaten Gowa";
+    const tglCetak = formatTanggalIndonesia(getTodayDateStr());
+    const namaSekolah = settings.nama_sekolah || "MADRASAH TSANAWIYAH NEGERI GOWA";
+    const alamatSekolah = settings.alamat_sekolah || "Jl. Pendidikan Nasional, Kabupaten Gowa, Sulawesi Selatan";
+    const telpSekolah = settings.no_telp || settings.telepon || "(0411) 861234";
+    const namaKepsek = settings.kepala_sekolah || "Drs. H. Mulyadi, M.Pd";
+    const nipKepsek = settings.nip_kepsek || "196805121994031004";
+    const namaAdmin = currentUser?.nama || "Bpk. Hendra Gunawan, S.Kom";
+    const nipAdmin = currentUser?.nip || "198001012005011001";
+
+    let rowsHtml = "";
+    exportDataset.forEach((row, i) => {
+      let statusStyle = "background-color: #dcfce7; color: #065f46; font-weight: bold; text-align: center;";
+      if (row.status === "Terlambat") {
+        statusStyle = "background-color: #fef3c7; color: #92400e; font-weight: bold; text-align: center;";
+      } else if (row.status === "Izin") {
+        statusStyle = "background-color: #eff6ff; color: #1e40af; font-weight: bold; text-align: center;";
+      } else if (row.status === "Sakit") {
+        statusStyle = "background-color: #fff1f2; color: #be123c; font-weight: bold; text-align: center;";
+      }
+
+      rowsHtml += `
+        <tr>
+          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${i + 1}</td>
+          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: 'yyyy\\-mm\\-dd';">${row.tanggal || "-"}</td>
+          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.hari || "-"}</td>
+          <td style="text-align: left; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.nama || "-"}</td>
+          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: '\\@';">${String(row.nip || "-").replace(/^'/, "")}</td>
+          <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.mapel || "-"}</td>
+          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.kelas || "-"}</td>
+          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.jam_jadwal || "-"}</td>
+          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: 'hh\\:mm'; font-weight: bold;">${row.jam_absen || "-"}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px; ${statusStyle}">${row.status || "-"}</td>
+          <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.keterangan || "-"}</td>
+        </tr>
+      `;
+    });
+
+    const excelHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Rekap Presensi Guru</x:Name>
+                <x:WorksheetOptions>
+                  <x:DisplayGridlines/>
+                  <x:FitToPage/>
+                  <x:Print>
+                    <x:ValidPrinterInfo/>
+                    <x:PaperSizeIndex>9</x:PaperSizeIndex>
+                    <x:Scale>85</x:Scale>
+                  </x:Print>
+                </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+          body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; font-size: 10pt; }
+          table { border-collapse: collapse; width: 100%; }
+          .th-header { background-color: #065f46; color: #ffffff; font-weight: bold; text-align: center; padding: 9px 6px; border: 1px solid #044e39; font-size: 10pt; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <!-- KOP SURAT RESMI SEKOLAH -->
+          <tr>
+            <td colspan="11" style="text-align: center; font-size: 11pt; font-weight: bold; text-transform: uppercase; color: #1e293b; padding-top: 8px;">
+              KEMENTERIAN AGAMA REPUBLIK INDONESIA
+            </td>
+          </tr>
+          <tr>
+            <td colspan="11" style="text-align: center; font-size: 10pt; font-weight: bold; text-transform: uppercase; color: #334155;">
+              KANTOR KEMENTERIAN AGAMA ${kota.toUpperCase()}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="11" style="text-align: center; font-size: 15pt; font-weight: 800; text-transform: uppercase; color: #065f46; padding: 3px 0;">
+              ${namaSekolah}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="11" style="text-align: center; font-size: 8.5pt; color: #64748b; font-style: italic;">
+              ${alamatSekolah} • Telp: ${telpSekolah}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="11" style="border-bottom: 2.5px solid #065f46; height: 6px;"></td>
+          </tr>
+          <tr><td colspan="11" style="height: 10px;"></td></tr>
+
+          <!-- JUDUL LAPORAN -->
+          <tr>
+            <td colspan="11" style="text-align: center; font-size: 13pt; font-weight: bold; text-transform: uppercase; color: #0f172a;">
+              LAPORAN REKAPITULASI PRESENSI MENGAJAR GURU
+            </td>
+          </tr>
+          <tr>
+            <td colspan="11" style="text-align: center; font-size: 10pt; color: #475569; font-weight: 600;">
+              Periode: ${periodeStr}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="11" style="text-align: right; font-size: 8.5pt; color: #64748b; font-style: italic; padding-bottom: 6px;">
+              Dicetak pada: ${tglCetak} melalui Sistem Absensi Sekolah
+            </td>
+          </tr>
+
+          <!-- HEADER TABEL -->
+          <thead>
+            <tr>
+              <th class="th-header" style="width: 45px;">NO</th>
+              <th class="th-header" style="width: 105px;">TANGGAL</th>
+              <th class="th-header" style="width: 80px;">HARI</th>
+              <th class="th-header" style="width: 230px;">NAMA GURU</th>
+              <th class="th-header" style="width: 180px;">NIP</th>
+              <th class="th-header" style="width: 165px;">MATA PELAJARAN</th>
+              <th class="th-header" style="width: 95px;">KELAS</th>
+              <th class="th-header" style="width: 110px;">JAM JADWAL</th>
+              <th class="th-header" style="width: 95px;">JAM ABSEN</th>
+              <th class="th-header" style="width: 115px;">STATUS</th>
+              <th class="th-header" style="width: 165px;">KETERANGAN</th>
+            </tr>
+          </thead>
+
+          <!-- DATA BARIS -->
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+
+          <!-- RINGKASAN REKAPITULASI -->
+          <tr><td colspan="11" style="height: 12px;"></td></tr>
+          <tr>
+            <td colspan="3" style="background-color: #f1f5f9; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px;">
+              TOTAL SESI / PERTEMUAN:
+            </td>
+            <td colspan="8" style="background-color: #f8fafc; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px; color: #0f172a;">
+              ${totalSesi} Sesi Pelajaran
+            </td>
+          </tr>
+          <tr>
+            <td colspan="3" style="background-color: #f1f5f9; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px;">
+              RINCIAN KEHADIRAN:
+            </td>
+            <td colspan="8" style="background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 7px; font-size: 9.5pt;">
+              <span style="color: #065f46; font-weight: bold;">Hadir Tepat Waktu: ${totalHadir}</span> &nbsp;|&nbsp; 
+              <span style="color: #92400e; font-weight: bold;">Terlambat: ${totalTerlambat}</span> &nbsp;|&nbsp; 
+              <span style="color: #1e40af; font-weight: bold;">Izin: ${totalIzin}</span> &nbsp;|&nbsp; 
+              <span style="color: #be123c; font-weight: bold;">Sakit: ${totalSakit}</span> &nbsp;|&nbsp; 
+              <span style="color: #065f46; font-weight: bold;">Tingkat Kehadiran: ${persentaseHadir}%</span>
+            </td>
+          </tr>
+
+          <!-- LEMBAR TANDA TANGAN RESMI -->
+          <tr><td colspan="11" style="height: 25px;"></td></tr>
+          <tr>
+            <td colspan="6" style="text-align: center; font-size: 9.5pt;">
+              Mengetahui,<br><strong>Kepala Madrasah / Sekolah</strong>
+            </td>
+            <td colspan="5" style="text-align: center; font-size: 9.5pt;">
+              ${kota}, ${tglCetak}<br><strong>Kepala Tata Usaha / Verifikator</strong>
+            </td>
+          </tr>
+          <tr><td colspan="11" style="height: 55px;"></td></tr>
+          <tr>
+            <td colspan="6" style="text-align: center; font-size: 10.5pt; font-weight: bold; text-decoration: underline;">
+              ${namaKepsek}
+            </td>
+            <td colspan="5" style="text-align: center; font-size: 10.5pt; font-weight: bold; text-decoration: underline;">
+              ${namaAdmin}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="6" style="text-align: center; font-size: 9pt; color: #334155; mso-number-format: '\\@';">
+              NIP. ${nipKepsek}
+            </td>
+            <td colspan="5" style="text-align: center; font-size: 9pt; color: #334155; mso-number-format: '\\@';">
+              NIP. ${nipAdmin}
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([excelHtml], { type: "application/vnd.ms-excel;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", `Rekap_Presensi_Guru_${filterDate || "Semua"}.csv`);
+    const cleanFileName = `Rekap_Presensi_${namaSekolah.replace(/[^a-zA-Z0-9]/g, "_")}_${printMode === "bulanan" ? filterMonth : (filterDate || "Semua")}.xls`;
+    link.href = url;
+    link.download = cleanFileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
-
-  if (!currentUser) return null;
 
   const statusBadge = (status) => {
     const map = {
@@ -563,6 +806,8 @@ export default function AdminRekapPage() {
       </span>
     );
   };
+
+  if (!currentUser) return null;
 
   return (
     <>
@@ -655,25 +900,27 @@ export default function AdminRekapPage() {
               </p>
             </div>
 
-            <div className="no-print" style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+            <div className="no-print" style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
               <button
                 type="button"
-                onClick={exportCSV}
+                onClick={exportExcelRapi}
                 style={{
-                  display: "flex", alignItems: "center", gap: "0.4rem",
-                  fontSize: "0.85rem", padding: "0.6rem 1rem",
-                  background: "#ffffff", border: "1.5px solid #a7f3d0",
-                  color: "#059669", borderRadius: "10px", fontWeight: 700, cursor: "pointer"
+                  display: "flex", alignItems: "center", gap: "0.45rem",
+                  fontSize: "0.85rem", padding: "0.6rem 1.15rem",
+                  background: "#ffffff", border: "1.5px solid #10b981",
+                  color: "#059669", borderRadius: "10px", fontWeight: 700, cursor: "pointer",
+                  boxShadow: "0 2px 8px rgba(16, 185, 129, 0.15)",
+                  transition: "all 0.2s"
                 }}
               >
-                <Download size={16} /> Ekspor CSV
+                <FileSpreadsheet size={17} color="#059669" /> Ekspor Excel Rapi (.xls)
               </button>
               <button
                 type="button"
                 onClick={() => setShowPrintPreview(true)}
                 style={{
-                  display: "flex", alignItems: "center", gap: "0.4rem",
-                  fontSize: "0.85rem", padding: "0.6rem 1.1rem",
+                  display: "flex", alignItems: "center", gap: "0.45rem",
+                  fontSize: "0.85rem", padding: "0.6rem 1.15rem",
                   background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
                   border: "none", color: "#ffffff", borderRadius: "10px",
                   fontWeight: 700, cursor: "pointer",
