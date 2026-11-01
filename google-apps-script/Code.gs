@@ -112,6 +112,8 @@ function initDatabase() {
     sheetSettings.appendRow(["alamat_sekolah", "Jl. Pendidikan Nasional No. 45, Jakarta", "Alamat Sekolah"]);
     sheetSettings.appendRow(["kepala_sekolah", "Drs. H. Mulyadi, M.Pd", "Nama Kepala Sekolah"]);
     sheetSettings.appendRow(["nip_kepsek", "196805121994031004", "NIP Kepala Sekolah"]);
+    sheetSettings.appendRow(["operator_nama", "Bpk. Hendra Gunawan, S.Kom", "Nama Operator / Tata Usaha"]);
+    sheetSettings.appendRow(["operator_nip", "198001012005011001", "NIP Operator / Tata Usaha"]);
     sheetSettings.appendRow(["npsn", "20104567", "Nomor Pokok Sekolah Nasional"]);
     sheetSettings.appendRow(["no_telp", "(0411) 861234", "Nomor Telepon Sekolah"]);
     sheetSettings.appendRow(["kota", "Kabupaten Gowa", "Kota / Kabupaten"]);

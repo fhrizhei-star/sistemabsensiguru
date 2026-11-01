@@ -27,6 +27,8 @@ export const INITIAL_MOCK_DATA = {
     no_telp: "(0411) 861234",
     kepala_sekolah: "Dr. H. Suharto, M.Pd",
     nip_kepsek: "196805121993031002",
+    operator_nama: "Bpk. Hendra Gunawan, S.Kom",
+    operator_nip: "198001012005011001",
     toleransi_menit: 15,
     jam_masuk_mulai: "06:30",
     jam_masuk_batas: "07:15",

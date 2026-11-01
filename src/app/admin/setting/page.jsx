@@ -37,6 +37,8 @@ export default function AdminSettingPage() {
     no_telp: "(0411) 861234",
     kepala_sekolah: "Dr. H. Suharto, M.Pd",
     nip_kepsek: "196805121993031002",
+    operator_nama: "Bpk. Hendra Gunawan, S.Kom",
+    operator_nip: "198001012005011001",
     toleransi_menit: 15,
     jam_masuk_mulai: "06:30",
     jam_masuk_batas: "07:15",
@@ -369,6 +371,30 @@ export default function AdminSettingPage() {
                     value={settings.nip_kepsek || ""}
                     onChange={(e) => setSettings({ ...settings, nip_kepsek: e.target.value })}
                     placeholder="contoh: 196805121993031002"
+                    className="neon-input"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
+                    Nama Operator / Tata Usaha (Tanda Tangan)
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.operator_nama || ""}
+                    onChange={(e) => setSettings({ ...settings, operator_nama: e.target.value })}
+                    placeholder="contoh: Hendra Gunawan, S.Kom"
+                    className="neon-input"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
+                    NIP Operator / Tata Usaha
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.operator_nip || ""}
+                    onChange={(e) => setSettings({ ...settings, operator_nip: e.target.value })}
+                    placeholder="contoh: 198001012005011001"
                     className="neon-input"
                   />
                 </div>

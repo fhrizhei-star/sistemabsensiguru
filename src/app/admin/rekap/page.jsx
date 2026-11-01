@@ -300,10 +300,10 @@ function OfficialSchoolDocument({ data = [], settings = {}, filterDate, filterMo
           </div>
           <div style={{ height: "65px", margin: "8px auto", borderBottom: "1px solid #000", width: "70%" }} />
           <div style={{ fontSize: "9.5pt", fontWeight: 800, color: "#000" }}>
-            ___________________________
+            {safeSettings.operator_nama || safeSettings.nama_operator || currentUser?.nama || "___________________________"}
           </div>
           <div style={{ fontSize: "8pt", color: "#333" }}>
-            NIP. ___________________________
+            NIP. {safeSettings.operator_nip || safeSettings.nip_operator || currentUser?.nip || "___________________________"}
           </div>
         </div>
       </div>
@@ -312,7 +312,7 @@ function OfficialSchoolDocument({ data = [], settings = {}, filterDate, filterMo
 }
 
 // --- Print Preview Modal ---
-function PrintPreviewModal({ data = [], settings = {}, filterDate, filterMonth, mode, orientation, setOrientation, onClose }) {
+function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, filterMonth, mode, orientation, setOrientation, onClose }) {
   const safeData = Array.isArray(data) ? data : [];
   const safeSettings = settings || {};
   const periodeLabel = mode === "bulanan"
@@ -594,8 +594,8 @@ export default function AdminRekapPage() {
     const telpSekolah = settings.no_telp || settings.telepon || "(0411) 861234";
     const namaKepsek = settings.kepala_sekolah || "Drs. H. Mulyadi, M.Pd";
     const nipKepsek = settings.nip_kepsek || "196805121994031004";
-    const namaAdmin = currentUser?.nama || "Bpk. Hendra Gunawan, S.Kom";
-    const nipAdmin = currentUser?.nip || "198001012005011001";
+    const namaAdmin = settings.operator_nama || settings.nama_operator || currentUser?.nama || "Bpk. Hendra Gunawan, S.Kom";
+    const nipAdmin = settings.operator_nip || settings.nip_operator || currentUser?.nip || "198001012005011001";
 
     let rowsHtml = "";
     exportDataset.forEach((row, i) => {
@@ -1069,6 +1069,7 @@ export default function AdminRekapPage() {
           <PrintPreviewModal
             data={printData}
             settings={settings}
+            currentUser={currentUser}
             filterDate={filterDate}
             filterMonth={filterMonth}
             mode={printMode}

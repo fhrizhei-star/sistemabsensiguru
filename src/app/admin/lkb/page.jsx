@@ -182,8 +182,8 @@ export default function AdminLkbPage() {
     const telpSekolah = settings.no_telp || settings.telepon || "(0411) 861234";
     const namaKepsek = settings.kepala_sekolah || "Drs. H. Mulyadi, M.Pd";
     const nipKepsek = settings.nip_kepsek || "196805121994031004";
-    const namaAdmin = currentUser?.nama || "Bpk. Hendra Gunawan, S.Kom";
-    const nipAdmin = currentUser?.nip || "198001012005011001";
+    const namaAdmin = settings.operator_nama || settings.nama_operator || currentUser?.nama || "Bpk. Hendra Gunawan, S.Kom";
+    const nipAdmin = settings.operator_nip || settings.nip_operator || currentUser?.nip || "198001012005011001";
     const nowStr = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
 
     let rowsHtml = "";
