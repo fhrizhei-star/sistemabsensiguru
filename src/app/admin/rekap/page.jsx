@@ -78,13 +78,16 @@ function getMonthYear(dateStr) {
 }
 
 // --- Komponen Dokumen Cetak Format Resmi Sekolah ---
-function OfficialSchoolDocument({ data = [], settings = {}, filterDate, filterMonth, mode }) {
+function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, filterDate, filterMonth, mode }) {
   const safeData = Array.isArray(data) ? data : [];
   const safeSettings = settings || {};
   const todayStr = formatTanggalIndonesia(getTodayDateStr());
   const periodeLabel = mode === "bulanan"
     ? `Bulan: ${getMonthYear(filterMonth ? filterMonth + "-01" : "")}`
     : `Tanggal: ${formatTanggalIndonesia(filterDate)}`;
+
+  const namaOperator = safeSettings.operator_nama || safeSettings.nama_operator || currentUser?.nama || "___________________________";
+  const nipOperator = safeSettings.operator_nip || safeSettings.nip_operator || currentUser?.nip || "___________________________";
 
   // Hitung ringkasan
   const totalHadir = safeData.filter(r => r && r.status === "Hadir").length;
@@ -300,10 +303,10 @@ function OfficialSchoolDocument({ data = [], settings = {}, filterDate, filterMo
           </div>
           <div style={{ height: "65px", margin: "8px auto", borderBottom: "1px solid #000", width: "70%" }} />
           <div style={{ fontSize: "9.5pt", fontWeight: 800, color: "#000" }}>
-            {safeSettings.operator_nama || safeSettings.nama_operator || currentUser?.nama || "___________________________"}
+            {namaOperator}
           </div>
           <div style={{ fontSize: "8pt", color: "#333" }}>
-            NIP. {safeSettings.operator_nip || safeSettings.nip_operator || currentUser?.nip || "___________________________"}
+            NIP. {nipOperator}
           </div>
         </div>
       </div>
@@ -503,6 +506,7 @@ function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, 
             <OfficialSchoolDocument
               data={data}
               settings={settings}
+              currentUser={currentUser}
               filterDate={filterDate}
               filterMonth={filterMonth}
               mode={mode}
@@ -1104,6 +1108,7 @@ export default function AdminRekapPage() {
         <OfficialSchoolDocument
           data={printData}
           settings={settings}
+          currentUser={currentUser}
           filterDate={filterDate}
           filterMonth={filterMonth}
           mode={printMode}
