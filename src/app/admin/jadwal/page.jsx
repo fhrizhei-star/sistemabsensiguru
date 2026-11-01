@@ -25,7 +25,7 @@ import {
   DAFTAR_SESI_JAM
 } from "@/lib/constants";
 
-const DAYS = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+const DAYS = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"];
 
 const CARD_THEMES = [
   { border: "#c7d2fe", bg: "linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)", tagBg: "#eef2ff", tagText: "#4f46e5", tagBorder: "#c7d2fe", accent: "#4f46e5" },
@@ -529,7 +529,7 @@ export default function AdminJadwalPage() {
                     defaultValue=""
                   >
                     <option value="" disabled>-- Pilih Jam Ke I s/d VIII (Otomatis Isi Waktu) --</option>
-                    <optgroup label="── Blok 2 Jam Pelajaran (Senin - Kamis & Sabtu) ──">
+                    <optgroup label="── Blok 2 Jam Pelajaran (Senin - Kamis) ──">
                       {DAFTAR_SESI_JAM.filter(s => s.kategori.startsWith("Blok 2 Jam")).map(s => (
                         <option key={s.label} value={s.label}>{s.label}</option>
                       ))}

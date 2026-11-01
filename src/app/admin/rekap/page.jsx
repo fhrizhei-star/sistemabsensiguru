@@ -913,7 +913,7 @@ export default function AdminRekapPage() {
                   transition: "all 0.2s"
                 }}
               >
-                <FileSpreadsheet size={17} color="#059669" /> Ekspor Excel Rapi (.xls)
+                <FileSpreadsheet size={17} color="#059669" /> Ekspor Excel (.xls)
               </button>
               <button
                 type="button"

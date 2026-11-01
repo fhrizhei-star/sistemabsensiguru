@@ -405,7 +405,7 @@ export default function AdminDashboardPage() {
                 },
                 {
                   title: "Jadwal Pelajaran",
-                  desc: "Atur pembagian jam mengajar kelas Senin - Sabtu",
+                  desc: "Atur pembagian jam mengajar kelas Senin - Jumat",
                   href: "/admin/jadwal",
                   icon: CalendarCheck,
                   color: "#7c3aed"

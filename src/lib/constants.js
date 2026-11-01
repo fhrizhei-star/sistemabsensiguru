@@ -90,28 +90,28 @@ export const DAFTAR_RUANGAN = [
 export const DAFTAR_SESI_JAM = [
   // --- Blok 2 Jam Pelajaran (Paling Umum di Jadwal) ---
   {
-    kategori: "Blok 2 Jam (Senin - Kamis & Sabtu)",
+    kategori: "Blok 2 Jam (Senin - Kamis)",
     label: "Jam Ke I - II (07:30 - 08:50)",
     jam_ke: "Jam Ke I - II",
     jam_mulai: "07:30",
     jam_selesai: "08:50"
   },
   {
-    kategori: "Blok 2 Jam (Senin - Kamis & Sabtu)",
+    kategori: "Blok 2 Jam (Senin - Kamis)",
     label: "Jam Ke III - IV (08:50 - 10:10)",
     jam_ke: "Jam Ke III - IV",
     jam_mulai: "08:50",
     jam_selesai: "10:10"
   },
   {
-    kategori: "Blok 2 Jam (Senin - Kamis & Sabtu)",
+    kategori: "Blok 2 Jam (Senin - Kamis)",
     label: "Jam Ke V - VI (10:40 - 12:00)",
     jam_ke: "Jam Ke V - VI",
     jam_mulai: "10:40",
     jam_selesai: "12:00"
   },
   {
-    kategori: "Blok 2 Jam (Senin - Kamis & Sabtu)",
+    kategori: "Blok 2 Jam (Senin - Kamis)",
     label: "Jam Ke VII - VIII (12:40 - 14:00)",
     jam_ke: "Jam Ke VII - VIII",
     jam_mulai: "12:40",
@@ -143,56 +143,56 @@ export const DAFTAR_SESI_JAM = [
 
   // --- Sesi Tunggal / Per 1 Jam Pelajaran (I s/d VIII) ---
   {
-    kategori: "Sesi 1 Jam (Senin - Kamis & Sabtu)",
+    kategori: "Sesi 1 Jam (Senin - Kamis)",
     label: "Jam Ke I (07:30 - 08:10)",
     jam_ke: "Jam Ke I",
     jam_mulai: "07:30",
     jam_selesai: "08:10"
   },
   {
-    kategori: "Sesi 1 Jam (Senin - Kamis & Sabtu)",
+    kategori: "Sesi 1 Jam (Senin - Kamis)",
     label: "Jam Ke II (08:10 - 08:50)",
     jam_ke: "Jam Ke II",
     jam_mulai: "08:10",
     jam_selesai: "08:50"
   },
   {
-    kategori: "Sesi 1 Jam (Senin - Kamis & Sabtu)",
+    kategori: "Sesi 1 Jam (Senin - Kamis)",
     label: "Jam Ke III (08:50 - 09:30)",
     jam_ke: "Jam Ke III",
     jam_mulai: "08:50",
     jam_selesai: "09:30"
   },
   {
-    kategori: "Sesi 1 Jam (Senin - Kamis & Sabtu)",
+    kategori: "Sesi 1 Jam (Senin - Kamis)",
     label: "Jam Ke IV (09:30 - 10:10)",
     jam_ke: "Jam Ke IV",
     jam_mulai: "09:30",
     jam_selesai: "10:10"
   },
   {
-    kategori: "Sesi 1 Jam (Senin - Kamis & Sabtu)",
+    kategori: "Sesi 1 Jam (Senin - Kamis)",
     label: "Jam Ke V (10:40 - 11:20)",
     jam_ke: "Jam Ke V",
     jam_mulai: "10:40",
     jam_selesai: "11:20"
   },
   {
-    kategori: "Sesi 1 Jam (Senin - Kamis & Sabtu)",
+    kategori: "Sesi 1 Jam (Senin - Kamis)",
     label: "Jam Ke VI (11:20 - 12:00)",
     jam_ke: "Jam Ke VI",
     jam_mulai: "11:20",
     jam_selesai: "12:00"
   },
   {
-    kategori: "Sesi 1 Jam (Senin - Kamis & Sabtu)",
+    kategori: "Sesi 1 Jam (Senin - Kamis)",
     label: "Jam Ke VII (12:40 - 13:20)",
     jam_ke: "Jam Ke VII",
     jam_mulai: "12:40",
     jam_selesai: "13:20"
   },
   {
-    kategori: "Sesi 1 Jam (Senin - Kamis & Sabtu)",
+    kategori: "Sesi 1 Jam (Senin - Kamis)",
     label: "Jam Ke VIII (13:20 - 14:00)",
     jam_ke: "Jam Ke VIII",
     jam_mulai: "13:20",
