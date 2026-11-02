@@ -23,7 +23,8 @@ import {
   HelpCircle,
   ExternalLink,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Clock
 } from "lucide-react";
 
 export default function AdminSettingPage() {
@@ -401,7 +402,77 @@ export default function AdminSettingPage() {
               </div>
             </div>
 
-            {/* Section 2: Koordinat Geofencing & GPS */}
+            {/* Section 2: Jam Operasional & Batas Presensi Pegawai */}
+            <div className="glass-panel" style={{ padding: "1.75rem", border: "1.5px solid #fed7aa", background: "linear-gradient(135deg, #ffffff 0%, #fff7ed 100%)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1.25rem" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#ffedd5", border: "1px solid #fdba74", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Clock size={20} color="#c2410c" />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)" }}>
+                    Jam Operasional & Batas Presensi Pegawai
+                  </h2>
+                  <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", margin: 0 }}>
+                    Aturan jam masuk dan jam kepulangan kantor untuk akun staf tata usaha / pegawai.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
+                    Jam Buka Presensi Masuk (Mulai)
+                  </label>
+                  <input
+                    type="time"
+                    value={settings.jam_masuk_mulai || "06:30"}
+                    onChange={(e) => setSettings({ ...settings, jam_masuk_mulai: e.target.value })}
+                    className="neon-input"
+                  />
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Tombol absen masuk mulai diizinkan</span>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
+                    Batas Jam Masuk (Tepat Waktu)
+                  </label>
+                  <input
+                    type="time"
+                    value={settings.jam_masuk_batas || "07:15"}
+                    onChange={(e) => setSettings({ ...settings, jam_masuk_batas: e.target.value })}
+                    className="neon-input"
+                  />
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Lewat dari jam ini dihitung terlambat</span>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
+                    Jam Mulai Presensi Pulang
+                  </label>
+                  <input
+                    type="time"
+                    value={settings.jam_pulang_mulai || "15:00"}
+                    onChange={(e) => setSettings({ ...settings, jam_pulang_mulai: e.target.value })}
+                    className="neon-input"
+                  />
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Waktu presensi pulang kantor dibuka</span>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
+                    Toleransi Keterlambatan (Menit)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="60"
+                    value={settings.toleransi_menit ?? 15}
+                    onChange={(e) => setSettings({ ...settings, toleransi_menit: parseInt(e.target.value, 10) || 0 })}
+                    className="neon-input"
+                  />
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Toleransi menit setelah jam batas masuk</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Koordinat Geofencing & GPS */}
             <div className="glass-panel" style={{ padding: "1.75rem", border: "1.5px solid #a7f3d0", background: "linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>

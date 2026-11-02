@@ -227,7 +227,11 @@ function WelcomeScreen({ user, onDone }) {
             color: "rgba(167, 243, 208, 0.8)",
             fontWeight: 600
           }}>
-            {user.role === "admin" ? "Administrator Tata Usaha" : `Guru ${user.mapel || "Mata Pelajaran"}`}
+            {user.role === "admin"
+              ? "Administrator Tata Usaha"
+              : user.role === "pegawai"
+              ? `${user.jabatan || "Pegawai"} • ${user.mapel || "Tenaga Kependidikan"}`
+              : `Guru ${user.mapel || "Mata Pelajaran"}`}
           </p>
         </motion.div>
 
@@ -488,6 +492,7 @@ export default function LoginPage() {
           initial={{ opacity: 0, y: 25, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          className="login-card"
           style={{
             width: "100%",
             maxWidth: "460px",

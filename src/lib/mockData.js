@@ -127,6 +127,20 @@ export const INITIAL_MOCK_DATA = {
       no_hp: "081234567895",
       status: "aktif",
       foto_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
+    },
+    {
+      id: "U007",
+      username: "199406182022032004",
+      password: "pegawai123",
+      nama: "Rahmawati, S.E.",
+      role: "pegawai",
+      nip: "199406182022032004",
+      jabatan: "Staf Tata Usaha / Keuangan",
+      mapel: "Administrasi & Kepegawaian",
+      email: "rahmawati@sekolah.sch.id",
+      no_hp: "081234567896",
+      status: "aktif",
+      foto_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80"
     }
   ],
   schedules: [

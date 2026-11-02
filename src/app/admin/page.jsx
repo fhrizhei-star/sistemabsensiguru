@@ -8,6 +8,7 @@ import Navbar from "@/components/Navbar";
 import AdminSidebar from "@/components/AdminSidebar";
 import { Auth } from "@/lib/auth";
 import { Api } from "@/lib/api";
+import { getAvatarUrl } from "@/lib/drive";
 import { getTodayDateStr, getTodayDayName } from "@/lib/mockData";
 import {
   Users,
@@ -161,58 +162,56 @@ export default function AdminDashboardPage() {
         <AdminSidebar />
 
         <main style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
-          {/* Header Banner with Multi-Gradient Flair */}
+          {/* Header Banner with Multi-Gradient Flair & Admin Portrait */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass-panel"
-            style={{
-              padding: "1.75rem 2rem",
-              marginBottom: "1.75rem",
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "1.25rem",
-              background: "linear-gradient(135deg, #ffffff 0%, #eef2ff 45%, #ecfdf5 100%)",
-              border: "1.5px solid #c7d2fe",
-              boxShadow: "0 6px 20px rgba(99, 102, 241, 0.08)"
-            }}
+            className="glass-panel identity-hero-card"
           >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <span className="pulse-dot" />
-                <span
-                  style={{
-                    fontSize: "0.76rem",
-                    color: "#4f46e5",
-                    fontWeight: 800,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase"
+            <div className="identity-hero-left">
+              <div className="identity-hero-avatar">
+                <img
+                  src={getAvatarUrl(currentUser.foto_url, currentUser.nama || "Admin")}
+                  alt={currentUser.nama || "Admin"}
+                  referrerPolicy="no-referrer"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={(e) => {
+                    e.target.src = getAvatarUrl("", currentUser.nama || "Admin");
                   }}
-                >
-                  Sistem Informasi Presensi Sekolah
-                </span>
+                />
               </div>
-              <h1 style={{ fontSize: "1.65rem", fontWeight: 800, color: "var(--text-main)", marginTop: "0.25rem" }}>
-                Dashboard Administrator Tata Usaha
-              </h1>
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
-                Pemantauan kehadiran guru {schoolName} &bull; {getTodayDayName()},{" "}
-                {getTodayDateStr()}
-              </p>
+              <div className="identity-hero-info">
+                <div className="identity-hero-title-row">
+                  <h1 className="identity-hero-name">
+                    {currentUser.nama || "Administrator Tata Usaha"}
+                  </h1>
+                  <span
+                    className="identity-hero-badge"
+                    style={{
+                      background: "#eef2ff",
+                      color: "#4f46e5",
+                      border: "1px solid #c7d2fe"
+                    }}
+                  >
+                    ADMIN TU
+                  </span>
+                </div>
+                <p className="identity-hero-meta">
+                  NIP: {currentUser.nip || "-"} &bull; {currentUser.jabatan || "Kepala Tata Usaha"} &bull; <strong style={{ color: "#4f46e5" }}>{schoolName}</strong>
+                </p>
+              </div>
             </div>
 
-            <div style={{ display: "flex", gap: "0.75rem" }}>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
               <Link href="/admin/rekap" style={{ textDecoration: "none" }}>
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                   type="button"
                   className="btn-neon-secondary"
-                  style={{ fontSize: "0.85rem" }}
+                  style={{ fontSize: "0.8rem", padding: "0.45rem 0.85rem" }}
                 >
-                  <FileSpreadsheet size={16} color="#0284c7" /> Rekap Harian
+                  <FileSpreadsheet size={15} color="#0284c7" /> Rekap Harian
                 </motion.button>
               </Link>
               <Link href="/admin/guru" style={{ textDecoration: "none" }}>
@@ -221,23 +220,16 @@ export default function AdminDashboardPage() {
                   whileTap={{ scale: 0.97 }}
                   type="button"
                   className="btn-neon-primary"
-                  style={{ fontSize: "0.85rem" }}
+                  style={{ fontSize: "0.8rem", padding: "0.45rem 0.85rem" }}
                 >
-                  <Users size={16} /> Kelola Guru
+                  <Users size={15} /> Kelola Guru
                 </motion.button>
               </Link>
             </div>
           </motion.div>
 
           {/* Metric Cards Grid with Vivid Colors */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: "1.25rem",
-              marginBottom: "1.75rem"
-            }}
-          >
+          <div className="admin-metrics-grid">
             {statCards.map((card, idx) => {
               const Icon = card.icon;
               return (
@@ -249,7 +241,7 @@ export default function AdminDashboardPage() {
                   whileHover={{ y: -4 }}
                   className="glass-panel"
                   style={{
-                    padding: "1.35rem",
+                    padding: "1rem 1.15rem",
                     display: "flex",
                     flexDirection: "column",
                     justifyContent: "space-between",
@@ -258,34 +250,36 @@ export default function AdminDashboardPage() {
                     boxShadow: `0 4px 16px ${card.border}60`
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-                    <span style={{ fontSize: "0.82rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                    <span className="truncate-1" style={{ fontSize: "clamp(0.72rem, 2.2vw, 0.82rem)", color: "var(--text-secondary)", fontWeight: 700 }}>
                       {card.title}
                     </span>
                     <div
                       style={{
-                        width: "38px",
-                        height: "38px",
-                        borderRadius: "11px",
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "9px",
                         background: card.iconBg,
                         border: `1px solid ${card.border}`,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: card.color
+                        color: card.color,
+                        flexShrink: 0
                       }}
                     >
-                      <Icon size={19} />
+                      <Icon size={16} />
                     </div>
                   </div>
 
                   <div>
                     <span
                       style={{
-                        fontSize: "2.1rem",
+                        fontSize: "clamp(1.45rem, 4vw, 2.1rem)",
                         fontWeight: 900,
                         fontFamily: "var(--font-display)",
-                        color: card.color
+                        color: card.color,
+                        lineHeight: 1.1
                       }}
                     >
                       {card.value}
@@ -297,7 +291,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Activity Stream & Quick Shortcuts */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1.5rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: "1.5rem" }}>
             {/* Live Feed */}
             <motion.div
               initial={{ opacity: 0, x: -15 }}

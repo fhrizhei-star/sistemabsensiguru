@@ -502,9 +502,8 @@ export default function AdminLkbPage() {
 
           {/* Statistik Ringkasan Cards */}
           <div
+            className="admin-metrics-grid"
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
               gap: "1rem",
               marginBottom: "1.75rem"
             }}

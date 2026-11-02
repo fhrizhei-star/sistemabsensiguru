@@ -303,8 +303,8 @@ export default function AdminJadwalPage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-                gap: "1.25rem"
+                gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))",
+                gap: "1rem"
               }}
             >
               {schedules.map((item, idx) => {
@@ -317,21 +317,22 @@ export default function AdminJadwalPage() {
                     transition={{ delay: idx * 0.04 }}
                     className="glass-panel"
                     style={{
-                      padding: "1.35rem",
+                      padding: "1.15rem",
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "space-between",
-                      gap: "1rem",
+                      gap: "0.85rem",
                       border: `1.5px solid ${theme.border}`,
                       background: theme.bg,
                       boxShadow: "0 4px 16px rgba(0, 0, 0, 0.03)"
                     }}
                   >
                     <div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.65rem", gap: "0.5rem" }}>
                         <span
+                          className="truncate-1"
                           style={{
-                            fontSize: "1.15rem",
+                            fontSize: "clamp(1rem, 2.8vw, 1.15rem)",
                             fontWeight: 800,
                             color: "var(--text-main)",
                             display: "flex",
@@ -339,34 +340,36 @@ export default function AdminJadwalPage() {
                             gap: "0.4rem"
                           }}
                         >
-                          <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: theme.accent }} />
+                          <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: theme.accent, flexShrink: 0 }} />
                           {item.kelas}
                         </span>
                         <span
                           style={{
                             fontFamily: "var(--font-mono)",
-                            fontSize: "0.82rem",
+                            fontSize: "0.78rem",
                             color: theme.tagText,
                             background: theme.tagBg,
                             border: `1px solid ${theme.tagBorder}`,
-                            padding: "0.25rem 0.65rem",
+                            padding: "0.2rem 0.55rem",
                             borderRadius: "var(--radius-full)",
-                            fontWeight: 700
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                            flexShrink: 0
                           }}
                         >
                           {item.jam_mulai} - {item.jam_selesai}
                         </span>
                       </div>
 
-                      <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.85rem" }}>
-                        <div style={{ color: theme.accent, fontWeight: 700, fontSize: "0.95rem" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.82rem" }}>
+                        <div className="truncate-1" style={{ color: theme.accent, fontWeight: 700, fontSize: "0.92rem" }}>
                           {item.mapel}
                         </div>
-                        <div style={{ color: "var(--text-main)", fontWeight: 600 }}>
+                        <div className="truncate-1" style={{ color: "var(--text-main)", fontWeight: 600 }}>
                           Guru: {item.nama_guru}
                         </div>
-                        <div style={{ color: "var(--text-muted)", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                          <MapPin size={13} color={theme.accent} /> Ruangan: {item.ruangan}
+                        <div className="truncate-1" style={{ color: "var(--text-muted)", fontSize: "0.78rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <MapPin size={12} color={theme.accent} /> Ruangan: {item.ruangan}
                         </div>
                       </div>
                     </div>

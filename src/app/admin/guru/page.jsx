@@ -258,16 +258,16 @@ export default function AdminGuruPage() {
               flexWrap: "wrap",
               alignItems: "center",
               justifyContent: "space-between",
-              gap: "1rem",
-              marginBottom: "1.75rem"
+              gap: "0.85rem",
+              marginBottom: "1.5rem"
             }}
           >
             <div>
-              <h1 style={{ fontSize: "1.55rem", fontWeight: 800, color: "var(--text-main)" }}>
-                Manajemen Data Guru
+              <h1 style={{ fontSize: "clamp(1.2rem, 3.5vw, 1.55rem)", fontWeight: 800, color: "var(--text-main)", lineHeight: 1.25 }}>
+                Manajemen Data Guru & Staf
               </h1>
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
-                Kelola akun tenaga pendidik, NIP, mata pelajaran, dan kredensial login
+              <p style={{ color: "var(--text-secondary)", fontSize: "clamp(0.76rem, 2.4vw, 0.88rem)", marginTop: "0.2rem" }}>
+                Kelola akun tenaga pendidik & pegawai, NIP, mapel, dan kredensial login
               </p>
             </div>
 
@@ -277,8 +277,9 @@ export default function AdminGuruPage() {
               type="button"
               onClick={() => handleOpenModal(null)}
               className="btn-neon-primary"
+              style={{ fontSize: "0.82rem", padding: "0.55rem 1rem" }}
             >
-              <UserPlus size={18} /> Tambah Guru Baru
+              <UserPlus size={16} /> Tambah Guru Baru
             </motion.button>
           </div>
 
@@ -310,10 +311,11 @@ export default function AdminGuruPage() {
             </div>
 
             {/* Filter Pills */}
-            <div style={{ display: "flex", gap: "0.5rem" }}>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               {[
                 { id: "all", label: `Semua (${teachers.length})` },
                 { id: "guru", label: `Guru (${teachers.filter((u) => (u.role || "guru") === "guru").length})` },
+                { id: "pegawai", label: `Pegawai (${teachers.filter((u) => u.role === "pegawai").length})` },
                 { id: "admin", label: `Admin TU (${teachers.filter((u) => u.role === "admin").length})` }
               ].map((pill) => (
                 <button
@@ -339,13 +341,7 @@ export default function AdminGuruPage() {
           </div>
 
           {/* Teacher Cards Grid */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-              gap: "1.25rem"
-            }}
-          >
+          <div className="guru-grid-cards">
             {filteredTeachers.map((teacher, idx) => {
               const theme = GURU_CARD_THEMES[idx % GURU_CARD_THEMES.length];
               return (
@@ -354,36 +350,36 @@ export default function AdminGuruPage() {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.04 }}
-                  className="glass-panel"
+                  className="glass-panel guru-card"
                   style={{
-                    padding: "1.35rem",
+                    padding: "1.15rem",
                     display: "flex",
                     flexDirection: "column",
                     justifyContent: "space-between",
-                    gap: "1rem",
+                    gap: "0.85rem",
                     border: `1.5px solid ${theme.border}`,
                     background: theme.bg,
                     boxShadow: "0 4px 16px rgba(0, 0, 0, 0.03)"
                   }}
                 >
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.75rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", marginBottom: "0.65rem" }}>
                       <div
                         style={{
-                          width: "64px",
-                          height: "64px",
-                          borderRadius: "18px",
+                          width: "52px",
+                          height: "52px",
+                          borderRadius: "15px",
                           overflow: "hidden",
                           background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.ring} 100%)`,
                           color: "#ffffff",
                           fontWeight: 900,
-                          fontSize: "1.4rem",
+                          fontSize: "1.25rem",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           flexShrink: 0,
-                          border: `2.5px solid ${theme.accent}`,
-                          boxShadow: `0 4px 14px ${theme.accent}35`
+                          border: `2px solid ${theme.accent}`,
+                          boxShadow: `0 4px 12px ${theme.accent}30`
                         }}
                       >
                         <img
@@ -396,27 +392,46 @@ export default function AdminGuruPage() {
                           }}
                         />
                       </div>
-                      <div style={{ overflow: "hidden" }}>
-                        <h3 style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--text-main)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <div style={{ overflow: "hidden", minWidth: 0 }}>
+                        <h3
+                          style={{
+                            fontSize: "clamp(0.92rem, 2.4vw, 1.05rem)",
+                            fontWeight: 800,
+                            color: "var(--text-main)",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis"
+                          }}
+                          title={teacher.nama}
+                        >
                           {teacher.nama}
                         </h3>
-                        <p style={{ fontSize: "0.8rem", color: theme.accent, fontWeight: 700 }}>
+                        <p
+                          style={{
+                            fontSize: "0.78rem",
+                            color: theme.accent,
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis"
+                          }}
+                        >
                           {teacher.mapel || "Guru Mata Pelajaran"}
                         </p>
                       </div>
                     </div>
 
-                    <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                      <div>NIP: <strong style={{ color: "var(--text-main)" }}>{teacher.nip || "-"}</strong></div>
-                      <div>Jabatan: {teacher.jabatan || "Tenaga Pendidik"}</div>
+                    <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                      <div className="truncate-1">NIP: <strong style={{ color: "var(--text-main)" }}>{teacher.nip || "-"}</strong></div>
+                      <div className="truncate-1">Jabatan: {teacher.jabatan || "Tenaga Pendidik"}</div>
                       {teacher.no_hp && (
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                          <Phone size={13} color="#059669" /> {teacher.no_hp}
+                        <div className="truncate-1" style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                          <Phone size={12} color="#059669" /> {teacher.no_hp}
                         </div>
                       )}
                       {teacher.email && (
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                          <Mail size={13} color="#0284c7" /> {teacher.email}
+                        <div className="truncate-1" style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                          <Mail size={12} color="#0284c7" /> {teacher.email}
                         </div>
                       )}
                     </div>
@@ -427,41 +442,46 @@ export default function AdminGuruPage() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      paddingTop: "0.85rem",
-                      borderTop: "1px solid rgba(0, 0, 0, 0.06)"
+                      paddingTop: "0.75rem",
+                      borderTop: "1px solid rgba(0, 0, 0, 0.06)",
+                      gap: "0.5rem"
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                      <span className={`badge-status ${teacher.status === "aktif" ? "badge-hadir" : "badge-alpha"}`}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", minWidth: 0 }}>
+                      <span className={`badge-status ${teacher.status === "aktif" ? "badge-hadir" : "badge-alpha"}`} style={{ fontSize: "0.68rem", padding: "0.2rem 0.5rem" }}>
                         {teacher.status || "Aktif"}
                       </span>
                       {teacher.role === "admin" ? (
-                        <span style={{ fontSize: "0.7rem", padding: "0.2rem 0.5rem", borderRadius: "8px", background: "#eef2ff", color: "#4f46e5", fontWeight: 800, border: "1px solid #c7d2fe" }}>
+                        <span style={{ fontSize: "0.68rem", padding: "0.2rem 0.45rem", borderRadius: "8px", background: "#eef2ff", color: "#4f46e5", fontWeight: 800, border: "1px solid #c7d2fe", whiteSpace: "nowrap" }}>
                           Admin TU
                         </span>
+                      ) : teacher.role === "pegawai" ? (
+                        <span style={{ fontSize: "0.68rem", padding: "0.2rem 0.45rem", borderRadius: "8px", background: "#f0f9ff", color: "#0284c7", fontWeight: 800, border: "1px solid #bae6fd", whiteSpace: "nowrap" }}>
+                          Pegawai
+                        </span>
                       ) : (
-                        <span style={{ fontSize: "0.7rem", padding: "0.2rem 0.5rem", borderRadius: "8px", background: "#ecfdf5", color: "#059669", fontWeight: 800, border: "1px solid #a7f3d0" }}>
+                        <span style={{ fontSize: "0.68rem", padding: "0.2rem 0.45rem", borderRadius: "8px", background: "#ecfdf5", color: "#059669", fontWeight: 800, border: "1px solid #a7f3d0", whiteSpace: "nowrap" }}>
                           Guru
                         </span>
                       )}
                     </div>
 
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <div style={{ display: "flex", gap: "0.35rem", flexShrink: 0 }}>
                       <button
                         type="button"
                         onClick={() => handleOpenModal(teacher)}
                         className="btn-neon-secondary"
-                        style={{ padding: "0.4rem 0.75rem", fontSize: "0.78rem", background: "#ffffff", borderColor: theme.border, color: theme.accent }}
+                        style={{ padding: "0.32rem 0.65rem", fontSize: "0.75rem", background: "#ffffff", borderColor: theme.border, color: theme.accent }}
                       >
-                        <Edit2 size={13} /> Edit
+                        <Edit2 size={12} /> Edit
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeleteConfirmId(teacher.id)}
                         className="btn-neon-danger"
-                        style={{ padding: "0.4rem 0.75rem", fontSize: "0.78rem" }}
+                        style={{ padding: "0.32rem 0.65rem", fontSize: "0.75rem" }}
                       >
-                        <Trash2 size={13} /> Hapus
+                        <Trash2 size={12} /> Hapus
                       </button>
                     </div>
                   </div>
@@ -615,38 +635,56 @@ export default function AdminGuruPage() {
                       />
                     </div>
                     <div>
-                      <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                        Mata Pelajaran Utama *
-                      </label>
-                      <select
-                        value={DAFTAR_MAPEL.includes(formData.mapel) ? formData.mapel : (formData.mapel ? "custom" : "")}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === "custom") {
-                            setFormData({ ...formData, mapel: "" });
-                          } else {
-                            setFormData({ ...formData, mapel: val });
-                          }
-                        }}
-                        className="neon-input"
-                        style={{ background: "#ffffff", cursor: "pointer", fontWeight: 600 }}
-                      >
-                        <option value="">-- Pilih Mata Pelajaran --</option>
-                        {DAFTAR_MAPEL.map((m) => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                        <option value="custom">✏️ Ketik Mapel Lainnya...</option>
-                      </select>
-                      {(!DAFTAR_MAPEL.includes(formData.mapel) || formData.mapel === "") && (
-                        <input
-                          type="text"
-                          required
-                          value={formData.mapel}
-                          onChange={(e) => setFormData({ ...formData, mapel: e.target.value })}
-                          placeholder="Ketik mata pelajaran guru..."
-                          className="neon-input"
-                          style={{ marginTop: "0.35rem" }}
-                        />
+                      {formData.role === "pegawai" ? (
+                        <>
+                          <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
+                            Unit Kerja / Bidang Tugas *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={formData.mapel}
+                            onChange={(e) => setFormData({ ...formData, mapel: e.target.value })}
+                            placeholder="Contoh: Administrasi & Pelayanan Tata Usaha"
+                            className="neon-input"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
+                            Mata Pelajaran Utama *
+                          </label>
+                          <select
+                            value={DAFTAR_MAPEL.includes(formData.mapel) ? formData.mapel : (formData.mapel ? "custom" : "")}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "custom") {
+                                setFormData({ ...formData, mapel: "" });
+                              } else {
+                                setFormData({ ...formData, mapel: val });
+                              }
+                            }}
+                            className="neon-input"
+                            style={{ background: "#ffffff", cursor: "pointer", fontWeight: 600 }}
+                          >
+                            <option value="">-- Pilih Mata Pelajaran --</option>
+                            {DAFTAR_MAPEL.map((m) => (
+                              <option key={m} value={m}>{m}</option>
+                            ))}
+                            <option value="custom">✏️ Ketik Mapel Lainnya...</option>
+                          </select>
+                          {(!DAFTAR_MAPEL.includes(formData.mapel) || formData.mapel === "") && (
+                            <input
+                              type="text"
+                              required
+                              value={formData.mapel}
+                              onChange={(e) => setFormData({ ...formData, mapel: e.target.value })}
+                              placeholder="Ketik mata pelajaran guru..."
+                              className="neon-input"
+                              style={{ marginTop: "0.35rem" }}
+                            />
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -658,39 +696,67 @@ export default function AdminGuruPage() {
                       </label>
                       <select
                         value={formData.role}
-                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                        onChange={(e) => {
+                          const newRole = e.target.value;
+                          setFormData({
+                            ...formData,
+                            role: newRole,
+                            jabatan: newRole === "pegawai" ? "Staf Tata Usaha" : (newRole === "admin" ? "Kepala Tata Usaha / Admin" : "Guru Pertama"),
+                            mapel: newRole === "pegawai" && (!formData.mapel || DAFTAR_MAPEL.includes(formData.mapel)) ? "Administrasi & Tata Usaha" : formData.mapel
+                          });
+                        }}
                         className="neon-input"
                         style={{
                           background: "#ffffff",
                           fontWeight: 700,
-                          borderColor: formData.role === "admin" ? "#818cf8" : "#86efac",
-                          color: formData.role === "admin" ? "#4f46e5" : "#059669"
+                          borderColor: formData.role === "admin" ? "#818cf8" : formData.role === "pegawai" ? "#7dd3fc" : "#86efac",
+                          color: formData.role === "admin" ? "#4f46e5" : formData.role === "pegawai" ? "#0284c7" : "#059669"
                         }}
                       >
-                        <option value="guru">👨‍🏫 Guru Pengajar (Portal Presensi)</option>
+                        <option value="guru">👨‍🏫 Guru Pengajar (Presensi Sesi Kelas)</option>
+                        <option value="pegawai">💼 Pegawai / Staf TU (Presensi Masuk & Pulang)</option>
                         <option value="admin">👨‍💼 Admin Tata Usaha (Full Dashboard)</option>
                       </select>
                     </div>
                     <div>
                       <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                        Jabatan / Golongan
+                        Jabatan / Posisi Kerja
                       </label>
-                      <select
-                        value={formData.jabatan}
-                        onChange={(e) => setFormData({ ...formData, jabatan: e.target.value })}
-                        className="neon-input"
-                        style={{ background: "#ffffff" }}
-                      >
-                        <option value="Guru Pertama">Guru Pertama</option>
-                        <option value="Guru Muda">Guru Muda</option>
-                        <option value="Guru Madya">Guru Madya</option>
-                        <option value="Guru Utama">Guru Utama</option>
-                        <option value="Guru Pengajar">Guru Pengajar</option>
-                        <option value="Guru Honorer / GTT">Guru Honorer / GTT</option>
-                        <option value="Kepala Sekolah">Kepala Sekolah</option>
-                        <option value="Wakil Kepala Sekolah">Wakil Kepala Sekolah</option>
-                        <option value="Staf Tata Usaha">Staf Tata Usaha</option>
-                      </select>
+                      {formData.role === "pegawai" ? (
+                        <select
+                          value={formData.jabatan}
+                          onChange={(e) => setFormData({ ...formData, jabatan: e.target.value })}
+                          className="neon-input"
+                          style={{ background: "#ffffff" }}
+                        >
+                          <option value="Staf Tata Usaha">Staf Tata Usaha</option>
+                          <option value="Staf Kepegawaian">Staf Kepegawaian</option>
+                          <option value="Bendahara / Keuangan">Bendahara / Keuangan</option>
+                          <option value="Operator Dapodik / EMIS">Operator Dapodik / EMIS</option>
+                          <option value="Pustakawan">Pustakawan</option>
+                          <option value="Laboran">Laboran</option>
+                          <option value="Tenaga Kebersihan">Tenaga Kebersihan</option>
+                          <option value="Tenaga Keamanan / Satpam">Tenaga Keamanan / Satpam</option>
+                          <option value="Staf Administrasi">Staf Administrasi</option>
+                        </select>
+                      ) : (
+                        <select
+                          value={formData.jabatan}
+                          onChange={(e) => setFormData({ ...formData, jabatan: e.target.value })}
+                          className="neon-input"
+                          style={{ background: "#ffffff" }}
+                        >
+                          <option value="Guru Pertama">Guru Pertama</option>
+                          <option value="Guru Muda">Guru Muda</option>
+                          <option value="Guru Madya">Guru Madya</option>
+                          <option value="Guru Utama">Guru Utama</option>
+                          <option value="Guru Pengajar">Guru Pengajar</option>
+                          <option value="Guru Honorer / GTT">Guru Honorer / GTT</option>
+                          <option value="Kepala Sekolah">Kepala Sekolah</option>
+                          <option value="Wakil Kepala Sekolah">Wakil Kepala Sekolah</option>
+                          <option value="Staf Tata Usaha">Staf Tata Usaha</option>
+                        </select>
+                      )}
                     </div>
                   </div>
 

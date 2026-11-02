@@ -4,10 +4,25 @@ import { formatDriveUrl, getAvatarUrl } from "./drive";
 export const DEFAULT_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycby0DdiBERSda-XSxlvdtQrr9h9JILecQhDWsrctfZu514jP-NRo3v6T6LrSKL39PrY35Q/exec";
 
-function formatTimeString(val) {
+export function formatTimeString(val) {
   if (!val) return "";
   const s = String(val).trim();
   if (/^\d{2}:\d{2}$/.test(s)) return s;
+
+  // Tangani serialisasi Date Google Sheets (tahun 1899) untuk sel berbasis jam
+  if (s.includes("1899") || (s.includes("T") && s.includes("Z"))) {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      // Sel time di Google Sheets berbasis 1899-12-30 dengan offset waktu lokal (Asia/Jakarta UTC+06:55:25 historis)
+      const totalSec = (d.getUTCDate() === 29 ? -86400 : 0) + d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds();
+      let localSec = totalSec + 24925; // 6 jam 55 menit 25 detik offset Jakarta/Batavia
+      if (localSec < 0) localSec += 86400;
+      const roundedMin = Math.round(localSec / 60) % 1440;
+      const h = Math.floor(roundedMin / 60);
+      const m = roundedMin % 60;
+      return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    }
+  }
 
   // Jika string memuat format waktu seperti "07:30:00" atau "Sat Dec 30 1899 07:30:00 GMT..."
   // Ekstrak langsung HH:mm murni dari teks agar tidak bergeser karena konversi zona waktu (WIB vs WITA)
@@ -195,6 +210,12 @@ export const Api = {
           if (!data.settings.google_script_url && scriptUrl) {
             data.settings.google_script_url = scriptUrl;
           }
+          if (data.settings.jam_masuk_mulai) data.settings.jam_masuk_mulai = formatTimeString(data.settings.jam_masuk_mulai);
+          if (data.settings.jam_masuk_batas) data.settings.jam_masuk_batas = formatTimeString(data.settings.jam_masuk_batas);
+          if (data.settings.jam_pulang_mulai) data.settings.jam_pulang_mulai = formatTimeString(data.settings.jam_pulang_mulai);
+          if (data.settings.jam_masuk) data.settings.jam_masuk = formatTimeString(data.settings.jam_masuk);
+          if (data.settings.jam_masuk_akhir) data.settings.jam_masuk_akhir = formatTimeString(data.settings.jam_masuk_akhir);
+          if (data.settings.jam_pulang) data.settings.jam_pulang = formatTimeString(data.settings.jam_pulang);
         }
       }
 
@@ -211,12 +232,13 @@ export const Api = {
 
     switch (action) {
       case "login": {
-        const username = (body?.username || params.username || "").trim().toLowerCase();
-        const password = (body?.password || params.password || "").trim();
+        const username = String(body?.username || params.username || "").replace(/^'/, "").trim().toLowerCase();
+        const password = String(body?.password || params.password || "").trim();
         const user = db.users.find(
           (u) =>
-            (u.username.toLowerCase() === username || (u.nip && u.nip.toLowerCase() === username)) &&
-            u.password === password
+            (String(u.username || "").replace(/^'/, "").trim().toLowerCase() === username ||
+             String(u.nip || "").replace(/^'/, "").trim().toLowerCase() === username) &&
+            String(u.password).trim() === password
         );
         if (user) {
           return { success: true, user: { ...user } };
@@ -248,7 +270,7 @@ export const Api = {
           (l) => l.status === "Disetujui" && filterDate >= l.tgl_mulai && filterDate <= l.tgl_selesai
         ).length;
 
-        const totalTeachers = db.users.filter((u) => u.role === "guru").length;
+        const totalTeachers = db.users.filter((u) => u.role === "guru" || u.role === "pegawai").length;
         const pendingLeaves = (db.leaves || []).filter((l) => l.status === "Menunggu Verifikasi").length;
 
         return {
@@ -345,7 +367,27 @@ export const Api = {
       }
 
       case "recordAttendance": {
-        if (body.jadwal_id) {
+        if (body.tipe_absen === "masuk" || body.jadwal_id === "MASUK") {
+          const duplicate = (db.attendance || []).some(
+            (a) => (a.tipe_absen === "masuk" || a.jadwal_id === "MASUK") && String(a.user_id) === String(body.user_id) && a.tanggal === today
+          );
+          if (duplicate) {
+            return {
+              success: false,
+              message: "Bapak/Ibu sudah melakukan presensi masuk hari ini!"
+            };
+          }
+        } else if (body.tipe_absen === "pulang" || body.jadwal_id === "PULANG") {
+          const duplicate = (db.attendance || []).some(
+            (a) => (a.tipe_absen === "pulang" || a.jadwal_id === "PULANG") && String(a.user_id) === String(body.user_id) && a.tanggal === today
+          );
+          if (duplicate) {
+            return {
+              success: false,
+              message: "Bapak/Ibu sudah melakukan presensi pulang hari ini!"
+            };
+          }
+        } else if (body.jadwal_id) {
           const duplicate = (db.attendance || []).some(
             (a) => String(a.jadwal_id) === String(body.jadwal_id) && String(a.user_id) === String(body.user_id) && a.tanggal === today
           );

@@ -546,8 +546,8 @@ export default function AdminRekapPage() {
     setLoading(true);
     const aRes = await Api.request("GET", "getAttendance", {});
     if (aRes && aRes.attendance) setAttendance(aRes.attendance);
-    const tRes = await Api.request("GET", "getUsers", { role: "guru" });
-    if (tRes && tRes.users) setTeachers(tRes.users);
+    const tRes = await Api.request("GET", "getUsers");
+    if (tRes && tRes.users) setTeachers(tRes.users.filter(u => u.role !== "admin"));
     const sRes = await Api.request("GET", "getSettings");
     if (sRes && sRes.settings) setSettings(sRes.settings);
     setLoading(false);
@@ -938,9 +938,9 @@ export default function AdminRekapPage() {
 
           {/* Filters Bar */}
           <div className="glass-panel no-print" style={{
-            padding: "1.25rem", marginBottom: "1.5rem",
-            display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: "1rem", alignItems: "end",
+            padding: "1.15rem", marginBottom: "1.5rem",
+            display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 160px), 1fr))",
+            gap: "0.85rem", alignItems: "end",
             border: "1.5px solid #a7f3d0",
             background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)"
           }}>
@@ -954,12 +954,12 @@ export default function AdminRekapPage() {
             </div>
             <div>
               <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                Filter Guru
+                Filter Guru / Pegawai
               </label>
               <select value={filterGuru} onChange={(e) => setFilterGuru(e.target.value)}
                 className="neon-input" style={{ padding: "0.55rem 0.85rem", cursor: "pointer" }}>
-                <option value="Semua">Semua Guru</option>
-                {teachers.map(t => <option key={t.id} value={t.id}>{t.nama}</option>)}
+                <option value="Semua">Semua Guru & Pegawai</option>
+                {teachers.map(t => <option key={t.id} value={t.id}>{t.nama} ({t.role === "pegawai" ? (t.jabatan || "Pegawai") : "Guru"})</option>)}
               </select>
             </div>
             <div>

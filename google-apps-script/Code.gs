@@ -345,11 +345,16 @@ function getSettingsHandler() {
     sheet = ss.getSheetByName(SHEET_SETTINGS);
   }
 
-  const rows = sheet.getDataRange().getValues();
+  const range = sheet.getDataRange();
+  const rows = range.getValues();
+  const displayRows = range.getDisplayValues();
   const settings = {};
   for (let i = 1; i < rows.length; i++) {
     const key = rows[i][0];
-    const val = rows[i][1];
+    let val = rows[i][1];
+    if (val instanceof Date && displayRows[i] && displayRows[i][1]) {
+      val = displayRows[i][1];
+    }
     if (key) settings[key] = val;
   }
 
@@ -357,6 +362,9 @@ function getSettingsHandler() {
   if (settings.jam_masuk) settings.jam_masuk = formatGasTime(settings.jam_masuk);
   if (settings.jam_masuk_akhir) settings.jam_masuk_akhir = formatGasTime(settings.jam_masuk_akhir);
   if (settings.jam_pulang) settings.jam_pulang = formatGasTime(settings.jam_pulang);
+  if (settings.jam_masuk_mulai) settings.jam_masuk_mulai = formatGasTime(settings.jam_masuk_mulai);
+  if (settings.jam_masuk_batas) settings.jam_masuk_batas = formatGasTime(settings.jam_masuk_batas);
+  if (settings.jam_pulang_mulai) settings.jam_pulang_mulai = formatGasTime(settings.jam_pulang_mulai);
   if (!settings.no_telp) settings.no_telp = "(0411) 861234";
   if (!settings.web_url || settings.web_url.indexOf("absensi-sekolah.vercel.app") !== -1) {
     settings.web_url = "https://sistemabsensiguru.vercel.app";
@@ -398,10 +406,10 @@ function loginHandler(username, password) {
   const rows = sheet.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const uName = String(row[1]).trim().replace(/^'/, "");
-    const uNip = String(row[5]).trim().replace(/^'/, "");
+    const uName = String(row[1]).replace(/^'/, "").trim();
+    const uNip = String(row[5]).replace(/^'/, "").trim();
     const uPass = String(row[2]).trim();
-    const inputUser = String(username).toLowerCase().trim().replace(/^'/, "");
+    const inputUser = String(username).replace(/^'/, "").trim().toLowerCase();
 
     if ((uName.toLowerCase() === inputUser || uNip.toLowerCase() === inputUser) && uPass === String(password).trim()) {
       return {
@@ -550,18 +558,21 @@ function recordClassAttendanceHandler(data) {
         : String(rawDate).trim().replace(/^'/, "");
 
       if (aJadwalId === String(data.jadwal_id) && aUserId === String(data.user_id) && aDate === todayStr) {
+        const isPegawai = data.tipe_absen === "masuk" || data.tipe_absen === "pulang" || data.jadwal_id === "MASUK" || data.jadwal_id === "PULANG";
         return {
           success: false,
-          message: "Bapak/Ibu Guru sudah melakukan presensi untuk kelas ini hari ini!"
+          message: isPegawai
+            ? "Bapak/Ibu sudah melakukan presensi " + (data.tipe_absen || data.jadwal_id).toLowerCase() + " hari ini!"
+            : "Bapak/Ibu Guru sudah melakukan presensi untuk kelas ini hari ini!"
         };
       }
     }
 
-    // Cek pembatasan jam jadwal (jika data.jam_jadwal ada)
+    // Cek pembatasan jam jadwal (jika data.jam_jadwal ada dan bukan absensi pegawai)
     let finalStatus = data.status || "Hadir";
     let finalKeterangan = data.keterangan || "Tepat Waktu";
 
-    if (data.jam_jadwal && String(data.jam_jadwal).includes("-")) {
+    if (data.jam_jadwal && String(data.jam_jadwal).includes("-") && data.jadwal_id !== "MASUK" && data.jadwal_id !== "PULANG") {
       const parts = String(data.jam_jadwal).split("-");
       const jamMulaiStr = parts[0].trim();
       const jamSelesaiStr = parts[1].trim();
@@ -876,7 +887,7 @@ function getDashboardStatsHandler(tanggal) {
   if (sheetUsers) {
     const userRows = sheetUsers.getDataRange().getValues();
     for (let i = 1; i < userRows.length; i++) {
-      if (userRows[i][4] === "guru" && userRows[i][10] === "aktif") {
+      if ((userRows[i][4] === "guru" || userRows[i][4] === "pegawai") && userRows[i][10] === "aktif") {
         totalGuru++;
       }
     }
