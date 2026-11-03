@@ -139,11 +139,15 @@ export default function TeacherLkbPage() {
 
     setSubmitting(true);
     try {
+      const isPegawai = currentUser.role === "pegawai";
       const payload = {
         user_id: currentUser.id,
         nama: currentUser.nama || currentUser.username,
         nip: currentUser.nip || "-",
-        mapel_jabatan: `${currentUser.jabatan || 'Guru'} / ${currentUser.mapel || 'Pengajar'}`,
+        role: currentUser.role || (currentUser.mapel ? "guru" : "pegawai"),
+        mapel_jabatan: isPegawai
+          ? (currentUser.jabatan || currentUser.mapel || "Staf Administrasi / Tata Usaha")
+          : `${currentUser.jabatan || 'Guru'} / ${currentUser.mapel || 'Pengajar'}`,
         bulan,
         tahun,
         judul: judul.trim() || `LKB Bulan ${bulan} ${tahun}`,
@@ -218,7 +222,7 @@ export default function TeacherLkbPage() {
             Lembar Kinerja Bulanan (LKB)
           </h1>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
-            Unggah berkas Laporan Kinerja Bulanan guru & pantau persetujuan langsung dari pimpinan
+            Unggah berkas Laporan Kinerja Bulanan {currentUser.role === "pegawai" ? "pegawai tata usaha" : "guru"} & pantau persetujuan langsung dari pimpinan
           </p>
         </div>
 

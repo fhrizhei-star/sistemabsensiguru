@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -19,7 +19,11 @@ import {
   MapPin,
   FileText,
   ChevronDown,
-  ExternalLink
+  ExternalLink,
+  GraduationCap,
+  Briefcase,
+  Sun,
+  Moon
 } from "lucide-react";
 import { LOGO_KEMENAG, LOGO_SEKOLAH } from "@/lib/logos";
 
@@ -78,9 +82,10 @@ function getMonthYear(dateStr) {
 }
 
 // --- Komponen Dokumen Cetak Format Resmi Sekolah ---
-function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, filterDate, filterMonth, mode }) {
+function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, filterDate, filterMonth, mode, roleTab = "guru" }) {
   const safeData = Array.isArray(data) ? data : [];
   const safeSettings = settings || {};
+  const isPegawai = roleTab === "pegawai";
   const todayStr = formatTanggalIndonesia(getTodayDateStr());
   const periodeLabel = mode === "bulanan"
     ? `Bulan: ${getMonthYear(filterMonth ? filterMonth + "-01" : "")}`
@@ -179,7 +184,7 @@ function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, 
       {/* ===== JUDUL LAPORAN ===== */}
       <div style={{ textAlign: "center", marginBottom: "14px" }}>
         <div style={{ fontSize: "11.5pt", fontWeight: 900, textDecoration: "underline", letterSpacing: "0.04em", color: "#000", textTransform: "uppercase" }}>
-          REKAPITULASI PRESENSI GURU
+          {isPegawai ? "REKAPITULASI PRESENSI KERJA PEGAWAI / TATA USAHA" : "REKAPITULASI PRESENSI MENGAJAR GURU"}
         </div>
         <div style={{ fontSize: "9.5pt", fontWeight: 600, color: "#222", marginTop: "3px" }}>
           {periodeLabel}
@@ -217,54 +222,79 @@ function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, 
         border: "1.5px solid #000"
       }}>
         <thead>
-          <tr style={{ background: "#065f46", color: "#ffffff" }}>
+          <tr style={{ background: isPegawai ? "#0369a1" : "#065f46", color: "#ffffff" }}>
             <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "32px", color: "#ffffff" }}>No</th>
             {mode === "bulanan" && (
               <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "90px", color: "#ffffff" }}>Tanggal</th>
             )}
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>Nama Guru</th>
+            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>{isPegawai ? "Nama Pegawai" : "Nama Guru"}</th>
             <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "120px", color: "#ffffff" }}>NIP</th>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>Mata Pelajaran</th>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "65px", color: "#ffffff" }}>Kelas</th>
+            {isPegawai ? (
+              <>
+                <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>Jabatan / Unit Kerja</th>
+                <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "90px", color: "#ffffff" }}>Jenis Presensi</th>
+                <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "95px", color: "#ffffff" }}>Jam Kerja</th>
+              </>
+            ) : (
+              <>
+                <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>Mata Pelajaran</th>
+                <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "65px", color: "#ffffff" }}>Kelas</th>
+              </>
+            )}
             <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "75px", color: "#ffffff" }}>Jam Absen</th>
             <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "80px", color: "#ffffff" }}>Status</th>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>Keterangan</th>
+            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>{isPegawai ? "Catatan Aktivitas" : "Keterangan"}</th>
           </tr>
         </thead>
         <tbody>
           {safeData.length === 0 ? (
             <tr>
-              <td colSpan={mode === "bulanan" ? 9 : 8} style={{ textAlign: "center", padding: "1.5rem", color: "#666", fontStyle: "italic", border: "1px solid #333" }}>
-                Tidak ada data presensi untuk periode ini
+              <td colSpan={mode === "bulanan" ? (isPegawai ? 10 : 9) : (isPegawai ? 9 : 8)} style={{ textAlign: "center", padding: "1.5rem", color: "#666", fontStyle: "italic", border: "1px solid #333" }}>
+                Tidak ada data presensi {isPegawai ? "pegawai" : "guru"} untuk periode ini
               </td>
             </tr>
-          ) : safeData.map((row, idx) => (
-            <tr key={row.id || idx} style={{
-              background: idx % 2 === 0 ? "#ffffff" : "#f9fbf9",
-              pageBreakInside: "avoid"
-            }}>
-              <td style={{ border: "1px solid #333", padding: "5px 6px", textAlign: "center" }}>{idx + 1}</td>
-              {mode === "bulanan" && (
-                <td style={{ border: "1px solid #333", padding: "5px 6px", whiteSpace: "nowrap" }}>
-                  {formatTanggalIndonesia(row.tanggal)}
-                </td>
-              )}
-              <td style={{ border: "1px solid #333", padding: "5px 6px", fontWeight: 700 }}>{row.nama || "-"}</td>
-              <td style={{ border: "1px solid #333", padding: "5px 6px", fontSize: "8.5pt" }}>{row.nip || "-"}</td>
-              <td style={{ border: "1px solid #333", padding: "5px 6px" }}>{row.mapel || "-"}</td>
-              <td style={{ border: "1px solid #333", padding: "5px 6px", textAlign: "center" }}>{row.kelas || "-"}</td>
-              <td style={{ border: "1px solid #333", padding: "5px 6px", textAlign: "center", fontSize: "8.5pt" }}>{row.jam_absen || "-"}</td>
-              <td style={{
-                border: "1px solid #333", padding: "5px 6px", textAlign: "center", fontWeight: 700,
-                color: row.status === "Hadir" ? "#065f46" : row.status === "Terlambat" ? "#b45309" : "#b91c1c"
+          ) : safeData.map((row, idx) => {
+            const isPulang = String(row.jadwal_id || "").toUpperCase() === "PULANG" || String(row.keterangan || "").toLowerCase().includes("pulang");
+            return (
+              <tr key={row.id || idx} style={{
+                background: idx % 2 === 0 ? "#ffffff" : "#f9fbf9",
+                pageBreakInside: "avoid"
               }}>
-                {row.status || "-"}
-              </td>
-              <td style={{ border: "1px solid #333", padding: "5px 6px", fontSize: "8pt", color: "#333" }}>
-                {row.keterangan || "-"}
-              </td>
-            </tr>
-          ))}
+                <td style={{ border: "1px solid #333", padding: "5px 6px", textAlign: "center" }}>{idx + 1}</td>
+                {mode === "bulanan" && (
+                  <td style={{ border: "1px solid #333", padding: "5px 6px", whiteSpace: "nowrap" }}>
+                    {formatTanggalIndonesia(row.tanggal)}
+                  </td>
+                )}
+                <td style={{ border: "1px solid #333", padding: "5px 6px", fontWeight: 700 }}>{row.nama || "-"}</td>
+                <td style={{ border: "1px solid #333", padding: "5px 6px", fontSize: "8.5pt" }}>{row.nip || "-"}</td>
+                {isPegawai ? (
+                  <>
+                    <td style={{ border: "1px solid #333", padding: "5px 6px" }}>{row.kelas || row.mapel || "Tata Usaha / Administrasi"}</td>
+                    <td style={{ border: "1px solid #333", padding: "5px 6px", textAlign: "center", fontWeight: 700 }}>
+                      {isPulang ? "Pulang" : "Masuk"}
+                    </td>
+                    <td style={{ border: "1px solid #333", padding: "5px 6px", textAlign: "center", fontSize: "8pt" }}>{row.jam_jadwal || "-"}</td>
+                  </>
+                ) : (
+                  <>
+                    <td style={{ border: "1px solid #333", padding: "5px 6px" }}>{row.mapel || "-"}</td>
+                    <td style={{ border: "1px solid #333", padding: "5px 6px", textAlign: "center" }}>{row.kelas || "-"}</td>
+                  </>
+                )}
+                <td style={{ border: "1px solid #333", padding: "5px 6px", textAlign: "center", fontSize: "8.5pt" }}>{row.jam_absen || "-"}</td>
+                <td style={{
+                  border: "1px solid #333", padding: "5px 6px", textAlign: "center", fontWeight: 700,
+                  color: row.status === "Hadir" ? "#065f46" : row.status === "Terlambat" ? "#b45309" : "#b91c1c"
+                }}>
+                  {row.status || "-"}
+                </td>
+                <td style={{ border: "1px solid #333", padding: "5px 6px", fontSize: "8pt", color: "#333" }}>
+                  {row.keterangan || "-"}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
@@ -315,9 +345,10 @@ function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, 
 }
 
 // --- Print Preview Modal ---
-function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, filterMonth, mode, orientation, setOrientation, onClose }) {
+function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, filterMonth, mode, roleTab = "guru", orientation, setOrientation, onClose }) {
   const safeData = Array.isArray(data) ? data : [];
   const safeSettings = settings || {};
+  const isPegawai = roleTab === "pegawai";
   const periodeLabel = mode === "bulanan"
     ? `Bulan: ${getMonthYear(filterMonth ? filterMonth + "-01" : "")}`
     : `Tanggal: ${formatTanggalIndonesia(filterDate)}`;
@@ -340,7 +371,7 @@ function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, 
       <html lang="id">
       <head>
         <meta charset="UTF-8">
-        <title>Rekap Presensi Guru - ${settings.nama_sekolah || "Sekolah"}</title>
+        <title>Rekap Presensi ${isPegawai ? "Pegawai" : "Guru"} - ${settings.nama_sekolah || "Sekolah"}</title>
         <style>
           @page { size: A4 ${orientation}; margin: ${pageMargin}; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
@@ -401,14 +432,18 @@ function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, 
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "1rem 1.5rem",
           borderBottom: "1px solid #e2e8f0",
-          background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+          background: isPegawai
+            ? "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)"
+            : "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
           flexWrap: "wrap", gap: "0.75rem"
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-            <FileText size={22} color="#059669" />
+            {isPegawai ? <Briefcase size={22} color="#0284c7" /> : <FileText size={22} color="#059669" />}
             <div>
-              <div style={{ fontWeight: 800, fontSize: "1rem", color: "#065f46" }}>Preview Cetak Rekap</div>
-              <div style={{ fontSize: "0.78rem", color: "#059669" }}>{periodeLabel} • {data.length} data</div>
+              <div style={{ fontWeight: 800, fontSize: "1rem", color: isPegawai ? "#0369a1" : "#065f46" }}>
+                Preview Cetak Rekap {isPegawai ? "Pegawai" : "Guru"}
+              </div>
+              <div style={{ fontSize: "0.78rem", color: isPegawai ? "#0284c7" : "#059669" }}>{periodeLabel} • {data.length} data</div>
             </div>
           </div>
 
@@ -418,7 +453,7 @@ function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, 
             background: "#ffffff",
             padding: "3px",
             borderRadius: "10px",
-            border: "1.5px solid #a7f3d0"
+            border: `1.5px solid ${isPegawai ? "#bae6fd" : "#a7f3d0"}`
           }}>
             <button
               type="button"
@@ -430,7 +465,7 @@ function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, 
                 fontSize: "0.78rem",
                 fontWeight: 700,
                 cursor: "pointer",
-                background: orientation === "landscape" ? "#059669" : "transparent",
+                background: orientation === "landscape" ? (isPegawai ? "#0284c7" : "#059669") : "transparent",
                 color: orientation === "landscape" ? "#ffffff" : "#475569",
                 transition: "all 0.15s ease"
               }}
@@ -447,7 +482,7 @@ function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, 
                 fontSize: "0.78rem",
                 fontWeight: 700,
                 cursor: "pointer",
-                background: orientation === "portrait" ? "#059669" : "transparent",
+                background: orientation === "portrait" ? (isPegawai ? "#0284c7" : "#059669") : "transparent",
                 color: orientation === "portrait" ? "#ffffff" : "#475569",
                 transition: "all 0.15s ease"
               }}
@@ -465,7 +500,9 @@ function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, 
                 display: "flex", alignItems: "center", gap: "0.35rem",
                 padding: "0.55rem 0.9rem",
                 background: "#ffffff",
-                color: "#065f46", border: "1.5px solid #a7f3d0", borderRadius: "10px",
+                color: isPegawai ? "#0369a1" : "#065f46",
+                border: `1.5px solid ${isPegawai ? "#bae6fd" : "#a7f3d0"}`,
+                borderRadius: "10px",
                 fontWeight: 700, fontSize: "0.82rem", cursor: "pointer"
               }}
             >
@@ -477,10 +514,12 @@ function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, 
               style={{
                 display: "flex", alignItems: "center", gap: "0.4rem",
                 padding: "0.55rem 1.1rem",
-                background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+                background: isPegawai
+                  ? "linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)"
+                  : "linear-gradient(135deg, #059669 0%, #10b981 100%)",
                 color: "#fff", border: "none", borderRadius: "10px",
                 fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
-                boxShadow: "0 4px 12px rgba(5,150,105,0.3)"
+                boxShadow: isPegawai ? "0 4px 12px rgba(2,132,199,0.3)" : "0 4px 12px rgba(5,150,105,0.3)"
               }}
             >
               <Printer size={16} /> Cetak Sekarang
@@ -510,6 +549,7 @@ function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, 
               filterDate={filterDate}
               filterMonth={filterMonth}
               mode={mode}
+              roleTab={roleTab}
             />
           </div>
         </div>
@@ -525,10 +565,17 @@ export default function AdminRekapPage() {
   const [attendance, setAttendance] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [settings, setSettings] = useState({});
+
+  // Tab Pemisah Peran: "guru" | "pegawai"
+  const [roleTab, setRoleTab] = useState("guru");
+
+  // Filters
   const [filterDate, setFilterDate] = useState(getTodayDateStr());
   const [filterMonth, setFilterMonth] = useState(getTodayDateStr().substring(0, 7)); // YYYY-MM
-  const [filterGuru, setFilterGuru] = useState("Semua");
+  const [filterUser, setFilterUser] = useState("Semua");
   const [filterStatus, setFilterStatus] = useState("Semua");
+  const [filterTipePegawai, setFilterTipePegawai] = useState("Semua"); // "Semua" | "masuk" | "pulang"
+
   const [printMode, setPrintMode] = useState("harian"); // "harian" | "bulanan"
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
@@ -553,31 +600,89 @@ export default function AdminRekapPage() {
     setLoading(false);
   };
 
-  // Filter untuk tampilan tabel
-  const filtered = (attendance || []).filter((item) => {
+  // Map users for fast lookup
+  const userMap = useMemo(() => {
+    const m = {};
+    (teachers || []).forEach(u => {
+      if (u && u.id) m[String(u.id)] = u;
+    });
+    return m;
+  }, [teachers]);
+
+  // Cek apakah item adalah presensi Pegawai
+  const isPegawaiItem = (item) => {
     if (!item) return false;
-    const itemTgl = String(item.tanggal || "").trim();
-    if (filterDate && itemTgl !== filterDate) return false;
-    if (filterGuru !== "Semua" && item.user_id !== filterGuru) return false;
-    if (filterStatus !== "Semua" && item.status !== filterStatus) return false;
-    return true;
-  });
+    const u = userMap[String(item.user_id)];
+    if (u && u.role === "pegawai") return true;
+    const jId = String(item.jadwal_id || "").toUpperCase();
+    if (jId === "MASUK" || jId === "PULANG") return true;
+    const mapelLower = String(item.mapel || "").toLowerCase();
+    const kelasLower = String(item.kelas || "").toLowerCase();
+    if (mapelLower.includes("staf") || mapelLower.includes("administrasi") || mapelLower.includes("tata usaha")) return true;
+    if (kelasLower.includes("tata usaha") || kelasLower.includes("administrasi")) return true;
+    return false;
+  };
+
+  // Filter dataset berdasarkan roleTab
+  const guruAttendanceList = useMemo(() => {
+    return (attendance || []).filter(item => !isPegawaiItem(item));
+  }, [attendance, userMap]);
+
+  const pegawaiAttendanceList = useMemo(() => {
+    return (attendance || []).filter(item => isPegawaiItem(item));
+  }, [attendance, userMap]);
+
+  const activeDataset = roleTab === "pegawai" ? pegawaiAttendanceList : guruAttendanceList;
+  const guruUsers = useMemo(() => (teachers || []).filter(u => u.role !== "pegawai"), [teachers]);
+  const pegawaiUsers = useMemo(() => (teachers || []).filter(u => u.role === "pegawai"), [teachers]);
+  const activeUserOptions = roleTab === "pegawai" ? pegawaiUsers : guruUsers;
+
+  // Filter untuk tampilan tabel aktif
+  const filtered = useMemo(() => {
+    return activeDataset.filter((item) => {
+      if (!item) return false;
+      const itemTgl = String(item.tanggal || "").trim();
+      if (filterDate && itemTgl !== filterDate) return false;
+      if (filterUser !== "Semua" && String(item.user_id) !== String(filterUser)) return false;
+      if (filterStatus !== "Semua" && item.status !== filterStatus) return false;
+
+      if (roleTab === "pegawai" && filterTipePegawai !== "Semua") {
+        const jId = String(item.jadwal_id || "").toLowerCase();
+        const ket = String(item.keterangan || "").toLowerCase();
+        if (filterTipePegawai === "masuk" && !jId.includes("masuk") && !ket.includes("masuk")) return false;
+        if (filterTipePegawai === "pulang" && !jId.includes("pulang") && !ket.includes("pulang")) return false;
+      }
+
+      return true;
+    });
+  }, [activeDataset, filterDate, filterUser, filterStatus, roleTab, filterTipePegawai]);
 
   // Filter untuk cetak (harian atau bulanan)
-  const printData = (attendance || []).filter((item) => {
-    if (!item) return false;
-    const itemTgl = String(item.tanggal || "").trim();
-    if (printMode === "harian") {
-      if (filterDate && itemTgl !== filterDate) return false;
-    } else {
-      if (filterMonth && !itemTgl.startsWith(filterMonth)) return false;
-    }
-    if (filterGuru !== "Semua" && item.user_id !== filterGuru) return false;
-    if (filterStatus !== "Semua" && item.status !== filterStatus) return false;
-    return true;
-  });
+  const printData = useMemo(() => {
+    return activeDataset.filter((item) => {
+      if (!item) return false;
+      const itemTgl = String(item.tanggal || "").trim();
+      if (printMode === "harian") {
+        if (filterDate && itemTgl !== filterDate) return false;
+      } else {
+        if (filterMonth && !itemTgl.startsWith(filterMonth)) return false;
+      }
+      if (filterUser !== "Semua" && String(item.user_id) !== String(filterUser)) return false;
+      if (filterStatus !== "Semua" && item.status !== filterStatus) return false;
+
+      if (roleTab === "pegawai" && filterTipePegawai !== "Semua") {
+        const jId = String(item.jadwal_id || "").toLowerCase();
+        const ket = String(item.keterangan || "").toLowerCase();
+        if (filterTipePegawai === "masuk" && !jId.includes("masuk") && !ket.includes("masuk")) return false;
+        if (filterTipePegawai === "pulang" && !jId.includes("pulang") && !ket.includes("pulang")) return false;
+      }
+
+      return true;
+    });
+  }, [activeDataset, printMode, filterDate, filterMonth, filterUser, filterStatus, roleTab, filterTipePegawai]);
 
   const exportExcelRapi = () => {
+    const isPegawai = roleTab === "pegawai";
     const exportDataset = printData && printData.length > 0 ? printData : filtered;
 
     const periodeStr = printMode === "bulanan"
@@ -612,22 +717,44 @@ export default function AdminRekapPage() {
         statusStyle = "background-color: #fff1f2; color: #be123c; font-weight: bold; text-align: center;";
       }
 
-      rowsHtml += `
-        <tr>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${i + 1}</td>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: 'yyyy\\-mm\\-dd';">${row.tanggal || "-"}</td>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.hari || "-"}</td>
-          <td style="text-align: left; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.nama || "-"}</td>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: '\\@';">${String(row.nip || "-").replace(/^'/, "")}</td>
-          <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.mapel || "-"}</td>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.kelas || "-"}</td>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.jam_jadwal || "-"}</td>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: 'hh\\:mm'; font-weight: bold;">${row.jam_absen || "-"}</td>
-          <td style="border: 1px solid #cbd5e1; padding: 6px; ${statusStyle}">${row.status || "-"}</td>
-          <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.keterangan || "-"}</td>
-        </tr>
-      `;
+      if (isPegawai) {
+        const isPulang = String(row.jadwal_id || "").toUpperCase() === "PULANG" || String(row.keterangan || "").toLowerCase().includes("pulang");
+        rowsHtml += `
+          <tr>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${i + 1}</td>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: 'yyyy\\-mm\\-dd';">${row.tanggal || "-"}</td>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.hari || "-"}</td>
+            <td style="text-align: left; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.nama || "-"}</td>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: '\\@';">${String(row.nip || "-").replace(/^'/, "")}</td>
+            <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.kelas || row.mapel || "Tata Usaha / Administrasi"}</td>
+            <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px;">${isPulang ? "Presensi Pulang" : "Presensi Masuk"}</td>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.jam_jadwal || "-"}</td>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: 'hh\\:mm'; font-weight: bold;">${row.jam_absen || "-"}</td>
+            <td style="border: 1px solid #cbd5e1; padding: 6px; ${statusStyle}">${row.status || "-"}</td>
+            <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.keterangan || "-"}</td>
+          </tr>
+        `;
+      } else {
+        rowsHtml += `
+          <tr>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${i + 1}</td>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: 'yyyy\\-mm\\-dd';">${row.tanggal || "-"}</td>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.hari || "-"}</td>
+            <td style="text-align: left; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.nama || "-"}</td>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: '\\@';">${String(row.nip || "-").replace(/^'/, "")}</td>
+            <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.mapel || "-"}</td>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.kelas || "-"}</td>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.jam_jadwal || "-"}</td>
+            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: 'hh\\:mm'; font-weight: bold;">${row.jam_absen || "-"}</td>
+            <td style="border: 1px solid #cbd5e1; padding: 6px; ${statusStyle}">${row.status || "-"}</td>
+            <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.keterangan || "-"}</td>
+          </tr>
+        `;
+      }
     });
+
+    const headerThemeColor = isPegawai ? "#0369a1" : "#065f46";
+    const headerBorderColor = isPegawai ? "#0284c7" : "#044e39";
 
     const excelHtml = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -638,7 +765,7 @@ export default function AdminRekapPage() {
           <x:ExcelWorkbook>
             <x:ExcelWorksheets>
               <x:ExcelWorksheet>
-                <x:Name>Rekap Presensi Guru</x:Name>
+                <x:Name>Rekap Presensi ${isPegawai ? "Pegawai" : "Guru"}</x:Name>
                 <x:WorksheetOptions>
                   <x:DisplayGridlines/>
                   <x:FitToPage/>
@@ -656,7 +783,7 @@ export default function AdminRekapPage() {
         <style>
           body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; font-size: 10pt; }
           table { border-collapse: collapse; width: 100%; }
-          .th-header { background-color: #065f46; color: #ffffff; font-weight: bold; text-align: center; padding: 9px 6px; border: 1px solid #044e39; font-size: 10pt; }
+          .th-header { background-color: ${headerThemeColor}; color: #ffffff; font-weight: bold; text-align: center; padding: 9px 6px; border: 1px solid ${headerBorderColor}; font-size: 10pt; }
         </style>
       </head>
       <body>
@@ -673,7 +800,7 @@ export default function AdminRekapPage() {
             </td>
           </tr>
           <tr>
-            <td colspan="11" style="text-align: center; font-size: 15pt; font-weight: 800; text-transform: uppercase; color: #065f46; padding: 3px 0;">
+            <td colspan="11" style="text-align: center; font-size: 15pt; font-weight: 800; text-transform: uppercase; color: ${headerThemeColor}; padding: 3px 0;">
               ${namaSekolah}
             </td>
           </tr>
@@ -683,14 +810,14 @@ export default function AdminRekapPage() {
             </td>
           </tr>
           <tr>
-            <td colspan="11" style="border-bottom: 2.5px solid #065f46; height: 6px;"></td>
+            <td colspan="11" style="border-bottom: 2.5px solid ${headerThemeColor}; height: 6px;"></td>
           </tr>
           <tr><td colspan="11" style="height: 10px;"></td></tr>
 
           <!-- JUDUL LAPORAN -->
           <tr>
             <td colspan="11" style="text-align: center; font-size: 13pt; font-weight: bold; text-transform: uppercase; color: #0f172a;">
-              LAPORAN REKAPITULASI PRESENSI MENGAJAR GURU
+              ${isPegawai ? "LAPORAN REKAPITULASI PRESENSI KERJA PEGAWAI / TATA USAHA" : "LAPORAN REKAPITULASI PRESENSI MENGAJAR GURU"}
             </td>
           </tr>
           <tr>
@@ -710,14 +837,20 @@ export default function AdminRekapPage() {
               <th class="th-header" style="width: 45px;">NO</th>
               <th class="th-header" style="width: 105px;">TANGGAL</th>
               <th class="th-header" style="width: 80px;">HARI</th>
-              <th class="th-header" style="width: 230px;">NAMA GURU</th>
+              <th class="th-header" style="width: 230px;">${isPegawai ? "NAMA PEGAWAI" : "NAMA GURU"}</th>
               <th class="th-header" style="width: 180px;">NIP</th>
-              <th class="th-header" style="width: 165px;">MATA PELAJARAN</th>
-              <th class="th-header" style="width: 95px;">KELAS</th>
-              <th class="th-header" style="width: 110px;">JAM JADWAL</th>
+              ${isPegawai ? `
+                <th class="th-header" style="width: 190px;">JABATAN / UNIT KERJA</th>
+                <th class="th-header" style="width: 130px;">JENIS PRESENSI</th>
+                <th class="th-header" style="width: 130px;">JAM KERJA</th>
+              ` : `
+                <th class="th-header" style="width: 165px;">MATA PELAJARAN</th>
+                <th class="th-header" style="width: 95px;">KELAS</th>
+                <th class="th-header" style="width: 110px;">JAM JADWAL</th>
+              `}
               <th class="th-header" style="width: 95px;">JAM ABSEN</th>
               <th class="th-header" style="width: 115px;">STATUS</th>
-              <th class="th-header" style="width: 165px;">KETERANGAN</th>
+              <th class="th-header" style="width: 175px;">${isPegawai ? "CATATAN AKTIVITAS" : "KETERANGAN"}</th>
             </tr>
           </thead>
 
@@ -730,10 +863,10 @@ export default function AdminRekapPage() {
           <tr><td colspan="11" style="height: 12px;"></td></tr>
           <tr>
             <td colspan="3" style="background-color: #f1f5f9; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px;">
-              TOTAL SESI / PERTEMUAN:
+              TOTAL ${isPegawai ? "PRESENSI PEGAWAI" : "SESI MENGAJAR"}:
             </td>
             <td colspan="8" style="background-color: #f8fafc; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px; color: #0f172a;">
-              ${totalSesi} Sesi Pelajaran
+              ${totalSesi} ${isPegawai ? "Data Presensi Kerja" : "Sesi Pelajaran"}
             </td>
           </tr>
           <tr>
@@ -784,7 +917,7 @@ export default function AdminRekapPage() {
     const blob = new Blob([excelHtml], { type: "application/vnd.ms-excel;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const cleanFileName = `Rekap_Presensi_${namaSekolah.replace(/[^a-zA-Z0-9]/g, "_")}_${printMode === "bulanan" ? filterMonth : (filterDate || "Semua")}.xls`;
+    const cleanFileName = `Rekap_Presensi_${isPegawai ? "Pegawai" : "Guru"}_${namaSekolah.replace(/[^a-zA-Z0-9]/g, "_")}_${printMode === "bulanan" ? filterMonth : (filterDate || "Semua")}.xls`;
     link.href = url;
     link.download = cleanFileName;
     document.body.appendChild(link);
@@ -836,7 +969,6 @@ export default function AdminRekapPage() {
             overflow: visible !important;
             font-family: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
           }
-          /* Sembunyikan elemen website biasa, navbar, sidebar, modal */
           nav,
           .admin-sidebar,
           .edu-background,
@@ -846,7 +978,6 @@ export default function AdminRekapPage() {
           .modal-print-container {
             display: none !important;
           }
-          /* Tampilkan area dokumen sekolah resmi */
           #native-school-print {
             display: block !important;
             position: static !important;
@@ -894,13 +1025,13 @@ export default function AdminRekapPage() {
         <main style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
 
           {/* Header */}
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginBottom: "1.75rem" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginBottom: "1.25rem" }}>
             <div>
               <h1 style={{ fontSize: "1.55rem", fontWeight: 800, color: "var(--text-main)" }}>
                 Rekapitulasi Kehadiran
               </h1>
               <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
-                Laporan dan arsip presensi jam mengajar seluruh guru
+                Laporan dan arsip presensi terpisah antara guru mengajar dan pegawai administrasi
               </p>
             </div>
 
@@ -911,13 +1042,16 @@ export default function AdminRekapPage() {
                 style={{
                   display: "flex", alignItems: "center", gap: "0.45rem",
                   fontSize: "0.85rem", padding: "0.6rem 1.15rem",
-                  background: "#ffffff", border: "1.5px solid #10b981",
-                  color: "#059669", borderRadius: "10px", fontWeight: 700, cursor: "pointer",
-                  boxShadow: "0 2px 8px rgba(16, 185, 129, 0.15)",
+                  background: "#ffffff",
+                  border: `1.5px solid ${roleTab === "pegawai" ? "#0284c7" : "#10b981"}`,
+                  color: roleTab === "pegawai" ? "#0369a1" : "#059669",
+                  borderRadius: "10px", fontWeight: 700, cursor: "pointer",
+                  boxShadow: roleTab === "pegawai" ? "0 2px 8px rgba(2, 132, 199, 0.15)" : "0 2px 8px rgba(16, 185, 129, 0.15)",
                   transition: "all 0.2s"
                 }}
               >
-                <FileSpreadsheet size={17} color="#059669" /> Ekspor Excel (.xls)
+                <FileSpreadsheet size={17} color={roleTab === "pegawai" ? "#0284c7" : "#059669"} />
+                Ekspor Excel ({roleTab === "pegawai" ? "Pegawai" : "Guru"})
               </button>
               <button
                 type="button"
@@ -925,10 +1059,12 @@ export default function AdminRekapPage() {
                 style={{
                   display: "flex", alignItems: "center", gap: "0.45rem",
                   fontSize: "0.85rem", padding: "0.6rem 1.15rem",
-                  background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+                  background: roleTab === "pegawai"
+                    ? "linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)"
+                    : "linear-gradient(135deg, #059669 0%, #10b981 100%)",
                   border: "none", color: "#ffffff", borderRadius: "10px",
                   fontWeight: 700, cursor: "pointer",
-                  boxShadow: "0 4px 14px rgba(16,185,129,0.3)"
+                  boxShadow: roleTab === "pegawai" ? "0 4px 14px rgba(2,132,199,0.3)" : "0 4px 14px rgba(16,185,129,0.3)"
                 }}
               >
                 <Printer size={16} /> Cetak Format Sekolah
@@ -936,13 +1072,97 @@ export default function AdminRekapPage() {
             </div>
           </div>
 
+          {/* TAB PEMISAH PERAN: GURU VS PEGAWAI */}
+          <div className="no-print" style={{
+            display: "flex",
+            gap: "0.75rem",
+            marginBottom: "1.5rem",
+            flexWrap: "wrap"
+          }}>
+            <button
+              type="button"
+              onClick={() => {
+                setRoleTab("guru");
+                setFilterUser("Semua");
+                setFilterTipePegawai("Semua");
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.6rem",
+                padding: "0.75rem 1.35rem",
+                borderRadius: "14px",
+                border: roleTab === "guru" ? "2px solid #059669" : "1.5px solid var(--border-light)",
+                background: roleTab === "guru" ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)" : "#ffffff",
+                color: roleTab === "guru" ? "#065f46" : "var(--text-secondary)",
+                fontWeight: 800,
+                fontSize: "0.92rem",
+                cursor: "pointer",
+                boxShadow: roleTab === "guru" ? "0 4px 14px rgba(5, 150, 105, 0.2)" : "var(--shadow-sm)",
+                transition: "all 0.2s ease"
+              }}
+            >
+              <GraduationCap size={20} color={roleTab === "guru" ? "#059669" : "#64748b"} />
+              <span>Rekap Presensi Guru</span>
+              <span style={{
+                fontSize: "0.74rem",
+                background: roleTab === "guru" ? "#059669" : "#f1f5f9",
+                color: roleTab === "guru" ? "#ffffff" : "#64748b",
+                padding: "0.15rem 0.55rem",
+                borderRadius: "999px",
+                fontWeight: 800
+              }}>
+                {guruAttendanceList.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setRoleTab("pegawai");
+                setFilterUser("Semua");
+                setFilterTipePegawai("Semua");
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.6rem",
+                padding: "0.75rem 1.35rem",
+                borderRadius: "14px",
+                border: roleTab === "pegawai" ? "2px solid #0284c7" : "1.5px solid var(--border-light)",
+                background: roleTab === "pegawai" ? "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)" : "#ffffff",
+                color: roleTab === "pegawai" ? "#0369a1" : "var(--text-secondary)",
+                fontWeight: 800,
+                fontSize: "0.92rem",
+                cursor: "pointer",
+                boxShadow: roleTab === "pegawai" ? "0 4px 14px rgba(2, 132, 199, 0.2)" : "var(--shadow-sm)",
+                transition: "all 0.2s ease"
+              }}
+            >
+              <Briefcase size={19} color={roleTab === "pegawai" ? "#0284c7" : "#64748b"} />
+              <span>Rekap Presensi Pegawai</span>
+              <span style={{
+                fontSize: "0.74rem",
+                background: roleTab === "pegawai" ? "#0284c7" : "#f1f5f9",
+                color: roleTab === "pegawai" ? "#ffffff" : "#64748b",
+                padding: "0.15rem 0.55rem",
+                borderRadius: "999px",
+                fontWeight: 800
+              }}>
+                {pegawaiAttendanceList.length}
+              </span>
+            </button>
+          </div>
+
           {/* Filters Bar */}
           <div className="glass-panel no-print" style={{
             padding: "1.15rem", marginBottom: "1.5rem",
             display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 160px), 1fr))",
             gap: "0.85rem", alignItems: "end",
-            border: "1.5px solid #a7f3d0",
-            background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)"
+            border: `1.5px solid ${roleTab === "pegawai" ? "#bae6fd" : "#a7f3d0"}`,
+            background: roleTab === "pegawai"
+              ? "linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)"
+              : "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)"
           }}>
             <div>
               <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
@@ -952,16 +1172,37 @@ export default function AdminRekapPage() {
                 onChange={(e) => setFilterDate(e.target.value)}
                 className="neon-input" style={{ padding: "0.55rem 0.85rem" }} />
             </div>
+
             <div>
               <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                Filter Guru / Pegawai
+                Filter {roleTab === "pegawai" ? "Pegawai" : "Guru"}
               </label>
-              <select value={filterGuru} onChange={(e) => setFilterGuru(e.target.value)}
+              <select value={filterUser} onChange={(e) => setFilterUser(e.target.value)}
                 className="neon-input" style={{ padding: "0.55rem 0.85rem", cursor: "pointer" }}>
-                <option value="Semua">Semua Guru & Pegawai</option>
-                {teachers.map(t => <option key={t.id} value={t.id}>{t.nama} ({t.role === "pegawai" ? (t.jabatan || "Pegawai") : "Guru"})</option>)}
+                <option value="Semua">Semua {roleTab === "pegawai" ? "Pegawai" : "Guru"}</option>
+                {activeUserOptions.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.nama} ({roleTab === "pegawai" ? (t.jabatan || "Pegawai") : (t.mapel || "Guru")})
+                  </option>
+                ))}
               </select>
             </div>
+
+            {/* Khusus Pegawai: Filter Jenis Presensi (Masuk vs Pulang) */}
+            {roleTab === "pegawai" && (
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
+                  Jenis Presensi
+                </label>
+                <select value={filterTipePegawai} onChange={(e) => setFilterTipePegawai(e.target.value)}
+                  className="neon-input" style={{ padding: "0.55rem 0.85rem", cursor: "pointer" }}>
+                  <option value="Semua">Semua Jenis</option>
+                  <option value="masuk">🌅 Presensi Masuk</option>
+                  <option value="pulang">🌙 Presensi Pulang</option>
+                </select>
+              </div>
+            )}
+
             <div>
               <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
                 Status Kehadiran
@@ -973,8 +1214,9 @@ export default function AdminRekapPage() {
                 <option value="Terlambat">Terlambat</option>
               </select>
             </div>
+
             <div>
-              <button type="button" onClick={() => { setFilterDate(""); setFilterGuru("Semua"); setFilterStatus("Semua"); }}
+              <button type="button" onClick={() => { setFilterDate(""); setFilterUser("Semua"); setFilterStatus("Semua"); setFilterTipePegawai("Semua"); }}
                 style={{
                   width: "100%", padding: "0.55rem", fontSize: "0.82rem",
                   background: "#ffffff", border: "1px solid #d1d5db",
@@ -995,9 +1237,9 @@ export default function AdminRekapPage() {
               {["harian", "bulanan"].map(m => (
                 <button key={m} type="button" onClick={() => setPrintMode(m)} style={{
                   padding: "0.4rem 1rem", borderRadius: "999px",
-                  border: `2px solid ${printMode === m ? "#059669" : "#e2e8f0"}`,
-                  background: printMode === m ? "#dcfce7" : "#ffffff",
-                  color: printMode === m ? "#065f46" : "#6b7280",
+                  border: `2px solid ${printMode === m ? (roleTab === "pegawai" ? "#0284c7" : "#059669") : "#e2e8f0"}`,
+                  background: printMode === m ? (roleTab === "pegawai" ? "#e0f2fe" : "#dcfce7") : "#ffffff",
+                  color: printMode === m ? (roleTab === "pegawai" ? "#0369a1" : "#065f46") : "#6b7280",
                   fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", textTransform: "capitalize"
                 }}>
                   {m === "harian" ? "📅 Harian" : "📆 Bulanan"}
@@ -1015,50 +1257,123 @@ export default function AdminRekapPage() {
           </div>
 
           {/* Table Container */}
-          <div className="glass-panel" style={{ padding: "0", overflow: "hidden", border: "1.5px solid #d1fae5" }}>
+          <div className="glass-panel" style={{
+            padding: "0",
+            overflow: "hidden",
+            border: `1.5px solid ${roleTab === "pegawai" ? "#bae6fd" : "#d1fae5"}`
+          }}>
             {loading ? (
-              <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>Memuat data presensi...</div>
-            ) : filtered.length === 0 ? (
               <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
-                Tidak ada data yang cocok dengan kriteria filter.
+                Memuat data presensi {roleTab === "pegawai" ? "pegawai" : "guru"}...
+              </div>
+            ) : filtered.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "3.5rem 1rem", color: "var(--text-muted)" }}>
+                <Clock size={36} color="#94a3b8" style={{ margin: "0 auto 0.75rem" }} />
+                <div style={{ fontWeight: 700, color: "var(--text-main)", fontSize: "1rem" }}>
+                  Tidak ada data presensi {roleTab === "pegawai" ? "pegawai" : "guru"}
+                </div>
+                <div style={{ fontSize: "0.82rem", marginTop: "0.25rem" }}>
+                  Tidak ditemukan presensi yang cocok dengan kriteria filter saat ini.
+                </div>
               </div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.88rem" }}>
                   <thead>
-                    <tr style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", borderBottom: "1.5px solid #a7f3d0" }}>
-                      <th style={{ padding: "1rem 1.25rem", color: "#065f46", fontWeight: 800 }}>Nama Guru</th>
-                      <th style={{ padding: "1rem 1.25rem", color: "#065f46", fontWeight: 800 }}>Mata Pelajaran</th>
-                      <th style={{ padding: "1rem 1.25rem", color: "#065f46", fontWeight: 800 }}>Kelas & Sesi</th>
-                      <th style={{ padding: "1rem 1.25rem", color: "#065f46", fontWeight: 800 }}>Jam Absen</th>
-                      <th style={{ padding: "1rem 1.25rem", color: "#065f46", fontWeight: 800 }}>Status</th>
-                      <th style={{ padding: "1rem 1.25rem", color: "#065f46", fontWeight: 700 }}>Keterangan</th>
+                    <tr style={{
+                      background: roleTab === "pegawai"
+                        ? "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)"
+                        : "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                      borderBottom: `1.5px solid ${roleTab === "pegawai" ? "#bae6fd" : "#a7f3d0"}`
+                    }}>
+                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", fontWeight: 800 }}>
+                        {roleTab === "pegawai" ? "Nama Pegawai" : "Nama Guru"}
+                      </th>
+                      {roleTab === "pegawai" ? (
+                        <>
+                          <th style={{ padding: "1rem 1.25rem", color: "#0369a1", fontWeight: 800 }}>Jabatan / Unit Kerja</th>
+                          <th style={{ padding: "1rem 1.25rem", color: "#0369a1", fontWeight: 800 }}>Jenis Presensi</th>
+                          <th style={{ padding: "1rem 1.25rem", color: "#0369a1", fontWeight: 800 }}>Jam Kerja</th>
+                        </>
+                      ) : (
+                        <>
+                          <th style={{ padding: "1rem 1.25rem", color: "#065f46", fontWeight: 800 }}>Mata Pelajaran</th>
+                          <th style={{ padding: "1rem 1.25rem", color: "#065f46", fontWeight: 800 }}>Kelas & Sesi</th>
+                        </>
+                      )}
+                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", fontWeight: 800 }}>Jam Absen</th>
+                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", fontWeight: 800 }}>Status</th>
+                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", fontWeight: 700 }}>
+                        {roleTab === "pegawai" ? "Catatan Aktivitas" : "Keterangan"}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((row, idx) => (
-                      <tr key={row.id || idx} style={{
-                        borderBottom: "1px solid var(--border-light)",
-                        background: idx % 2 === 0 ? "#ffffff" : "#f8fffe"
-                      }}>
-                        <td style={{ padding: "1rem 1.25rem" }}>
-                          <div style={{ fontWeight: 700, color: "var(--text-main)" }}>{row.nama}</div>
-                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>NIP: {row.nip || "-"}</div>
-                        </td>
-                        <td style={{ padding: "1rem 1.25rem", color: "#059669", fontWeight: 700 }}>{row.mapel || "-"}</td>
-                        <td style={{ padding: "1rem 1.25rem" }}>
-                          <span style={{ fontWeight: 600, color: "var(--text-main)" }}>{row.kelas || "-"}</span>
-                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{row.jam_jadwal || "-"}</div>
-                        </td>
-                        <td style={{ padding: "1rem 1.25rem", fontFamily: "var(--font-mono)", color: "#059669", fontWeight: 600 }}>
-                          {row.jam_absen}
-                        </td>
-                        <td style={{ padding: "1rem 1.25rem" }}>{statusBadge(row.status)}</td>
-                        <td style={{ padding: "1rem 1.25rem", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-                          {row.keterangan || "-"}
-                        </td>
-                      </tr>
-                    ))}
+                    {filtered.map((row, idx) => {
+                      const isPulang = String(row.jadwal_id || "").toUpperCase() === "PULANG" || String(row.keterangan || "").toLowerCase().includes("pulang");
+                      return (
+                        <tr key={row.id || idx} style={{
+                          borderBottom: "1px solid var(--border-light)",
+                          background: idx % 2 === 0 ? "#ffffff" : (roleTab === "pegawai" ? "#fbfdff" : "#f8fffe")
+                        }}>
+                          <td style={{ padding: "1rem 1.25rem" }}>
+                            <div style={{ fontWeight: 700, color: "var(--text-main)" }}>{row.nama}</div>
+                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>NIP: {row.nip || "-"}</div>
+                          </td>
+
+                          {roleTab === "pegawai" ? (
+                            <>
+                              <td style={{ padding: "1rem 1.25rem", fontWeight: 600, color: "var(--text-main)" }}>
+                                {row.kelas || row.mapel || "Tata Usaha / Administrasi"}
+                              </td>
+                              <td style={{ padding: "1rem 1.25rem" }}>
+                                {isPulang ? (
+                                  <span style={{
+                                    display: "inline-flex", alignItems: "center", gap: "0.35rem",
+                                    background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe",
+                                    padding: "0.22rem 0.65rem", borderRadius: "999px", fontSize: "0.76rem", fontWeight: 800
+                                  }}>
+                                    <Moon size={13} color="#2563eb" /> Presensi Pulang
+                                  </span>
+                                ) : (
+                                  <span style={{
+                                    display: "inline-flex", alignItems: "center", gap: "0.35rem",
+                                    background: "#fffbeb", color: "#b45309", border: "1px solid #fde68a",
+                                    padding: "0.22rem 0.65rem", borderRadius: "999px", fontSize: "0.76rem", fontWeight: 800
+                                  }}>
+                                    <Sun size={13} color="#d97706" /> Presensi Masuk
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ padding: "1rem 1.25rem", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                                {row.jam_jadwal || "-"}
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td style={{ padding: "1rem 1.25rem", color: "#059669", fontWeight: 700 }}>{row.mapel || "-"}</td>
+                              <td style={{ padding: "1rem 1.25rem" }}>
+                                <span style={{ fontWeight: 600, color: "var(--text-main)" }}>{row.kelas || "-"}</span>
+                                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{row.jam_jadwal || "-"}</div>
+                              </td>
+                            </>
+                          )}
+
+                          <td style={{
+                            padding: "1rem 1.25rem",
+                            fontFamily: "var(--font-mono)",
+                            color: roleTab === "pegawai" ? "#0284c7" : "#059669",
+                            fontWeight: 700
+                          }}>
+                            {row.jam_absen}
+                          </td>
+                          <td style={{ padding: "1rem 1.25rem" }}>{statusBadge(row.status)}</td>
+                          <td style={{ padding: "1rem 1.25rem", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                            {row.keterangan || "-"}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1077,6 +1392,7 @@ export default function AdminRekapPage() {
             filterDate={filterDate}
             filterMonth={filterMonth}
             mode={printMode}
+            roleTab={roleTab}
             orientation={printOrientation}
             setOrientation={setPrintOrientation}
             onClose={() => setShowPrintPreview(false)}
@@ -1112,6 +1428,7 @@ export default function AdminRekapPage() {
           filterDate={filterDate}
           filterMonth={filterMonth}
           mode={printMode}
+          roleTab={roleTab}
         />
       </div>
     </>
