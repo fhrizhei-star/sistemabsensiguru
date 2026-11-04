@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Auth } from "@/lib/auth";
 import { Api } from "@/lib/api";
 import { formatDriveUrl, getAvatarUrl } from "@/lib/drive";
-import { Clock, School, LogOut, AlertTriangle } from "lucide-react";
+import { Clock, School, LogOut, AlertTriangle, KeyRound } from "lucide-react";
+import ChangePasswordModal from "@/components/ChangePasswordModal";
 
 export default function Navbar({ role = "guru" }) {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function Navbar({ role = "guru" }) {
   const [currentTime, setCurrentTime] = useState("");
   const [currentDate, setCurrentDate] = useState("");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [schoolName, setSchoolName] = useState("MTsN GOWA");
 
   useEffect(() => {
@@ -238,6 +240,30 @@ export default function Navbar({ role = "guru" }) {
           </div>
             )}
 
+            {currentUser && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowPasswordModal(true)}
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "12px",
+                  background: "#eef2ff",
+                  border: "1px solid #c7d2fe",
+                  color: "#4f46e5",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+                title="Ganti Password Akun"
+              >
+                <KeyRound size={18} />
+              </motion.button>
+            )}
+
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -349,6 +375,13 @@ export default function Navbar({ role = "guru" }) {
           </div>
         )}
       </AnimatePresence>
+
+      <ChangePasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        currentUser={currentUser}
+        onPasswordChanged={(updated) => setCurrentUser(updated)}
+      />
     </>
   );
 }

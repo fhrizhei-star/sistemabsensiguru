@@ -1511,15 +1511,15 @@ export default function AdminLkbPage() {
                         {item.file_url && (
                           <button
                             type="button"
-                            onClick={() => window.open(formatDriveUrl(item.file_url), "_blank")}
+                            onClick={() => window.open(item.file_url, "_blank")}
                             style={{
                               padding: "0.45rem 0.85rem",
                               borderRadius: "var(--radius-md)",
-                              border: "1px solid var(--border-light)",
-                              background: "#ffffff",
-                              color: "var(--text-main)",
+                              border: "1px solid #bfdbfe",
+                              background: "#eff6ff",
+                              color: "#1d4ed8",
                               fontSize: "0.8rem",
-                              fontWeight: 600,
+                              fontWeight: 700,
                               display: "flex",
                               alignItems: "center",
                               gap: "0.35rem",
@@ -1527,7 +1527,7 @@ export default function AdminLkbPage() {
                               boxShadow: "var(--shadow-sm)"
                             }}
                           >
-                            <ExternalLink size={14} /> Lihat File
+                            <ExternalLink size={14} /> Buka Link Drive
                           </button>
                         )}
 
@@ -1678,7 +1678,7 @@ export default function AdminLkbPage() {
                             {item.file_url ? (
                               <button
                                 type="button"
-                                onClick={() => window.open(formatDriveUrl(item.file_url), "_blank")}
+                                onClick={() => window.open(item.file_url, "_blank")}
                                 style={{
                                   padding: "0.35rem 0.7rem",
                                   borderRadius: "8px",
@@ -1693,7 +1693,7 @@ export default function AdminLkbPage() {
                                   gap: "0.3rem"
                                 }}
                               >
-                                <ExternalLink size={13} /> Berkas
+                                <ExternalLink size={13} /> Buka Drive
                               </button>
                             ) : "-"}
                           </td>

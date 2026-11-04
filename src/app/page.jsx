@@ -21,6 +21,7 @@ import {
   ArrowLeft
 } from "lucide-react";
 import { DAFTAR_MAPEL } from "@/lib/constants";
+import ForgotPasswordModal from "@/components/ForgotPasswordModal";
 
 // --- Welcome Screen Component ---
 function WelcomeScreen({ user, onDone }) {
@@ -300,6 +301,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [welcomeUser, setWelcomeUser] = useState(null);
@@ -720,7 +722,21 @@ export default function LoginPage() {
                 />
                 <span>Ingat saya</span>
               </label>
-              <span style={{ color: "#059669", cursor: "pointer", fontWeight: 600 }}>Lupa sandi?</span>
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  color: "#059669",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: "0.82rem"
+                }}
+              >
+                Lupa sandi?
+              </button>
             </div>
 
             {/* Submit Button */}
@@ -1026,6 +1042,15 @@ export default function LoginPage() {
           </div>
         </motion.div>
       </div>
+
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        onSuccessReset={(u, p) => {
+          if (u) setUsername(u);
+          if (p) setPassword(p);
+        }}
+      />
     </>
   );
 }

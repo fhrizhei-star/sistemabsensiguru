@@ -26,8 +26,10 @@ import {
   AlertCircle,
   Sun,
   Moon,
-  Briefcase
+  Briefcase,
+  KeyRound
 } from "lucide-react";
+import ChangePasswordModal from "@/components/ChangePasswordModal";
 
 // --- Helper Fungsi Pembatasan Jam Mengajar & Status Keterlambatan ---
 function parseTimeToMinutes(timeStr) {
@@ -275,6 +277,7 @@ export default function TeacherDashboard() {
   const [loading, setLoading] = useState(false);
   const [successNotice, setSuccessNotice] = useState(null);
   const [errorNotice, setErrorNotice] = useState(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [nowDate, setNowDate] = useState(new Date());
 
   // Real-time clock interval (updates every 1 second)
@@ -519,6 +522,28 @@ export default function TeacherDashboard() {
                 NIP: {currentUser.nip || "-"} &bull; {currentUser.jabatan || (isPegawai ? "Staf Tata Usaha" : "Tenaga Pendidik")} &bull;{" "}
                 <strong style={{ color: isPegawai ? "#0284c7" : "var(--primary)" }}>{currentUser.mapel || (isPegawai ? "Staf Administrasi" : "Guru")}</strong>
               </p>
+              <div style={{ marginTop: "0.4rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(true)}
+                  style={{
+                    background: "#f8fafc",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "6px",
+                    padding: "0.22rem 0.65rem",
+                    color: "#4f46e5",
+                    fontSize: "0.74rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.04)"
+                  }}
+                >
+                  <KeyRound size={13} /> Ganti Password
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1260,6 +1285,13 @@ export default function TeacherDashboard() {
           </motion.div>
         </div>
       </main>
+
+      <ChangePasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        currentUser={currentUser}
+        onPasswordChanged={(updated) => setCurrentUser(updated)}
+      />
     </>
   );
 }

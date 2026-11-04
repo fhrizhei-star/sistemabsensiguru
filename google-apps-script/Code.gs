@@ -279,6 +279,12 @@ function doPost(e) {
       case "saveUser":
         result = saveUserHandler(data);
         break;
+      case "changePassword":
+        result = changePasswordHandler(data);
+        break;
+      case "resetPassword":
+        result = resetPasswordHandler(data);
+        break;
       case "deleteUser":
         result = deleteUserHandler(data.id);
         break;
@@ -1521,6 +1527,87 @@ function deleteUserHandler(id) {
   }
 
   return { success: false, message: "Guru tidak ditemukan" };
+}
+
+function changePasswordHandler(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_USERS);
+  if (!sheet) return { success: false, message: "Database pengguna tidak ditemukan" };
+
+  const userId = data.id || data.user_id;
+  const newPass = String(data.password || data.new_password || "").trim();
+
+  if (!userId || !newPass) {
+    return { success: false, message: "ID pengguna dan password baru wajib diisi" };
+  }
+
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(userId)) {
+      sheet.getRange(i + 1, 3).setValue(newPass);
+      return { success: true, message: "Password berhasil diperbarui" };
+    }
+  }
+
+  return { success: false, message: "Pengguna tidak ditemukan" };
+}
+
+function resetPasswordHandler(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_USERS);
+  if (!sheet) {
+    initDatabase();
+    sheet = ss.getSheetByName(SHEET_USERS);
+  }
+
+  const inputIdentifier = String(data.identifier || data.username || data.nip || "").replace(/^'/, "").trim().toLowerCase();
+  let inputHp = String(data.no_hp || data.phone || "").replace(/[^0-9]/g, "");
+  if (inputHp.indexOf("62") === 0) inputHp = "0" + inputHp.slice(2);
+
+  if (!inputIdentifier || !inputHp) {
+    return { success: false, message: "Harap masukkan NIP/Username dan Nomor HP yang terdaftar!" };
+  }
+
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const uName = String(row[1]).replace(/^'/, "").trim().toLowerCase();
+    const uNip = String(row[5]).replace(/^'/, "").trim().toLowerCase();
+    
+    let rawDbHp = String(row[9]).replace(/^'/, "").replace(/[^0-9]/g, "");
+    if (rawDbHp.indexOf("62") === 0) rawDbHp = "0" + rawDbHp.slice(2);
+
+    if ((uName === inputIdentifier || uNip === inputIdentifier) && rawDbHp && rawDbHp === inputHp) {
+      if (data.verify_only) {
+        return {
+          success: true,
+          message: "Identitas terverifikasi",
+          user: {
+            id: String(row[0]),
+            nama: String(row[3]),
+            nip: String(row[5]).replace(/^'/, ""),
+            username: String(row[1]).replace(/^'/, "")
+          }
+        };
+      }
+
+      const newPass = String(data.new_password || data.password || "").trim();
+      if (!newPass || newPass.length < 4) {
+        return { success: false, message: "Kata sandi baru minimal terdiri dari 4 karakter!" };
+      }
+
+      sheet.getRange(i + 1, 3).setValue(newPass);
+      return {
+        success: true,
+        message: "Kata sandi berhasil diperbarui! Silakan login dengan kata sandi baru Anda."
+      };
+    }
+  }
+
+  return {
+    success: false,
+    message: "Data tidak ditemukan! Pastikan NIP dan Nomor HP sesuai dengan yang terdaftar di sekolah."
+  };
 }
 
 function createJsonResponse(data) {

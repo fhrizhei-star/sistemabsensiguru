@@ -316,6 +316,67 @@ export const Api = {
         return { success: true, message: "Data guru berhasil disimpan", user: userData };
       }
 
+      case "changePassword": {
+        const userId = body?.id || body?.user_id;
+        const newPass = body?.password || body?.new_password;
+        if (!userId || !newPass) {
+          return { success: false, message: "ID pengguna dan password baru wajib diisi!" };
+        }
+        const idx = db.users.findIndex((u) => u.id === userId);
+        if (idx !== -1) {
+          db.users[idx].password = String(newPass).trim();
+          MockDB.save(db);
+          return { success: true, message: "Password berhasil diperbarui!" };
+        }
+        return { success: false, message: "Pengguna tidak ditemukan!" };
+      }
+
+      case "resetPassword": {
+        const inputIdentifier = String(body.identifier || body.username || body.nip || "").replace(/^'/, "").trim().toLowerCase();
+        let inputHp = String(body.no_hp || body.phone || "").replace(/[^0-9]/g, "");
+        if (inputHp.startsWith("62")) inputHp = "0" + inputHp.slice(2);
+
+        if (!inputIdentifier || !inputHp) {
+          return { success: false, message: "Harap masukkan NIP/Username dan Nomor HP yang terdaftar!" };
+        }
+
+        const user = db.users.find((u) => {
+          const uName = String(u.username || "").replace(/^'/, "").trim().toLowerCase();
+          const uNip = String(u.nip || "").replace(/^'/, "").trim().toLowerCase();
+          let rawDbHp = String(u.no_hp || "").replace(/^'/, "").replace(/[^0-9]/g, "");
+          if (rawDbHp.startsWith("62")) rawDbHp = "0" + rawDbHp.slice(2);
+          return (uName === inputIdentifier || uNip === inputIdentifier) && rawDbHp && rawDbHp === inputHp;
+        });
+
+        if (!user) {
+          return { success: false, message: "Data tidak ditemukan! Pastikan NIP dan Nomor HP sesuai dengan yang terdaftar di sekolah." };
+        }
+
+        if (body.verify_only) {
+          return {
+            success: true,
+            message: "Identitas terverifikasi",
+            user: { id: user.id, nama: user.nama, nip: user.nip, username: user.username }
+          };
+        }
+
+        const newPass = String(body.new_password || body.password || "").trim();
+        if (!newPass || newPass.length < 4) {
+          return { success: false, message: "Password baru minimal 4 karakter!" };
+        }
+
+        const idx = db.users.findIndex((u) => u.id === user.id);
+        if (idx !== -1) {
+          db.users[idx].password = newPass;
+          MockDB.save(db);
+        }
+
+        return {
+          success: true,
+          message: "Kata sandi berhasil diperbarui! Silakan login dengan kata sandi baru Anda."
+        };
+      }
+
       case "deleteUser": {
         const id = body?.id || params.id;
         db.users = db.users.filter((u) => u.id !== id);

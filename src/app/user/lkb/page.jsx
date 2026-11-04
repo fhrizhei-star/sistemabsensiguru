@@ -22,7 +22,9 @@ import {
   Check,
   X,
   FileCheck,
-  AlertCircle
+  AlertCircle,
+  Link as LinkIcon,
+  Send
 } from "lucide-react";
 
 const MONTH_NAMES = [
@@ -47,9 +49,7 @@ export default function TeacherLkbPage() {
   const [tahun, setTahun] = useState(String(now.getFullYear()));
   const [judul, setJudul] = useState("");
   const [catatan, setCatatan] = useState("");
-  const [fileObj, setFileObj] = useState(null);
-  const [fileBase64, setFileBase64] = useState("");
-  const [fileSizeStr, setFileSizeStr] = useState("");
+  const [driveLink, setDriveLink] = useState("");
 
   // Revision state
   const [revisionLkbId, setRevisionLkbId] = useState(null);
@@ -78,42 +78,16 @@ export default function TeacherLkbPage() {
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Batas ukuran 10 MB
-    if (file.size > 10 * 1024 * 1024) {
-      setNotice({
-        type: "error",
-        msg: "Ukuran file terlalu besar! Maksimal 10 MB agar proses upload cepat dan lancar."
-      });
-      return;
-    }
-
-    setFileObj(file);
-    const sizeInMb = (file.size / (1024 * 1024)).toFixed(2);
-    setFileSizeStr(file.size < 1024 * 1024 ? (file.size / 1024).toFixed(1) + " KB" : `${sizeInMb} MB`);
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFileBase64(reader.result);
-    };
-    reader.readAsDataURL(file);
-  };
-
   const startRevision = (item) => {
     setRevisionLkbId(item.id);
     setBulan(item.bulan || MONTH_NAMES[now.getMonth()]);
     setTahun(String(item.tahun || now.getFullYear()));
     setJudul(item.judul || "");
     setCatatan(item.catatan || "");
-    setFileObj(null);
-    setFileBase64("");
-    setFileSizeStr("");
+    setDriveLink(item.file_url || "");
     setNotice({
       type: "info",
-      msg: `Anda sedang memperbaiki dokumen: "${item.judul || 'LKB'}". Pilih file baru yang telah direvisi lalu klik Unggah Revisi.`
+      msg: `Anda sedang memperbaiki berkas: "${item.judul || 'LKB'}". Perbarui tautan link Google Drive Anda lalu klik Simpan Revisi.`
     });
     window.scrollTo({ top: 120, behavior: "smooth" });
   };
@@ -122,9 +96,7 @@ export default function TeacherLkbPage() {
     setRevisionLkbId(null);
     setJudul("");
     setCatatan("");
-    setFileObj(null);
-    setFileBase64("");
-    setFileSizeStr("");
+    setDriveLink("");
     setNotice(null);
   };
 
@@ -132,8 +104,17 @@ export default function TeacherLkbPage() {
     e.preventDefault();
     setNotice(null);
 
-    if (!fileBase64 && !revisionLkbId) {
-      setNotice({ type: "error", msg: "Harap pilih dokumen file LKB yang akan diunggah!" });
+    const trimmedLink = driveLink.trim();
+    if (!trimmedLink) {
+      setNotice({ type: "error", msg: "Harap masukkan Link Google Drive LKB bulanan Anda!" });
+      return;
+    }
+
+    if (!trimmedLink.startsWith("http://") && !trimmedLink.startsWith("https://")) {
+      setNotice({
+        type: "error",
+        msg: "Format link tidak valid! Harap masukkan link lengkap diawali https:// (contoh: https://drive.google.com/...)"
+      });
       return;
     }
 
@@ -152,9 +133,10 @@ export default function TeacherLkbPage() {
         tahun,
         judul: judul.trim() || `LKB Bulan ${bulan} ${tahun}`,
         catatan: catatan.trim(),
-        file_name: fileObj?.name || (revisionLkbId ? "Dokumen_Revisi_LKB.pdf" : "Dokumen_LKB.pdf"),
-        file_size: fileSizeStr || "-",
-        file_base64: fileBase64 || ""
+        file_name: `Link Google Drive LKB ${bulan} ${tahun}`,
+        file_url: trimmedLink,
+        file_size: "Link Google Drive",
+        file_base64: ""
       };
 
       if (revisionLkbId) {
@@ -173,25 +155,23 @@ export default function TeacherLkbPage() {
         setNotice({
           type: "success",
           msg: revisionLkbId
-            ? "Revisi dokumen LKB berhasil diunggah! Status telah diperbarui menjadi Menunggu Verifikasi."
-            : "Dokumen LKB berhasil diunggah dan disimpan ke cloud. Menunggu verifikasi admin."
+            ? "Revisi tautan link LKB berhasil disimpan! Menunggu verifikasi admin madrasah."
+            : "Tautan link Google Drive LKB berhasil dikirim! Menunggu verifikasi admin madrasah."
         });
 
         // Reset form
         setRevisionLkbId(null);
         setJudul("");
         setCatatan("");
-        setFileObj(null);
-        setFileBase64("");
-        setFileSizeStr("");
+        setDriveLink("");
 
         // Refresh list
         fetchLkb(currentUser.id);
       } else {
-        setNotice({ type: "error", msg: res?.message || "Gagal mengunggah dokumen LKB." });
+        setNotice({ type: "error", msg: res?.message || "Gagal mengirim link LKB." });
       }
     } catch (err) {
-      setNotice({ type: "error", msg: "Terjadi gangguan koneksi saat mengunggah file." });
+      setNotice({ type: "error", msg: "Terjadi gangguan koneksi saat mengirim data link LKB." });
     } finally {
       setSubmitting(false);
     }
@@ -258,10 +238,10 @@ export default function TeacherLkbPage() {
                 </div>
                 <div>
                   <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)" }}>
-                    {revisionLkbId ? "Perbaiki / Revisi Dokumen LKB" : "Unggah Dokumen LKB"}
+                    {revisionLkbId ? "Perbaiki / Revisi Link LKB" : "Input Link LKB / LKH Bulanan"}
                   </h2>
                   <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
-                    Format: PDF, Word, atau Excel (Maks. 10 MB)
+                    Kirimkan tautan Google Drive berkas laporan kinerja bulanan Anda untuk diverifikasi.
                   </p>
                 </div>
               </div>
@@ -405,76 +385,64 @@ export default function TeacherLkbPage() {
                 />
               </div>
 
-              {/* File Input Box */}
+              {/* Input Link Google Drive */}
               <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    color: "var(--text-secondary)",
-                    marginBottom: "0.4rem"
-                  }}
-                >
-                  Pilih Dokumen File LKB <span style={{ color: "#e11d48" }}>*</span>
-                </label>
-                <div
-                  style={{
-                    border: "2px dashed #c4b5fd",
-                    borderRadius: "var(--radius-lg)",
-                    padding: "1.25rem",
-                    textAlign: "center",
-                    background: "#ffffff",
-                    cursor: "pointer",
-                    transition: "all 0.2s"
-                  }}
-                  onClick={() => document.getElementById("lkb-file-input")?.click()}
-                >
-                  <input
-                    id="lkb-file-input"
-                    type="file"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.zip"
-                    onChange={handleFileChange}
-                    style={{ display: "none" }}
-                  />
-
-                  {fileObj ? (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem" }}>
-                      <div
-                        style={{
-                          width: "36px",
-                          height: "36px",
-                          borderRadius: "8px",
-                          background: "#ecfdf5",
-                          border: "1px solid #a7f3d0",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center"
-                        }}
-                      >
-                        <FileCheck size={20} color="#059669" />
-                      </div>
-                      <div style={{ textAlign: "left" }}>
-                        <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text-main)" }}>
-                          {fileObj.name}
-                        </div>
-                        <div style={{ fontSize: "0.75rem", color: "#059669", fontWeight: 600 }}>
-                          {fileSizeStr} • Siap diunggah
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <Paperclip size={24} color="#7c3aed" style={{ margin: "0 auto 0.5rem" }} />
-                      <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#6d28d9" }}>
-                        Klik di sini untuk memilih dokumen
-                      </div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.2rem" }}>
-                        Format PDF sangat disarankan agar dapat langsung ditinjau oleh Admin
-                      </div>
-                    </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.4rem" }}>
+                  <label
+                    style={{
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                      color: "var(--text-secondary)"
+                    }}
+                  >
+                    Link Google Drive LKB / LKH Bulanan <span style={{ color: "#e11d48" }}>*</span>
+                  </label>
+                  {driveLink.trim().startsWith("http") && (
+                    <a
+                      href={driveLink.trim()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.25rem",
+                        color: "#4f46e5",
+                        fontSize: "0.78rem",
+                        fontWeight: 700,
+                        textDecoration: "none"
+                      }}
+                    >
+                      <ExternalLink size={12} /> Tes Buka Link
+                    </a>
                   )}
                 </div>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type="url"
+                    placeholder="https://drive.google.com/file/d/... atau tautan folder Google Drive Anda"
+                    value={driveLink}
+                    onChange={(e) => setDriveLink(e.target.value)}
+                    className="neon-input"
+                    style={{
+                      background: "#ffffff",
+                      paddingLeft: "2.4rem"
+                    }}
+                    required
+                  />
+                  <LinkIcon
+                    size={16}
+                    color="#6366f1"
+                    style={{
+                      position: "absolute",
+                      left: "0.85rem",
+                      top: "50%",
+                      transform: "translateY(-50%)"
+                    }}
+                  />
+                </div>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.35rem", display: "block" }}>
+                  💡 Pastikan izin akses link di Google Drive telah disetel: <strong>&ldquo;Siapa saja yang memiliki link dapat melihat&rdquo;</strong> (Viewer).
+                </span>
               </div>
 
               {/* Catatan / Keterangan */}
@@ -524,15 +492,15 @@ export default function TeacherLkbPage() {
               >
                 {submitting ? (
                   <>
-                    <RefreshCw size={18} className="animate-spin" /> Mengunggah ke Server...
+                    <RefreshCw size={18} className="animate-spin" /> Mengirim ke Server...
                   </>
                 ) : revisionLkbId ? (
                   <>
-                    <FileCheck size={18} /> Simpan & Unggah Dokumen Revisi
+                    <FileCheck size={18} /> Simpan Revisi Link LKB
                   </>
                 ) : (
                   <>
-                    <FileUp size={18} /> Unggah Dokumen LKB
+                    <Send size={18} /> Kirim Link LKB Bulanan
                   </>
                 )}
               </button>
@@ -733,7 +701,7 @@ export default function TeacherLkbPage() {
                           )}
                         </div>
 
-                        {item.file_url && item.file_url !== "" && item.file_url !== "https://drive.google.com" ? (
+                        {item.file_url && item.file_url !== "" ? (
                           <a
                             href={item.file_url}
                             target="_blank"
@@ -748,7 +716,7 @@ export default function TeacherLkbPage() {
                               fontSize: "0.78rem"
                             }}
                           >
-                            Buka File <ExternalLink size={12} />
+                            Buka Link Drive <ExternalLink size={12} />
                           </a>
                         ) : (
                           <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>Tersimpan</span>
