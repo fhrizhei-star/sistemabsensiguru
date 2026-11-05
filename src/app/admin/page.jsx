@@ -20,7 +20,11 @@ import {
   Activity,
   Layers,
   ChevronRight,
-  School
+  School,
+  GraduationCap,
+  Briefcase,
+  FileCheck,
+  FileText
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -100,7 +104,7 @@ export default function AdminDashboardPage() {
 
   const statCards = [
     {
-      title: "Guru Terdaftar",
+      title: "Guru & Pegawai Terdaftar",
       value: stats.total_guru,
       icon: Users,
       color: "#4f46e5",
@@ -391,32 +395,60 @@ export default function AdminDashboardPage() {
 
               {[
                 {
-                  title: "Kelola Data Guru",
-                  desc: "Tambah, edit data NIP, kontak, dan mapel guru",
+                  title: "Data Guru & Pegawai",
+                  desc: "Kelola akun pendidik & staf TU, NIP, kontak, dan jabatan",
                   href: "/admin/guru",
                   icon: Users,
+                  color: "#ec4899"
+                },
+                {
+                  title: "Presensi Guru",
+                  desc: "Rekapitulasi jam mengajar kelas, filter mapel, dan cetak",
+                  href: "/admin/rekap/guru",
+                  icon: GraduationCap,
+                  color: "#10b981"
+                },
+                {
+                  title: "Presensi Pegawai",
+                  desc: "Rekapitulasi jam kantor (masuk & pulang) staf tata usaha",
+                  href: "/admin/rekap/pegawai",
+                  icon: Briefcase,
                   color: "#0284c7"
+                },
+                {
+                  title: "LKB Guru",
+                  desc: "Persetujuan dan arsip laporan kinerja bulanan guru",
+                  href: "/admin/lkb/guru",
+                  icon: FileCheck,
+                  color: "#7c3aed"
+                },
+                {
+                  title: "LKB Pegawai",
+                  desc: "Persetujuan dan arsip laporan kinerja staf tata usaha",
+                  href: "/admin/lkb/pegawai",
+                  icon: FileText,
+                  color: "#d97706"
                 },
                 {
                   title: "Jadwal Pelajaran",
                   desc: "Atur pembagian jam mengajar kelas Senin - Jumat",
                   href: "/admin/jadwal",
                   icon: CalendarCheck,
-                  color: "#7c3aed"
+                  color: "#f59e0b"
                 },
                 {
-                  title: "Verifikasi Izin & Cuti Guru",
+                  title: "Verifikasi Izin & Cuti",
                   desc: "Persetujuan permohonan surat izin dinas luar / dokter",
                   href: "/admin/izin",
                   icon: AlertCircle,
-                  color: "#d97706"
+                  color: "#06b6d4"
                 },
                 {
-                  title: "Pengaturan Geofencing & Sekolah",
+                  title: "Pengaturan Sistem",
                   desc: "Konfigurasi koordinat GPS sekolah dan server database",
                   href: "/admin/setting",
                   icon: School,
-                  color: "#059669"
+                  color: "#8b5cf6"
                 }
               ].map((shortcut) => {
                 const SIcon = shortcut.icon;

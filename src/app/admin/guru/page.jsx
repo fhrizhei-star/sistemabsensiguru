@@ -264,10 +264,10 @@ export default function AdminGuruPage() {
           >
             <div>
               <h1 style={{ fontSize: "clamp(1.2rem, 3.5vw, 1.55rem)", fontWeight: 800, color: "var(--text-main)", lineHeight: 1.25 }}>
-                Manajemen Data Guru & Staf
+                Manajemen Data Guru & Pegawai
               </h1>
               <p style={{ color: "var(--text-secondary)", fontSize: "clamp(0.76rem, 2.4vw, 0.88rem)", marginTop: "0.2rem" }}>
-                Kelola akun tenaga pendidik & pegawai, NIP, mapel, dan kredensial login
+                Kelola akun tenaga pendidik & staf tata usaha, NIP, mapel, dan kredensial login
               </p>
             </div>
 
@@ -279,7 +279,7 @@ export default function AdminGuruPage() {
               className="btn-neon-primary"
               style={{ fontSize: "0.82rem", padding: "0.55rem 1rem" }}
             >
-              <UserPlus size={16} /> Tambah Guru Baru
+              <UserPlus size={16} /> Tambah Guru / Pegawai
             </motion.button>
           </div>
 
@@ -299,7 +299,7 @@ export default function AdminGuruPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari nama guru, NIP, atau mata pelajaran..."
+                placeholder="Cari nama guru/pegawai, NIP, jabatan, atau mapel..."
                 className="neon-input"
                 style={{ paddingLeft: "2.75rem" }}
               />
@@ -416,14 +416,20 @@ export default function AdminGuruPage() {
                             textOverflow: "ellipsis"
                           }}
                         >
-                          {teacher.mapel || "Guru Mata Pelajaran"}
+                          {teacher.role === "pegawai"
+                            ? (teacher.jabatan || teacher.mapel || "Staf Tata Usaha")
+                            : teacher.role === "admin"
+                            ? (teacher.jabatan || "Admin Tata Usaha")
+                            : (teacher.mapel || "Guru Mata Pelajaran")}
                         </p>
                       </div>
                     </div>
 
                     <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                       <div className="truncate-1">NIP: <strong style={{ color: "var(--text-main)" }}>{teacher.nip || "-"}</strong></div>
-                      <div className="truncate-1">Jabatan: {teacher.jabatan || "Tenaga Pendidik"}</div>
+                      <div className="truncate-1">
+                        Jabatan: {teacher.jabatan || (teacher.role === "pegawai" ? "Tenaga Kependidikan" : teacher.role === "admin" ? "Administrator TU" : "Tenaga Pendidik")}
+                      </div>
                       {teacher.no_hp && (
                         <div className="truncate-1" style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
                           <Phone size={12} color="#059669" /> {teacher.no_hp}
@@ -550,10 +556,10 @@ export default function AdminGuruPage() {
               >
                 <div>
                   <h2 style={{ fontSize: "1.3rem", fontWeight: 800, margin: 0, color: "var(--text-main)" }}>
-                    {editingTeacher ? "Edit Data Guru" : "Tambah Guru Baru"}
+                    {editingTeacher ? `Edit Data ${editingTeacher.role === "pegawai" ? "Pegawai" : editingTeacher.role === "admin" ? "Admin" : "Guru"}` : "Tambah Guru / Pegawai Baru"}
                   </h2>
                   <p style={{ margin: "0.2rem 0 0", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-                    Lengkapi identitas tenaga pendidik, akun login, dan pasfoto resmi
+                    Lengkapi identitas Guru & Pegawai (GTK), akun login, dan pasfoto resmi
                   </p>
                 </div>
                 <button

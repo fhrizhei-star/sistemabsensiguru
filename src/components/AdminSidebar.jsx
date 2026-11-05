@@ -14,16 +14,21 @@ import {
   CheckCircle2,
   FileCheck,
   Sliders,
-  ChevronRight
+  ChevronRight,
+  GraduationCap,
+  Briefcase,
+  FileText
 } from "lucide-react";
 
 const MENU_ITEMS = [
   { href: "/admin", label: "Dashboard", shortLabel: "Home", icon: LayoutDashboard, color: "#4f46e5", bg: "#eef2ff", border: "#c7d2fe" },
-  { href: "/admin/guru", label: "Data Guru", shortLabel: "Guru", icon: Users, color: "#ec4899", bg: "#fdf2f8", border: "#fbcfe8" },
+  { href: "/admin/guru", label: "Data Guru & Pegawai", shortLabel: "GTK", icon: Users, color: "#ec4899", bg: "#fdf2f8", border: "#fbcfe8" },
   { href: "/admin/jadwal", label: "Jadwal Pelajaran", shortLabel: "Jadwal", icon: CalendarDays, color: "#f59e0b", bg: "#fffbeb", border: "#fde68a" },
-  { href: "/admin/rekap", label: "Rekap Presensi", shortLabel: "Rekap", icon: FileSpreadsheet, color: "#10b981", bg: "#ecfdf5", border: "#a7f3d0" },
-  { href: "/admin/izin", label: "Verifikasi Izin", shortLabel: "Izin", icon: CheckCircle2, color: "#0284c7", bg: "#f0f9ff", border: "#bae6fd" },
-  { href: "/admin/lkb", label: "Verifikasi LKB", shortLabel: "LKB", icon: FileCheck, color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
+  { href: "/admin/rekap/guru", label: "Presensi Guru", shortLabel: "Absen Guru", icon: GraduationCap, color: "#10b981", bg: "#ecfdf5", border: "#a7f3d0" },
+  { href: "/admin/rekap/pegawai", label: "Presensi Pegawai", shortLabel: "Absen Pegawai", icon: Briefcase, color: "#0284c7", bg: "#f0f9ff", border: "#bae6fd" },
+  { href: "/admin/lkb/guru", label: "LKB Guru", shortLabel: "LKB Guru", icon: FileCheck, color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
+  { href: "/admin/lkb/pegawai", label: "LKB Pegawai", shortLabel: "LKB Pegawai", icon: FileText, color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
+  { href: "/admin/izin", label: "Verifikasi Izin", shortLabel: "Izin", icon: CheckCircle2, color: "#06b6d4", bg: "#ecfeff", border: "#a5f3fc" },
   { href: "/admin/setting", label: "Pengaturan Sistem", shortLabel: "Setting", icon: Sliders, color: "#8b5cf6", bg: "#f5f3ff", border: "#ddd6fe" }
 ];
 
@@ -34,6 +39,13 @@ export default function AdminSidebar() {
   useEffect(() => {
     setCurrentUser(Auth.getCurrentUser());
   }, []);
+
+  const checkIsActive = (href) => {
+    if (pathname === href) return true;
+    if (href === "/admin/rekap/guru" && pathname === "/admin/rekap") return true;
+    if (href === "/admin/lkb/guru" && pathname === "/admin/lkb") return true;
+    return false;
+  };
 
   return (
     <>
@@ -138,7 +150,7 @@ export default function AdminSidebar() {
         <nav style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
           {MENU_ITEMS.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive = checkIsActive(item.href);
 
             return (
               <Link
@@ -212,7 +224,7 @@ export default function AdminSidebar() {
       <nav className="admin-bottom-nav">
         {MENU_ITEMS.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = checkIsActive(item.href);
 
           return (
             <Link

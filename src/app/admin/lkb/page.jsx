@@ -319,7 +319,9 @@ function LkbPrintPreviewModal({ data = [], settings = {}, currentUser, filterBul
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
             <FileSpreadsheet size={22} color="#4f46e5" />
             <div>
-              <div style={{ fontWeight: 800, fontSize: "1rem", color: "#3730a3" }}>Preview Cetak Dokumen LKB</div>
+              <div style={{ fontWeight: 800, fontSize: "1rem", color: "#3730a3" }}>
+                Preview Cetak Dokumen LKB {roleFilter === "pegawai" ? "Pegawai" : roleFilter === "guru" ? "Guru" : ""}
+              </div>
               <div style={{ fontSize: "0.78rem", color: "#6366f1" }}>Bulan {filterBulan} {filterTahun} • {safeData.length} data</div>
             </div>
           </div>
@@ -403,7 +405,7 @@ function LkbPrintPreviewModal({ data = [], settings = {}, currentUser, filterBul
 }
 
 // ====== MAIN PAGE ======
-export default function AdminLkbPage() {
+export default function AdminLkbPage({ fixedRole = null }) {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
   const [lkbList, setLkbList] = useState([]);
@@ -415,7 +417,13 @@ export default function AdminLkbPage() {
   const [activeTab, setActiveTab] = useState("persetujuan");
 
   // Sub-filter Kategori Peran: "Semua" | "guru" | "pegawai"
-  const [roleFilter, setRoleFilter] = useState("Semua");
+  const [roleFilter, setRoleFilter] = useState(fixedRole || "Semua");
+
+  useEffect(() => {
+    if (fixedRole) {
+      setRoleFilter(fixedRole);
+    }
+  }, [fixedRole]);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("Menunggu Verifikasi"); // Default to pending for persetujuan
@@ -897,10 +905,18 @@ export default function AdminLkbPage() {
           >
             <div>
               <h1 style={{ fontSize: "1.55rem", fontWeight: 800, color: "var(--text-main)" }}>
-                Lembar Kinerja Bulanan (LKB)
+                {roleFilter === "pegawai"
+                  ? "Dokumen & Rekap LKB Pegawai"
+                  : roleFilter === "guru"
+                  ? "Dokumen & Rekap LKB Guru"
+                  : "Lembar Kinerja Bulanan (LKB)"}
               </h1>
               <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
-                Pemisahan modul persetujuan/verifikasi berkas dan modul rekapitulasi laporan dokumen
+                {roleFilter === "pegawai"
+                  ? "Persetujuan berkas verifikasi dan rekapitulasi laporan kinerja bulanan Staf Tata Usaha / Pegawai."
+                  : roleFilter === "guru"
+                  ? "Persetujuan berkas verifikasi dan rekapitulasi laporan kinerja bulanan Tenaga Pendidik / Guru."
+                  : "Pemisahan modul persetujuan/verifikasi berkas dan modul rekapitulasi laporan dokumen"}
               </p>
             </div>
 
@@ -927,7 +943,7 @@ export default function AdminLkbPage() {
                     }}
                   >
                     <Printer size={16} />
-                    Cetak Format Resmi
+                    Cetak Format {roleFilter === "pegawai" ? "Pegawai" : roleFilter === "guru" ? "Guru" : "Resmi"}
                   </button>
 
                   <button
@@ -950,7 +966,7 @@ export default function AdminLkbPage() {
                     }}
                   >
                     <FileSpreadsheet size={16} color="#059669" />
-                    Ekspor Excel (.xls)
+                    Ekspor Excel ({roleFilter === "pegawai" ? "Pegawai" : roleFilter === "guru" ? "Guru" : "LKB"})
                   </button>
                 </>
               )}
@@ -1061,67 +1077,76 @@ export default function AdminLkbPage() {
             </button>
           </div>
 
-          {/* Sub-Filter Kategori Peran: SEMUA PERAN vs GURU vs PEGAWAI */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.65rem",
-              marginBottom: "1.25rem",
-              flexWrap: "wrap"
-            }}
-          >
-            <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-secondary)" }}>
-              Kategori Pengirim:
-            </span>
+          {/* Sub-Filter Kategori Peran: SEMUA PERAN vs GURU vs PEGAWAI (Hanya tampil jika panel umum) */}
+          {!fixedRole && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.65rem",
+                marginBottom: "1.25rem",
+                flexWrap: "wrap"
+              }}
+            >
+              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-secondary)" }}>
+                Kategori Pengirim:
+              </span>
 
-            {[
-              { id: "Semua", label: "Semua Peran", icon: Inbox, color: "#6366f1" },
-              { id: "guru", label: "Khusus Guru", icon: GraduationCap, color: "#7c3aed" },
-              { id: "pegawai", label: "Khusus Pegawai", icon: Briefcase, color: "#0284c7" }
-            ].map(r => {
-              const active = roleFilter === r.id;
-              const IconComp = r.icon;
-              const count = r.id === "Semua"
-                ? lkbList.length
-                : lkbList.filter(l => getItemRole(l) === r.id).length;
+              {[
+                { id: "Semua", label: "Semua Peran", icon: Inbox, color: "#6366f1" },
+                { id: "guru", label: "Khusus Guru", icon: GraduationCap, color: "#7c3aed" },
+                { id: "pegawai", label: "Khusus Pegawai", icon: Briefcase, color: "#0284c7" }
+              ].map(r => {
+                const active = roleFilter === r.id;
+                const IconComp = r.icon;
+                const count = r.id === "Semua"
+                  ? lkbList.length
+                  : lkbList.filter(l => getItemRole(l) === r.id).length;
 
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setRoleFilter(r.id)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.45rem",
-                    padding: "0.45rem 0.95rem",
-                    borderRadius: "999px",
-                    border: `1.5px solid ${active ? r.color : "var(--border-light)"}`,
-                    background: active ? r.color : "#ffffff",
-                    color: active ? "#ffffff" : "var(--text-secondary)",
-                    fontSize: "0.82rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                    boxShadow: active ? `0 2px 8px ${r.color}35` : "none"
-                  }}
-                >
-                  <IconComp size={15} color={active ? "#ffffff" : r.color} />
-                  <span>{r.label}</span>
-                  <span style={{
-                    fontSize: "0.72rem",
-                    padding: "0.1rem 0.4rem",
-                    borderRadius: "999px",
-                    background: active ? "rgba(255,255,255,0.25)" : "#f1f5f9",
-                    color: active ? "#ffffff" : "#64748b"
-                  }}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => {
+                      setRoleFilter(r.id);
+                      if (fixedRole && r.id !== fixedRole) {
+                        if (r.id === "guru") router.push("/admin/lkb/guru");
+                        else if (r.id === "pegawai") router.push("/admin/lkb/pegawai");
+                        else router.push("/admin/lkb");
+                      }
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.45rem",
+                      padding: "0.45rem 0.95rem",
+                      borderRadius: "999px",
+                      border: `1.5px solid ${active ? r.color : "var(--border-light)"}`,
+                      background: active ? r.color : "#ffffff",
+                      color: active ? "#ffffff" : "var(--text-secondary)",
+                      fontSize: "0.82rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                      boxShadow: active ? `0 2px 8px ${r.color}35` : "none"
+                    }}
+                  >
+                    <IconComp size={15} color={active ? "#ffffff" : r.color} />
+                    <span>{r.label}</span>
+                    <span style={{
+                      fontSize: "0.72rem",
+                      padding: "0.1rem 0.4rem",
+                      borderRadius: "999px",
+                      background: active ? "rgba(255,255,255,0.25)" : "#f1f5f9",
+                      color: active ? "#ffffff" : "#64748b"
+                    }}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Toast Notification */}
           <AnimatePresence>
@@ -1395,24 +1420,26 @@ export default function AdminLkbPage() {
                             {item.nama}
                           </h3>
 
-                          {/* Role Badge */}
-                          <span
-                            style={{
-                              background: isItemPegawai ? "#e0f2fe" : "#f3e8ff",
-                              color: isItemPegawai ? "#0369a1" : "#7c3aed",
-                              border: `1px solid ${isItemPegawai ? "#bae6fd" : "#ddd6fe"}`,
-                              fontSize: "0.72rem",
-                              fontWeight: 800,
-                              padding: "0.15rem 0.55rem",
-                              borderRadius: "999px",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "0.3rem"
-                            }}
-                          >
-                            {isItemPegawai ? <Briefcase size={12} /> : <GraduationCap size={12} />}
-                            {isItemPegawai ? "Pegawai" : "Guru"}
-                          </span>
+                          {/* Role Badge - Hanya tampil jika panel umum/campuran */}
+                          {!fixedRole && (
+                            <span
+                              style={{
+                                background: isItemPegawai ? "#e0f2fe" : "#f3e8ff",
+                                color: isItemPegawai ? "#0369a1" : "#7c3aed",
+                                border: `1px solid ${isItemPegawai ? "#bae6fd" : "#ddd6fe"}`,
+                                fontSize: "0.72rem",
+                                fontWeight: 800,
+                                padding: "0.15rem 0.55rem",
+                                borderRadius: "999px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.3rem"
+                              }}
+                            >
+                              {isItemPegawai ? <Briefcase size={12} /> : <GraduationCap size={12} />}
+                              {isItemPegawai ? "Pegawai" : "Guru"}
+                            </span>
+                          )}
 
                           <span
                             style={{
@@ -1429,7 +1456,7 @@ export default function AdminLkbPage() {
                         </div>
 
                         <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginTop: "0.2rem" }}>
-                          NIP: {item.nip || "-"} • {item.mapel_jabatan || (isItemPegawai ? "Staf Tata Usaha" : "Tenaga Pendidik")}
+                          NIP: {item.nip || "-"} • {roleFilter === "pegawai" ? `Jabatan: ${item.mapel_jabatan || "Staf Tata Usaha"}` : roleFilter === "guru" ? `Mata Pelajaran: ${item.mapel_jabatan || "Guru Pengajar"}` : (item.mapel_jabatan || (isItemPegawai ? "Staf Tata Usaha" : "Tenaga Pendidik"))}
                         </div>
 
                         {/* Judul & Catatan */}
@@ -1607,7 +1634,9 @@ export default function AdminLkbPage() {
                     <tr style={{ background: "linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%)", borderBottom: "1.5px solid #c7d2fe" }}>
                       <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>Periode</th>
                       <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>Nama & NIP</th>
-                      <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>Peran & Jabatan</th>
+                      <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>
+                        {roleFilter === "pegawai" ? "Jabatan / Unit Kerja" : roleFilter === "guru" ? "Mata Pelajaran" : "Peran & Jabatan"}
+                      </th>
                       <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>Judul Dokumen</th>
                       <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>Status</th>
                       <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>Verifikator</th>
@@ -1634,18 +1663,20 @@ export default function AdminLkbPage() {
                             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>NIP: {item.nip || "-"}</div>
                           </td>
                           <td style={{ padding: "1rem 1.15rem" }}>
-                            <span style={{
-                              display: "inline-flex", alignItems: "center", gap: "0.3rem",
-                              background: isItemPegawai ? "#e0f2fe" : "#f3e8ff",
-                              color: isItemPegawai ? "#0369a1" : "#7c3aed",
-                              padding: "0.15rem 0.5rem", borderRadius: "999px",
-                              fontSize: "0.72rem", fontWeight: 800, marginBottom: "0.2rem"
-                            }}>
-                              {isItemPegawai ? <Briefcase size={12} /> : <GraduationCap size={12} />}
-                              {isItemPegawai ? "Pegawai" : "Guru"}
-                            </span>
-                            <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
-                              {item.mapel_jabatan || (isItemPegawai ? "Tata Usaha" : "Pendidik")}
+                            {!fixedRole && (
+                              <span style={{
+                                display: "inline-flex", alignItems: "center", gap: "0.3rem",
+                                background: isItemPegawai ? "#e0f2fe" : "#f3e8ff",
+                                color: isItemPegawai ? "#0369a1" : "#7c3aed",
+                                padding: "0.15rem 0.5rem", borderRadius: "999px",
+                                fontSize: "0.72rem", fontWeight: 800, marginBottom: "0.2rem"
+                              }}>
+                                {isItemPegawai ? <Briefcase size={12} /> : <GraduationCap size={12} />}
+                                {isItemPegawai ? "Pegawai" : "Guru"}
+                              </span>
+                            )}
+                            <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-main)" }}>
+                              {item.mapel_jabatan || (isItemPegawai ? "Staf Tata Usaha" : "Guru Pengajar")}
                             </div>
                           </td>
                           <td style={{ padding: "1rem 1.15rem" }}>

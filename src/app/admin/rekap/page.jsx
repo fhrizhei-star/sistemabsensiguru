@@ -559,7 +559,7 @@ function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, 
 }
 
 // ====== MAIN PAGE ======
-export default function AdminRekapPage() {
+export default function AdminRekapPage({ fixedRole = null }) {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
   const [attendance, setAttendance] = useState([]);
@@ -567,7 +567,13 @@ export default function AdminRekapPage() {
   const [settings, setSettings] = useState({});
 
   // Tab Pemisah Peran: "guru" | "pegawai"
-  const [roleTab, setRoleTab] = useState("guru");
+  const [roleTab, setRoleTab] = useState(fixedRole || "guru");
+
+  useEffect(() => {
+    if (fixedRole) {
+      setRoleTab(fixedRole);
+    }
+  }, [fixedRole]);
 
   // Filters
   const [filterDate, setFilterDate] = useState(getTodayDateStr());
@@ -1028,10 +1034,12 @@ export default function AdminRekapPage() {
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginBottom: "1.25rem" }}>
             <div>
               <h1 style={{ fontSize: "1.55rem", fontWeight: 800, color: "var(--text-main)" }}>
-                Rekapitulasi Kehadiran
+                {roleTab === "pegawai" ? "Presensi Pegawai" : "Presensi Guru"}
               </h1>
               <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
-                Laporan dan arsip presensi terpisah antara guru mengajar dan pegawai administrasi
+                {roleTab === "pegawai"
+                  ? "Rekapitulasi jam kerja kantor (masuk & pulang), unit kerja tata usaha, dan cetak dokumen resmi."
+                  : "Rekapitulasi presensi jam mengajar kelas, filter mata pelajaran, dan cetak dokumen resmi kehadiran guru."}
               </p>
             </div>
 
@@ -1067,92 +1075,100 @@ export default function AdminRekapPage() {
                   boxShadow: roleTab === "pegawai" ? "0 4px 14px rgba(2,132,199,0.3)" : "0 4px 14px rgba(16,185,129,0.3)"
                 }}
               >
-                <Printer size={16} /> Cetak Format Sekolah
+                <Printer size={16} /> Cetak Format {roleTab === "pegawai" ? "Pegawai" : "Guru"}
               </button>
             </div>
           </div>
 
-          {/* TAB PEMISAH PERAN: GURU VS PEGAWAI */}
-          <div className="no-print" style={{
-            display: "flex",
-            gap: "0.75rem",
-            marginBottom: "1.5rem",
-            flexWrap: "wrap"
-          }}>
-            <button
-              type="button"
-              onClick={() => {
-                setRoleTab("guru");
-                setFilterUser("Semua");
-                setFilterTipePegawai("Semua");
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.6rem",
-                padding: "0.75rem 1.35rem",
-                borderRadius: "14px",
-                border: roleTab === "guru" ? "2px solid #059669" : "1.5px solid var(--border-light)",
-                background: roleTab === "guru" ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)" : "#ffffff",
-                color: roleTab === "guru" ? "#065f46" : "var(--text-secondary)",
-                fontWeight: 800,
-                fontSize: "0.92rem",
-                cursor: "pointer",
-                boxShadow: roleTab === "guru" ? "0 4px 14px rgba(5, 150, 105, 0.2)" : "var(--shadow-sm)",
-                transition: "all 0.2s ease"
-              }}
-            >
-              <GraduationCap size={20} color={roleTab === "guru" ? "#059669" : "#64748b"} />
-              <span>Rekap Presensi Guru</span>
-              <span style={{
-                fontSize: "0.74rem",
-                background: roleTab === "guru" ? "#059669" : "#f1f5f9",
-                color: roleTab === "guru" ? "#ffffff" : "#64748b",
-                padding: "0.15rem 0.55rem",
-                borderRadius: "999px",
-                fontWeight: 800
-              }}>
-                {guruAttendanceList.length}
-              </span>
-            </button>
+          {/* TAB PEMISAH PERAN: GURU VS PEGAWAI (Hanya tampil jika bukan panel spesifik fixedRole) */}
+          {!fixedRole && (
+            <div className="no-print" style={{
+              display: "flex",
+              gap: "0.75rem",
+              marginBottom: "1.5rem",
+              flexWrap: "wrap"
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setRoleTab("guru");
+                  setFilterUser("Semua");
+                  setFilterTipePegawai("Semua");
+                  if (fixedRole && fixedRole !== "guru") {
+                    router.push("/admin/rekap/guru");
+                  }
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                  padding: "0.75rem 1.35rem",
+                  borderRadius: "14px",
+                  border: roleTab === "guru" ? "2px solid #059669" : "1.5px solid var(--border-light)",
+                  background: roleTab === "guru" ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)" : "#ffffff",
+                  color: roleTab === "guru" ? "#065f46" : "var(--text-secondary)",
+                  fontWeight: 800,
+                  fontSize: "0.92rem",
+                  cursor: "pointer",
+                  boxShadow: roleTab === "guru" ? "0 4px 14px rgba(5, 150, 105, 0.2)" : "var(--shadow-sm)",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                <GraduationCap size={20} color={roleTab === "guru" ? "#059669" : "#64748b"} />
+                <span>Rekap Presensi Guru</span>
+                <span style={{
+                  fontSize: "0.74rem",
+                  background: roleTab === "guru" ? "#059669" : "#f1f5f9",
+                  color: roleTab === "guru" ? "#ffffff" : "#64748b",
+                  padding: "0.15rem 0.55rem",
+                  borderRadius: "999px",
+                  fontWeight: 800
+                }}>
+                  {guruAttendanceList.length}
+                </span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setRoleTab("pegawai");
-                setFilterUser("Semua");
-                setFilterTipePegawai("Semua");
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.6rem",
-                padding: "0.75rem 1.35rem",
-                borderRadius: "14px",
-                border: roleTab === "pegawai" ? "2px solid #0284c7" : "1.5px solid var(--border-light)",
-                background: roleTab === "pegawai" ? "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)" : "#ffffff",
-                color: roleTab === "pegawai" ? "#0369a1" : "var(--text-secondary)",
-                fontWeight: 800,
-                fontSize: "0.92rem",
-                cursor: "pointer",
-                boxShadow: roleTab === "pegawai" ? "0 4px 14px rgba(2, 132, 199, 0.2)" : "var(--shadow-sm)",
-                transition: "all 0.2s ease"
-              }}
-            >
-              <Briefcase size={19} color={roleTab === "pegawai" ? "#0284c7" : "#64748b"} />
-              <span>Rekap Presensi Pegawai</span>
-              <span style={{
-                fontSize: "0.74rem",
-                background: roleTab === "pegawai" ? "#0284c7" : "#f1f5f9",
-                color: roleTab === "pegawai" ? "#ffffff" : "#64748b",
-                padding: "0.15rem 0.55rem",
-                borderRadius: "999px",
-                fontWeight: 800
-              }}>
-                {pegawaiAttendanceList.length}
-              </span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setRoleTab("pegawai");
+                  setFilterUser("Semua");
+                  setFilterTipePegawai("Semua");
+                  if (fixedRole && fixedRole !== "pegawai") {
+                    router.push("/admin/rekap/pegawai");
+                  }
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                  padding: "0.75rem 1.35rem",
+                  borderRadius: "14px",
+                  border: roleTab === "pegawai" ? "2px solid #0284c7" : "1.5px solid var(--border-light)",
+                  background: roleTab === "pegawai" ? "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)" : "#ffffff",
+                  color: roleTab === "pegawai" ? "#0369a1" : "var(--text-secondary)",
+                  fontWeight: 800,
+                  fontSize: "0.92rem",
+                  cursor: "pointer",
+                  boxShadow: roleTab === "pegawai" ? "0 4px 14px rgba(2, 132, 199, 0.2)" : "var(--shadow-sm)",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                <Briefcase size={19} color={roleTab === "pegawai" ? "#0284c7" : "#64748b"} />
+                <span>Rekap Presensi Pegawai</span>
+                <span style={{
+                  fontSize: "0.74rem",
+                  background: roleTab === "pegawai" ? "#0284c7" : "#f1f5f9",
+                  color: roleTab === "pegawai" ? "#ffffff" : "#64748b",
+                  padding: "0.15rem 0.55rem",
+                  borderRadius: "999px",
+                  fontWeight: 800
+                }}>
+                  {pegawaiAttendanceList.length}
+                </span>
+              </button>
+            </div>
+          )}
 
           {/* Filters Bar */}
           <div className="glass-panel no-print" style={{

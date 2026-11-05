@@ -523,9 +523,16 @@ html, body {
     border-radius: 20px 20px 0 0 !important;
     box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.08) !important;
     z-index: 50 !important;
-    padding: 0.5rem 0.35rem 0.65rem !important;
-    justify-content: space-around !important;
+    padding: 0.5rem 0.6rem 0.65rem !important;
+    justify-content: flex-start !important;
     align-items: center !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    gap: 0.25rem !important;
+  }
+  .admin-bottom-nav::-webkit-scrollbar {
+    display: none !important;
   }
 
   .admin-bottom-item {
@@ -535,13 +542,14 @@ html, body {
     align-items: center;
     justifyContent: center;
     gap: 0.2rem;
-    padding: 0.35rem 0.5rem;
+    padding: 0.35rem 0.65rem;
     border-radius: 12px;
     text-decoration: none;
     color: var(--text-muted);
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 600;
-    flex: 1;
+    min-width: 64px;
+    flex-shrink: 0;
     text-align: center;
     transition: all 0.2s ease;
   }
