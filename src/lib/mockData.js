@@ -247,6 +247,19 @@ export const INITIAL_MOCK_DATA = {
       jam_mulai: "07:30",
       jam_selesai: "09:00",
       ruangan: "R. Kelas XII-IPS"
+    },
+    {
+      id: "JAD601",
+      guru_id: "U004",
+      nama_guru: "Ahmad Fauzi, S.Kom",
+      nip: "199208142019031005",
+      mapel: "Koding",
+      kelas: "VIII.1",
+      hari: getTodayDayName(),
+      jam_ke: "Jam Ke IX - X",
+      jam_mulai: "14:00",
+      jam_selesai: "15:20",
+      ruangan: "Lab Komputer 1"
     }
   ],
   attendance: [

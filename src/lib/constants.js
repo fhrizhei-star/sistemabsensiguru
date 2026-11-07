@@ -86,7 +86,7 @@ export const DAFTAR_RUANGAN = [
   "Aula Madrasah"
 ];
 
-// 4. Daftar Sesi Jam Pelajaran (Jam Ke I - VIII & Blok Sesi)
+// 4. Daftar Sesi Jam Pelajaran (Jam Ke I - X & Blok Sesi)
 export const DAFTAR_SESI_JAM = [
   // --- Blok 2 Jam Pelajaran (Paling Umum di Jadwal) ---
   {
@@ -117,6 +117,43 @@ export const DAFTAR_SESI_JAM = [
     jam_mulai: "12:40",
     jam_selesai: "14:00"
   },
+  {
+    kategori: "Blok 2 Jam (Senin - Kamis)",
+    label: "Jam Ke IX - X (14:00 - 15:20)",
+    jam_ke: "Jam Ke IX - X",
+    jam_mulai: "14:00",
+    jam_selesai: "15:20"
+  },
+
+  // --- Blok 3 Jam Pelajaran (Senin - Kamis) ---
+  {
+    kategori: "Blok 3 Jam (Senin - Kamis)",
+    label: "Jam Ke I - III (07:30 - 09:30)",
+    jam_ke: "Jam Ke I - III",
+    jam_mulai: "07:30",
+    jam_selesai: "09:30"
+  },
+  {
+    kategori: "Blok 3 Jam (Senin - Kamis)",
+    label: "Jam Ke II - IV (08:10 - 10:10)",
+    jam_ke: "Jam Ke II - IV",
+    jam_mulai: "08:10",
+    jam_selesai: "10:10"
+  },
+  {
+    kategori: "Blok 3 Jam (Senin - Kamis)",
+    label: "Jam Ke VII - IX (12:40 - 14:40)",
+    jam_ke: "Jam Ke VII - IX",
+    jam_mulai: "12:40",
+    jam_selesai: "14:40"
+  },
+  {
+    kategori: "Blok 3 Jam (Senin - Kamis)",
+    label: "Jam Ke VIII - X (13:20 - 15:20)",
+    jam_ke: "Jam Ke VIII - X",
+    jam_mulai: "13:20",
+    jam_selesai: "15:20"
+  },
 
   // --- Sesi Khusus Hari Jumat (I - VI) ---
   {
@@ -141,7 +178,7 @@ export const DAFTAR_SESI_JAM = [
     jam_selesai: "11:20"
   },
 
-  // --- Sesi Tunggal / Per 1 Jam Pelajaran (I s/d VIII) ---
+  // --- Sesi Tunggal / Per 1 Jam Pelajaran (I s/d X) ---
   {
     kategori: "Sesi 1 Jam (Senin - Kamis)",
     label: "Jam Ke I (07:30 - 08:10)",
@@ -197,5 +234,19 @@ export const DAFTAR_SESI_JAM = [
     jam_ke: "Jam Ke VIII",
     jam_mulai: "13:20",
     jam_selesai: "14:00"
+  },
+  {
+    kategori: "Sesi 1 Jam (Senin - Kamis)",
+    label: "Jam Ke IX (14:00 - 14:40)",
+    jam_ke: "Jam Ke IX",
+    jam_mulai: "14:00",
+    jam_selesai: "14:40"
+  },
+  {
+    kategori: "Sesi 1 Jam (Senin - Kamis)",
+    label: "Jam Ke X (14:40 - 15:20)",
+    jam_ke: "Jam Ke X",
+    jam_mulai: "14:40",
+    jam_selesai: "15:20"
   }
 ];

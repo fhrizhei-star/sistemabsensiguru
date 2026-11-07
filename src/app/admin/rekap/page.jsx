@@ -82,7 +82,7 @@ function getMonthYear(dateStr) {
 }
 
 // --- Komponen Dokumen Cetak Format Resmi Sekolah ---
-function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, filterDate, filterMonth, mode, roleTab = "guru" }) {
+function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, filterDate, filterMonth, mode, roleTab = "guru", getRowPercentage = null }) {
   const safeData = Array.isArray(data) ? data : [];
   const safeSettings = settings || {};
   const isPegawai = roleTab === "pegawai";
@@ -98,6 +98,15 @@ function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, 
   const totalHadir = safeData.filter(r => r && r.status === "Hadir").length;
   const totalTerlambat = safeData.filter(r => r && r.status === "Terlambat").length;
   const totalIzin = safeData.filter(r => r && (r.status === "Izin" || r.status === "Sakit")).length;
+
+  const calcRowPct = (row) => {
+    if (!row) return 100;
+    if (typeof getRowPercentage === "function") return getRowPercentage(row);
+    if (row.status === "Hadir") return 100;
+    if (row.status === "Terlambat") return 85;
+    if (row.status === "Izin" || row.status === "Sakit") return 50;
+    return 0;
+  };
 
   return (
     <div className="official-school-document" style={{
@@ -212,6 +221,9 @@ function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, 
             <strong>Izin/Sakit:</strong> {totalIzin}
           </div>
         )}
+        <div style={{ border: "1px solid #4f46e5", background: "#eef2ff", color: "#3730a3", padding: "4px 10px", borderRadius: "4px" }}>
+          <strong>Tingkat Kehadiran:</strong> {safeData.length > 0 ? (((totalHadir + totalTerlambat) / safeData.length) * 100).toFixed(1) : "0"}%
+        </div>
       </div>
 
       {/* ===== TABEL REKAP ===== */}
@@ -243,18 +255,20 @@ function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, 
             )}
             <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "75px", color: "#ffffff" }}>Jam Absen</th>
             <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "80px", color: "#ffffff" }}>Status</th>
+            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "75px", color: "#ffffff" }}>Persentase</th>
             <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>{isPegawai ? "Catatan Aktivitas" : "Keterangan"}</th>
           </tr>
         </thead>
         <tbody>
           {safeData.length === 0 ? (
             <tr>
-              <td colSpan={mode === "bulanan" ? (isPegawai ? 10 : 9) : (isPegawai ? 9 : 8)} style={{ textAlign: "center", padding: "1.5rem", color: "#666", fontStyle: "italic", border: "1px solid #333" }}>
+              <td colSpan={mode === "bulanan" ? (isPegawai ? 11 : 10) : (isPegawai ? 10 : 9)} style={{ textAlign: "center", padding: "1.5rem", color: "#666", fontStyle: "italic", border: "1px solid #333" }}>
                 Tidak ada data presensi {isPegawai ? "pegawai" : "guru"} untuk periode ini
               </td>
             </tr>
           ) : safeData.map((row, idx) => {
             const isPulang = String(row.jadwal_id || "").toUpperCase() === "PULANG" || String(row.keterangan || "").toLowerCase().includes("pulang");
+            const rowPct = calcRowPct(row);
             return (
               <tr key={row.id || idx} style={{
                 background: idx % 2 === 0 ? "#ffffff" : "#f9fbf9",
@@ -288,6 +302,12 @@ function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, 
                   color: row.status === "Hadir" ? "#065f46" : row.status === "Terlambat" ? "#b45309" : "#b91c1c"
                 }}>
                   {row.status || "-"}
+                </td>
+                <td style={{
+                  border: "1px solid #333", padding: "5px 6px", textAlign: "center", fontWeight: 700,
+                  color: rowPct >= 90 ? "#065f46" : rowPct >= 75 ? "#b45309" : "#b91c1c"
+                }}>
+                  {rowPct}%
                 </td>
                 <td style={{ border: "1px solid #333", padding: "5px 6px", fontSize: "8pt", color: "#333" }}>
                   {row.keterangan || "-"}
@@ -345,7 +365,7 @@ function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, 
 }
 
 // --- Print Preview Modal ---
-function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, filterMonth, mode, roleTab = "guru", orientation, setOrientation, onClose }) {
+function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, filterMonth, mode, roleTab = "guru", orientation, setOrientation, onClose, getRowPercentage = null }) {
   const safeData = Array.isArray(data) ? data : [];
   const safeSettings = settings || {};
   const isPegawai = roleTab === "pegawai";
@@ -550,6 +570,7 @@ function PrintPreviewModal({ data = [], settings = {}, currentUser, filterDate, 
               filterMonth={filterMonth}
               mode={mode}
               roleTab={roleTab}
+              getRowPercentage={getRowPercentage}
             />
           </div>
         </div>
@@ -687,6 +708,43 @@ export default function AdminRekapPage({ fixedRole = null }) {
     });
   }, [activeDataset, printMode, filterDate, filterMonth, filterUser, filterStatus, roleTab, filterTipePegawai]);
 
+  // Menghitung statistik kehadiran per user dalam dataset aktif untuk persentase akurat
+  const userStatsMap = useMemo(() => {
+    const map = {};
+    (activeDataset || []).forEach((r) => {
+      if (!r) return;
+      const key = String(r.user_id || r.nama || "");
+      if (!key) return;
+      if (!map[key]) {
+        map[key] = { total: 0, hadir: 0, terlambat: 0, izin: 0, sakit: 0 };
+      }
+      map[key].total += 1;
+      const st = (r.status || "").toLowerCase();
+      if (st === "hadir") map[key].hadir += 1;
+      else if (st === "terlambat") map[key].terlambat += 1;
+      else if (st === "izin") map[key].izin += 1;
+      else if (st === "sakit") map[key].sakit += 1;
+    });
+    return map;
+  }, [activeDataset]);
+
+  const getRowPercentage = (row) => {
+    if (!row) return 100;
+    const key = String(row.user_id || row.nama || "");
+    const u = userStatsMap[key];
+    if (u && u.total > 1) {
+      // Bobot standar: Hadir 100%, Terlambat 85%, Izin/Sakit 50%
+      const score = (u.hadir * 100) + (u.terlambat * 85) + (u.izin * 50) + (u.sakit * 50);
+      return Math.round(score / u.total);
+    }
+    // Baris tunggal / harian
+    const st = (row.status || "").toLowerCase();
+    if (st === "hadir") return 100;
+    if (st === "terlambat") return 85;
+    if (st === "izin" || st === "sakit") return 50;
+    return 0;
+  };
+
   const exportExcelRapi = () => {
     const isPegawai = roleTab === "pegawai";
     const exportDataset = printData && printData.length > 0 ? printData : filtered;
@@ -723,6 +781,14 @@ export default function AdminRekapPage({ fixedRole = null }) {
         statusStyle = "background-color: #fff1f2; color: #be123c; font-weight: bold; text-align: center;";
       }
 
+      const rowPct = getRowPercentage(row);
+      let pctExcelStyle = "background-color: #ecfdf5; color: #065f46; font-weight: bold; text-align: center;";
+      if (rowPct < 75) {
+        pctExcelStyle = "background-color: #fff1f2; color: #9f1239; font-weight: bold; text-align: center;";
+      } else if (rowPct < 90) {
+        pctExcelStyle = "background-color: #fffbeb; color: #92400e; font-weight: bold; text-align: center;";
+      }
+
       if (isPegawai) {
         const isPulang = String(row.jadwal_id || "").toUpperCase() === "PULANG" || String(row.keterangan || "").toLowerCase().includes("pulang");
         rowsHtml += `
@@ -737,6 +803,7 @@ export default function AdminRekapPage({ fixedRole = null }) {
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.jam_jadwal || "-"}</td>
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: 'hh\\:mm'; font-weight: bold;">${row.jam_absen || "-"}</td>
             <td style="border: 1px solid #cbd5e1; padding: 6px; ${statusStyle}">${row.status || "-"}</td>
+            <td style="border: 1px solid #cbd5e1; padding: 6px; ${pctExcelStyle}">${rowPct}%</td>
             <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.keterangan || "-"}</td>
           </tr>
         `;
@@ -753,6 +820,7 @@ export default function AdminRekapPage({ fixedRole = null }) {
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.jam_jadwal || "-"}</td>
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: 'hh\\:mm'; font-weight: bold;">${row.jam_absen || "-"}</td>
             <td style="border: 1px solid #cbd5e1; padding: 6px; ${statusStyle}">${row.status || "-"}</td>
+            <td style="border: 1px solid #cbd5e1; padding: 6px; ${pctExcelStyle}">${rowPct}%</td>
             <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.keterangan || "-"}</td>
           </tr>
         `;
@@ -796,43 +864,43 @@ export default function AdminRekapPage({ fixedRole = null }) {
         <table>
           <!-- KOP SURAT RESMI SEKOLAH -->
           <tr>
-            <td colspan="11" style="text-align: center; font-size: 11pt; font-weight: bold; text-transform: uppercase; color: #1e293b; padding-top: 8px;">
+            <td colspan="12" style="text-align: center; font-size: 11pt; font-weight: bold; text-transform: uppercase; color: #1e293b; padding-top: 8px;">
               KEMENTERIAN AGAMA REPUBLIK INDONESIA
             </td>
           </tr>
           <tr>
-            <td colspan="11" style="text-align: center; font-size: 10pt; font-weight: bold; text-transform: uppercase; color: #334155;">
+            <td colspan="12" style="text-align: center; font-size: 10pt; font-weight: bold; text-transform: uppercase; color: #334155;">
               KANTOR KEMENTERIAN AGAMA ${kota.toUpperCase()}
             </td>
           </tr>
           <tr>
-            <td colspan="11" style="text-align: center; font-size: 15pt; font-weight: 800; text-transform: uppercase; color: ${headerThemeColor}; padding: 3px 0;">
+            <td colspan="12" style="text-align: center; font-size: 15pt; font-weight: 800; text-transform: uppercase; color: ${headerThemeColor}; padding: 3px 0;">
               ${namaSekolah}
             </td>
           </tr>
           <tr>
-            <td colspan="11" style="text-align: center; font-size: 8.5pt; color: #64748b; font-style: italic;">
+            <td colspan="12" style="text-align: center; font-size: 8.5pt; color: #64748b; font-style: italic;">
               ${alamatSekolah} • Telp: ${telpSekolah}
             </td>
           </tr>
           <tr>
-            <td colspan="11" style="border-bottom: 2.5px solid ${headerThemeColor}; height: 6px;"></td>
+            <td colspan="12" style="border-bottom: 2.5px solid ${headerThemeColor}; height: 6px;"></td>
           </tr>
-          <tr><td colspan="11" style="height: 10px;"></td></tr>
+          <tr><td colspan="12" style="height: 10px;"></td></tr>
 
           <!-- JUDUL LAPORAN -->
           <tr>
-            <td colspan="11" style="text-align: center; font-size: 13pt; font-weight: bold; text-transform: uppercase; color: #0f172a;">
+            <td colspan="12" style="text-align: center; font-size: 13pt; font-weight: bold; text-transform: uppercase; color: #0f172a;">
               ${isPegawai ? "LAPORAN REKAPITULASI PRESENSI KERJA PEGAWAI / TATA USAHA" : "LAPORAN REKAPITULASI PRESENSI MENGAJAR GURU"}
             </td>
           </tr>
           <tr>
-            <td colspan="11" style="text-align: center; font-size: 10pt; color: #475569; font-weight: 600;">
+            <td colspan="12" style="text-align: center; font-size: 10pt; color: #475569; font-weight: 600;">
               Periode: ${periodeStr}
             </td>
           </tr>
           <tr>
-            <td colspan="11" style="text-align: right; font-size: 8.5pt; color: #64748b; font-style: italic; padding-bottom: 6px;">
+            <td colspan="12" style="text-align: right; font-size: 8.5pt; color: #64748b; font-style: italic; padding-bottom: 6px;">
               Dicetak pada: ${tglCetak} melalui Sistem Absensi Sekolah
             </td>
           </tr>
@@ -856,6 +924,7 @@ export default function AdminRekapPage({ fixedRole = null }) {
               `}
               <th class="th-header" style="width: 95px;">JAM ABSEN</th>
               <th class="th-header" style="width: 115px;">STATUS</th>
+              <th class="th-header" style="width: 105px;">PERSENTASE</th>
               <th class="th-header" style="width: 175px;">${isPegawai ? "CATATAN AKTIVITAS" : "KETERANGAN"}</th>
             </tr>
           </thead>
@@ -866,12 +935,12 @@ export default function AdminRekapPage({ fixedRole = null }) {
           </tbody>
 
           <!-- RINGKASAN REKAPITULASI -->
-          <tr><td colspan="11" style="height: 12px;"></td></tr>
+          <tr><td colspan="12" style="height: 12px;"></td></tr>
           <tr>
             <td colspan="3" style="background-color: #f1f5f9; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px;">
               TOTAL ${isPegawai ? "PRESENSI PEGAWAI" : "SESI MENGAJAR"}:
             </td>
-            <td colspan="8" style="background-color: #f8fafc; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px; color: #0f172a;">
+            <td colspan="9" style="background-color: #f8fafc; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px; color: #0f172a;">
               ${totalSesi} ${isPegawai ? "Data Presensi Kerja" : "Sesi Pelajaran"}
             </td>
           </tr>
@@ -879,7 +948,7 @@ export default function AdminRekapPage({ fixedRole = null }) {
             <td colspan="3" style="background-color: #f1f5f9; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px;">
               RINCIAN KEHADIRAN:
             </td>
-            <td colspan="8" style="background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 7px; font-size: 9.5pt;">
+            <td colspan="9" style="background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 7px; font-size: 9.5pt;">
               <span style="color: #065f46; font-weight: bold;">Hadir Tepat Waktu: ${totalHadir}</span> &nbsp;|&nbsp; 
               <span style="color: #92400e; font-weight: bold;">Terlambat: ${totalTerlambat}</span> &nbsp;|&nbsp; 
               <span style="color: #1e40af; font-weight: bold;">Izin: ${totalIzin}</span> &nbsp;|&nbsp; 
@@ -889,21 +958,21 @@ export default function AdminRekapPage({ fixedRole = null }) {
           </tr>
 
           <!-- LEMBAR TANDA TANGAN RESMI -->
-          <tr><td colspan="11" style="height: 25px;"></td></tr>
+          <tr><td colspan="12" style="height: 25px;"></td></tr>
           <tr>
             <td colspan="6" style="text-align: center; font-size: 9.5pt;">
               Mengetahui,<br><strong>Kepala Madrasah / Sekolah</strong>
             </td>
-            <td colspan="5" style="text-align: center; font-size: 9.5pt;">
+            <td colspan="6" style="text-align: center; font-size: 9.5pt;">
               ${kota}, ${tglCetak}<br><strong>Kepala Tata Usaha / Verifikator</strong>
             </td>
           </tr>
-          <tr><td colspan="11" style="height: 55px;"></td></tr>
+          <tr><td colspan="12" style="height: 55px;"></td></tr>
           <tr>
             <td colspan="6" style="text-align: center; font-size: 10.5pt; font-weight: bold; text-decoration: underline;">
               ${namaKepsek}
             </td>
-            <td colspan="5" style="text-align: center; font-size: 10.5pt; font-weight: bold; text-decoration: underline;">
+            <td colspan="6" style="text-align: center; font-size: 10.5pt; font-weight: bold; text-decoration: underline;">
               ${namaAdmin}
             </td>
           </tr>
@@ -911,7 +980,7 @@ export default function AdminRekapPage({ fixedRole = null }) {
             <td colspan="6" style="text-align: center; font-size: 9pt; color: #334155; mso-number-format: '\\@';">
               NIP. ${nipKepsek}
             </td>
-            <td colspan="5" style="text-align: center; font-size: 9pt; color: #334155; mso-number-format: '\\@';">
+            <td colspan="6" style="text-align: center; font-size: 9pt; color: #334155; mso-number-format: '\\@';">
               NIP. ${nipAdmin}
             </td>
           </tr>
@@ -1170,6 +1239,141 @@ export default function AdminRekapPage({ fixedRole = null }) {
             </div>
           )}
 
+          {/* Summary Metric Cards */}
+          {(() => {
+            const countHadir = filtered.filter(r => r.status === "Hadir").length;
+            const countTerlambat = filtered.filter(r => r.status === "Terlambat").length;
+            const countIzinSakit = filtered.filter(r => r.status === "Izin" || r.status === "Sakit").length;
+            const countTotal = filtered.length;
+            const avgRate = countTotal > 0
+              ? Math.round(((countHadir * 100) + (countTerlambat * 85) + (countIzinSakit * 50)) / countTotal)
+              : 0;
+
+            const rateColor = avgRate >= 90 ? "#059669" : avgRate >= 75 ? "#d97706" : "#e11d48";
+            const rateBg = avgRate >= 90 ? "#ecfdf5" : avgRate >= 75 ? "#fffbeb" : "#fff1f2";
+            const rateBorder = avgRate >= 90 ? "#a7f3d0" : avgRate >= 75 ? "#fde68a" : "#fecdd3";
+
+            return (
+              <div className="no-print" style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+                gap: "1rem",
+                marginBottom: "1.25rem"
+              }}>
+                {/* Total Presensi */}
+                <div className="glass-panel" style={{
+                  padding: "1rem 1.25rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "1rem",
+                  borderLeft: `4px solid ${roleTab === "pegawai" ? "#0284c7" : "#059669"}`
+                }}>
+                  <div style={{
+                    width: "44px", height: "44px", borderRadius: "12px",
+                    background: roleTab === "pegawai" ? "#f0f9ff" : "#ecfdf5",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: roleTab === "pegawai" ? "#0284c7" : "#059669"
+                  }}>
+                    {roleTab === "pegawai" ? <Briefcase size={22} /> : <GraduationCap size={22} />}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.76rem", color: "var(--text-muted)", fontWeight: 600 }}>
+                      Total {roleTab === "pegawai" ? "Presensi Pegawai" : "Sesi Guru"}
+                    </div>
+                    <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "var(--text-main)" }}>
+                      {countTotal}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hadir Tepat Waktu */}
+                <div className="glass-panel" style={{
+                  padding: "1rem 1.25rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "1rem",
+                  borderLeft: "4px solid #10b981"
+                }}>
+                  <div style={{
+                    width: "44px", height: "44px", borderRadius: "12px",
+                    background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "#059669"
+                  }}>
+                    <CheckCircle2 size={22} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.76rem", color: "var(--text-muted)", fontWeight: 600 }}>
+                      Hadir Tepat Waktu
+                    </div>
+                    <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#059669" }}>
+                      {countHadir}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Terlambat & Izin */}
+                <div className="glass-panel" style={{
+                  padding: "1rem 1.25rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "1rem",
+                  borderLeft: "4px solid #f59e0b"
+                }}>
+                  <div style={{
+                    width: "44px", height: "44px", borderRadius: "12px",
+                    background: "#fffbeb", display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "#d97706"
+                  }}>
+                    <Clock size={22} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.76rem", color: "var(--text-muted)", fontWeight: 600 }}>
+                      Terlambat / Izin / Sakit
+                    </div>
+                    <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#d97706" }}>
+                      {countTerlambat + countIzinSakit}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rata-Rata Kehadiran */}
+                <div className="glass-panel" style={{
+                  padding: "1rem 1.25rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  borderLeft: `4px solid ${rateColor}`,
+                  background: `linear-gradient(135deg, #ffffff 0%, ${rateBg} 100%)`
+                }}>
+                  <div>
+                    <div style={{ fontSize: "0.76rem", color: "var(--text-muted)", fontWeight: 600 }}>
+                      Rata-Rata Kehadiran
+                    </div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem", marginTop: "0.15rem" }}>
+                      <span style={{ fontSize: "1.45rem", fontWeight: 900, color: rateColor, fontFamily: "var(--font-mono)" }}>
+                        {avgRate}%
+                      </span>
+                      <span style={{
+                        fontSize: "0.7rem", fontWeight: 700, padding: "0.15rem 0.5rem", borderRadius: "999px",
+                        background: rateBg, color: rateColor, border: `1px solid ${rateBorder}`
+                      }}>
+                        {avgRate >= 90 ? "Optimal" : avgRate >= 75 ? "Baik" : "Perlu Perhatian"}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{
+                    width: "44px", height: "44px", borderRadius: "50%",
+                    border: `3px solid ${rateColor}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontWeight: 800, fontSize: "0.82rem", color: rateColor
+                  }}>
+                    %
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Filters Bar */}
           <div className="glass-panel no-print" style={{
             padding: "1.15rem", marginBottom: "1.5rem",
@@ -1319,6 +1523,7 @@ export default function AdminRekapPage({ fixedRole = null }) {
                       )}
                       <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", fontWeight: 800 }}>Jam Absen</th>
                       <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", fontWeight: 800 }}>Status</th>
+                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", fontWeight: 800 }}>Persentase</th>
                       <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", fontWeight: 700 }}>
                         {roleTab === "pegawai" ? "Catatan Aktivitas" : "Keterangan"}
                       </th>
@@ -1327,6 +1532,32 @@ export default function AdminRekapPage({ fixedRole = null }) {
                   <tbody>
                     {filtered.map((row, idx) => {
                       const isPulang = String(row.jadwal_id || "").toUpperCase() === "PULANG" || String(row.keterangan || "").toLowerCase().includes("pulang");
+                      const rowPct = getRowPercentage(row);
+                      let pctBadge = {
+                        bg: "#ecfdf5",
+                        color: "#059669",
+                        border: "#a7f3d0",
+                        barGrad: "linear-gradient(90deg, #10b981, #059669)",
+                        label: "Optimal"
+                      };
+                      if (rowPct < 75) {
+                        pctBadge = {
+                          bg: "#fff1f2",
+                          color: "#e11d48",
+                          border: "#fecdd3",
+                          barGrad: "linear-gradient(90deg, #f87171, #e11d48)",
+                          label: "Dispensasi"
+                        };
+                      } else if (rowPct < 90) {
+                        pctBadge = {
+                          bg: "#fffbeb",
+                          color: "#d97706",
+                          border: "#fde68a",
+                          barGrad: "linear-gradient(90deg, #fbbf24, #d97706)",
+                          label: "Baik"
+                        };
+                      }
+
                       return (
                         <tr key={row.id || idx} style={{
                           borderBottom: "1px solid var(--border-light)",
@@ -1384,6 +1615,44 @@ export default function AdminRekapPage({ fixedRole = null }) {
                             {row.jam_absen}
                           </td>
                           <td style={{ padding: "1rem 1.25rem" }}>{statusBadge(row.status)}</td>
+                          <td style={{ padding: "1rem 1.25rem", minWidth: "140px" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.3rem" }}>
+                              <span style={{
+                                fontWeight: 800,
+                                fontSize: "0.92rem",
+                                color: pctBadge.color,
+                                fontFamily: "var(--font-mono)"
+                              }}>
+                                {rowPct}%
+                              </span>
+                              <span style={{
+                                fontSize: "0.68rem",
+                                fontWeight: 700,
+                                padding: "0.15rem 0.45rem",
+                                borderRadius: "999px",
+                                background: pctBadge.bg,
+                                color: pctBadge.color,
+                                border: `1px solid ${pctBadge.border}`
+                              }}>
+                                {pctBadge.label}
+                              </span>
+                            </div>
+                            <div style={{
+                              width: "100%",
+                              height: "6px",
+                              background: "#e2e8f0",
+                              borderRadius: "999px",
+                              overflow: "hidden"
+                            }}>
+                              <div style={{
+                                width: `${Math.min(100, Math.max(0, rowPct))}%`,
+                                height: "100%",
+                                background: pctBadge.barGrad,
+                                borderRadius: "999px",
+                                transition: "width 0.4s ease"
+                              }} />
+                            </div>
+                          </td>
                           <td style={{ padding: "1rem 1.25rem", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
                             {row.keterangan || "-"}
                           </td>
@@ -1412,6 +1681,7 @@ export default function AdminRekapPage({ fixedRole = null }) {
             orientation={printOrientation}
             setOrientation={setPrintOrientation}
             onClose={() => setShowPrintPreview(false)}
+            getRowPercentage={getRowPercentage}
           />
         )}
       </AnimatePresence>
@@ -1445,6 +1715,7 @@ export default function AdminRekapPage({ fixedRole = null }) {
           filterMonth={filterMonth}
           mode={printMode}
           roleTab={roleTab}
+          getRowPercentage={getRowPercentage}
         />
       </div>
     </>

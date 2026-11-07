@@ -362,8 +362,23 @@ export default function AdminJadwalPage() {
                       </div>
 
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", fontSize: "0.82rem" }}>
-                        <div className="truncate-1" style={{ color: theme.accent, fontWeight: 700, fontSize: "0.92rem" }}>
-                          {item.mapel}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+                          <span className="truncate-1" style={{ color: theme.accent, fontWeight: 700, fontSize: "0.92rem" }}>
+                            {item.mapel}
+                          </span>
+                          {item.jam_ke && (
+                            <span style={{
+                              fontSize: "0.72rem",
+                              color: "var(--text-secondary)",
+                              fontWeight: 700,
+                              background: "rgba(0,0,0,0.04)",
+                              padding: "0.15rem 0.5rem",
+                              borderRadius: "6px",
+                              whiteSpace: "nowrap"
+                            }}>
+                              {item.jam_ke}
+                            </span>
+                          )}
                         </div>
                         <div className="truncate-1" style={{ color: "var(--text-main)", fontWeight: 600 }}>
                           Guru: {item.nama_guru}
@@ -520,10 +535,10 @@ export default function AdminJadwalPage() {
                   </div>
                 </div>
 
-                {/* Template Sesi Jam (I - VIII) */}
+                {/* Template Sesi Jam (I - X) */}
                 <div style={{ background: "#f8fafc", padding: "0.85rem", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
                   <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.35rem" }}>
-                    <Clock size={15} color="#0284c7" /> Pilih Sesi Jam Pelajaran (I - VIII)
+                    <Clock size={15} color="#0284c7" /> Pilih Sesi Jam Pelajaran (I - X / s.d 15:20)
                   </label>
                   <select
                     onChange={(e) => handleSesiChange(e.target.value)}
@@ -531,9 +546,14 @@ export default function AdminJadwalPage() {
                     style={{ background: "#ffffff", cursor: "pointer", fontSize: "0.85rem" }}
                     defaultValue=""
                   >
-                    <option value="" disabled>-- Pilih Jam Ke I s/d VIII (Otomatis Isi Waktu) --</option>
+                    <option value="" disabled>-- Pilih Jam Ke I s/d X (Otomatis Isi Waktu) --</option>
                     <optgroup label="── Blok 2 Jam Pelajaran (Senin - Kamis) ──">
                       {DAFTAR_SESI_JAM.filter(s => s.kategori.startsWith("Blok 2 Jam")).map(s => (
+                        <option key={s.label} value={s.label}>{s.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="── Blok 3 Jam Pelajaran (Senin - Kamis) ──">
+                      {DAFTAR_SESI_JAM.filter(s => s.kategori.startsWith("Blok 3 Jam")).map(s => (
                         <option key={s.label} value={s.label}>{s.label}</option>
                       ))}
                     </optgroup>
@@ -542,7 +562,7 @@ export default function AdminJadwalPage() {
                         <option key={s.label} value={s.label}>{s.label}</option>
                       ))}
                     </optgroup>
-                    <optgroup label="── Sesi Tunggal / Per 1 Jam (I s/d VIII) ──">
+                    <optgroup label="── Sesi Tunggal / Per 1 Jam (I s/d X) ──">
                       {DAFTAR_SESI_JAM.filter(s => s.kategori.startsWith("Sesi 1 Jam")).map(s => (
                         <option key={s.label} value={s.label}>{s.label}</option>
                       ))}
