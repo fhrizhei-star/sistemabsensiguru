@@ -231,8 +231,8 @@ function WelcomeScreen({ user, onDone }) {
             {user.role === "admin"
               ? "Administrator Tata Usaha"
               : user.role === "pegawai"
-              ? `${user.jabatan || "Pegawai"} • ${user.mapel || "Tenaga Kependidikan"}`
-              : `Guru ${user.mapel || "Mata Pelajaran"}`}
+                ? `${user.jabatan || "Pegawai"} • ${user.mapel || "Tenaga Kependidikan"}`
+                : `Guru ${user.mapel || "Mata Pelajaran"}`}
           </p>
         </motion.div>
 
@@ -337,14 +337,14 @@ export default function LoginPage() {
         setUsername(savedUser);
         setRememberMe(true);
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // 3. Muat info sekolah
     Api.request("GET", "getSettings").then((res) => {
       if (res?.settings?.nama_sekolah) {
         setSchoolName(res.settings.nama_sekolah);
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }, [router]);
 
   const handleLogin = async (e) => {
@@ -439,7 +439,7 @@ export default function LoginPage() {
     <>
       <AnimatePresence>
         {welcomeUser && (
-          <WelcomeScreen user={welcomeUser} onDone={() => {}} />
+          <WelcomeScreen user={welcomeUser} onDone={() => { }} />
         )}
       </AnimatePresence>
 
@@ -549,15 +549,16 @@ export default function LoginPage() {
             <h1
               style={{
                 fontFamily: "var(--font-display)",
-                fontSize: "1.65rem",
+                fontSize: "3rem",
                 fontWeight: 800,
-                color: "#064e3b",
-                letterSpacing: "-0.01em",
-                marginBottom: "0.25rem"
+                color: "#013f19ff",
+                letterSpacing: "0.8rem",
+                marginBottom: "0.1rem",
               }}
             >
-              SISTEM ABSENSI GURU
+              SIDIAN
             </h1>
+            <p style={{ color: "#014e36ff", fontWeight: 500, fontSize: "1rem", marginBottom: "0.5rem" }}>Sistem Informasi Digital ASN</p>
             <p style={{ color: "#059669", fontWeight: 700, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>
               {schoolName}
             </p>
@@ -619,130 +620,130 @@ export default function LoginPage() {
           {/* Login or Register Form */}
           {authMode === "login" ? (
             <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  color: "#065f46",
-                  marginBottom: "0.4rem"
-                }}
-              >
-                NIP atau Nama Pengguna
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Masukkan NIP atau username..."
-                  className="neon-input"
+              <div>
+                <label
                   style={{
-                    paddingLeft: "2.75rem",
-                    borderColor: "#a7f3d0",
-                    outlineColor: "#059669"
-                  }}
-                />
-                <User
-                  size={18}
-                  color="#059669"
-                  style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)" }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  color: "#065f46",
-                  marginBottom: "0.4rem"
-                }}
-              >
-                Kata Sandi
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Masukkan kata sandi..."
-                  className="neon-input"
-                  style={{
-                    paddingLeft: "2.75rem",
-                    paddingRight: "2.75rem",
-                    borderColor: "#a7f3d0",
-                    outlineColor: "#059669"
-                  }}
-                />
-                <Lock
-                  size={18}
-                  color="#059669"
-                  style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: "absolute",
-                    right: "1rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "transparent",
-                    border: "none",
-                    color: "#059669",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center"
+                    display: "block",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "#065f46",
+                    marginBottom: "0.4rem"
                   }}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                  NIP atau Nama Pengguna
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Masukkan NIP atau username..."
+                    className="neon-input"
+                    style={{
+                      paddingLeft: "2.75rem",
+                      borderColor: "#a7f3d0",
+                      outlineColor: "#059669"
+                    }}
+                  />
+                  <User
+                    size={18}
+                    color="#059669"
+                    style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)" }}
+                  />
+                </div>
               </div>
-            </div>
 
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                fontSize: "0.82rem",
-                color: "#6b7280"
-              }}
-            >
-              <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  style={{ accentColor: "#059669", cursor: "pointer" }}
-                />
-                <span>Ingat saya</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowForgotPassword(true)}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    color: "#065f46",
+                    marginBottom: "0.4rem"
+                  }}
+                >
+                  Kata Sandi
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Masukkan kata sandi..."
+                    className="neon-input"
+                    style={{
+                      paddingLeft: "2.75rem",
+                      paddingRight: "2.75rem",
+                      borderColor: "#a7f3d0",
+                      outlineColor: "#059669"
+                    }}
+                  />
+                  <Lock
+                    size={18}
+                    color="#059669"
+                    style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: "absolute",
+                      right: "1rem",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "transparent",
+                      border: "none",
+                      color: "#059669",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center"
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div
                 style={{
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  color: "#059669",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  fontSize: "0.82rem"
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontSize: "0.82rem",
+                  color: "#6b7280"
                 }}
               >
-                Lupa sandi?
-              </button>
-            </div>
+                <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{ accentColor: "#059669", cursor: "pointer" }}
+                  />
+                  <span>Ingat saya</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    color: "#059669",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontSize: "0.82rem"
+                  }}
+                >
+                  Lupa sandi?
+                </button>
+              </div>
 
-            {/* Submit Button */}
-            <motion.button
-              whileHover={{ scale: 1.02, boxShadow: "0 8px 24px rgba(5, 150, 105, 0.4)" }}
-              whileTap={{ scale: 0.98 }}
+              {/* Submit Button */}
+              <motion.button
+                whileHover={{ scale: 1.02, boxShadow: "0 8px 24px rgba(5, 150, 105, 0.4)" }}
+                whileTap={{ scale: 0.98 }}
                 type="submit"
                 disabled={loading}
                 style={{

@@ -102,8 +102,7 @@ function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, 
   const calcRowPct = (row) => {
     if (!row) return 100;
     if (typeof getRowPercentage === "function") return getRowPercentage(row);
-    if (row.status === "Hadir") return 100;
-    if (row.status === "Terlambat") return 85;
+    if (row.status === "Hadir" || row.status === "Terlambat") return 100;
     if (row.status === "Izin" || row.status === "Sakit") return 50;
     return 0;
   };
@@ -280,7 +279,19 @@ function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, 
                     {formatTanggalIndonesia(row.tanggal)}
                   </td>
                 )}
-                <td style={{ border: "1px solid #333", padding: "5px 6px", fontWeight: 700 }}>{row.nama || "-"}</td>
+                <td style={{ border: "1px solid #333", padding: "5px 6px", fontWeight: 700 }}>
+                  <div>{row.nama || "-"}</div>
+                  {(row.is_pengganti || row.guru_asli_nama) && (
+                    <div style={{ fontSize: "7pt", fontWeight: 600, color: "#0369a1", marginTop: "2px" }}>
+                      [Guru Pengganti: Gantikan {row.guru_asli_nama || "Guru"}]
+                    </div>
+                  )}
+                  {(row.is_rapat || row.tipe_absen === "rapat") && (
+                    <div style={{ fontSize: "7pt", fontWeight: 600, color: "#7c3aed", marginTop: "2px" }}>
+                      [Tugas Kedinasan: {row.keterangan || "Rapat Dinas"}]
+                    </div>
+                  )}
+                </td>
                 <td style={{ border: "1px solid #333", padding: "5px 6px", fontSize: "8.5pt" }}>{row.nip || "-"}</td>
                 {isPegawai ? (
                   <>
@@ -733,14 +744,13 @@ export default function AdminRekapPage({ fixedRole = null }) {
     const key = String(row.user_id || row.nama || "");
     const u = userStatsMap[key];
     if (u && u.total > 1) {
-      // Bobot standar: Hadir 100%, Terlambat 85%, Izin/Sakit 50%
-      const score = (u.hadir * 100) + (u.terlambat * 85) + (u.izin * 50) + (u.sakit * 50);
+      // Terlambat dihitung hadir penuh (100%), hanya tidak absensi / izin-sakit yang mengurangi persentase
+      const score = ((u.hadir + u.terlambat) * 100) + (u.izin * 50) + (u.sakit * 50);
       return Math.round(score / u.total);
     }
     // Baris tunggal / harian
     const st = (row.status || "").toLowerCase();
-    if (st === "hadir") return 100;
-    if (st === "terlambat") return 85;
+    if (st === "hadir" || st === "terlambat") return 100;
     if (st === "izin" || st === "sakit") return 50;
     return 0;
   };
@@ -796,7 +806,9 @@ export default function AdminRekapPage({ fixedRole = null }) {
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${i + 1}</td>
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: 'yyyy\\-mm\\-dd';">${row.tanggal || "-"}</td>
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.hari || "-"}</td>
-            <td style="text-align: left; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.nama || "-"}</td>
+            <td style="text-align: left; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 8px;">
+              ${row.nama || "-"}${(row.is_pengganti || row.guru_asli_nama) ? ` <br><span style="font-size: 7.5pt; color: #0284c7; font-weight: normal;">[Guru Pengganti: Gantikan ${row.guru_asli_nama || "Guru"}]</span>` : ""}${(row.is_rapat || row.tipe_absen === "rapat") ? ` <br><span style="font-size: 7.5pt; color: #7c3aed; font-weight: normal;">[Tugas Kedinasan: ${row.keterangan || "Rapat Dinas"}]</span>` : ""}
+            </td>
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: '\\@';">${String(row.nip || "-").replace(/^'/, "")}</td>
             <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.kelas || row.mapel || "Tata Usaha / Administrasi"}</td>
             <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px;">${isPulang ? "Presensi Pulang" : "Presensi Masuk"}</td>
@@ -813,7 +825,9 @@ export default function AdminRekapPage({ fixedRole = null }) {
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${i + 1}</td>
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: 'yyyy\\-mm\\-dd';">${row.tanggal || "-"}</td>
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.hari || "-"}</td>
-            <td style="text-align: left; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.nama || "-"}</td>
+            <td style="text-align: left; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 8px;">
+              ${row.nama || "-"}${(row.is_pengganti || row.guru_asli_nama) ? ` <br><span style="font-size: 7.5pt; color: #0284c7; font-weight: normal;">[Guru Pengganti: Gantikan ${row.guru_asli_nama || "Guru"}]</span>` : ""}${(row.is_rapat || row.tipe_absen === "rapat") ? ` <br><span style="font-size: 7.5pt; color: #7c3aed; font-weight: normal;">[Tugas Kedinasan: ${row.keterangan || "Rapat Dinas"}]</span>` : ""}
+            </td>
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: '\\@';">${String(row.nip || "-").replace(/^'/, "")}</td>
             <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${row.mapel || "-"}</td>
             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${row.kelas || "-"}</td>
@@ -1246,7 +1260,7 @@ export default function AdminRekapPage({ fixedRole = null }) {
             const countIzinSakit = filtered.filter(r => r.status === "Izin" || r.status === "Sakit").length;
             const countTotal = filtered.length;
             const avgRate = countTotal > 0
-              ? Math.round(((countHadir * 100) + (countTerlambat * 85) + (countIzinSakit * 50)) / countTotal)
+              ? Math.round((((countHadir + countTerlambat) * 100) + (countIzinSakit * 50)) / countTotal)
               : 0;
 
             const rateColor = avgRate >= 90 ? "#059669" : avgRate >= 75 ? "#d97706" : "#e11d48";
@@ -1564,7 +1578,39 @@ export default function AdminRekapPage({ fixedRole = null }) {
                           background: idx % 2 === 0 ? "#ffffff" : (roleTab === "pegawai" ? "#fbfdff" : "#f8fffe")
                         }}>
                           <td style={{ padding: "1rem 1.25rem" }}>
-                            <div style={{ fontWeight: 700, color: "var(--text-main)" }}>{row.nama}</div>
+                            <div style={{ fontWeight: 700, color: "var(--text-main)", display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
+                              <span>{row.nama}</span>
+                              {(row.is_pengganti || row.guru_asli_nama) && (
+                                <span
+                                  style={{
+                                    fontSize: "0.68rem",
+                                    fontWeight: 800,
+                                    background: "#e0f2fe",
+                                    color: "#0369a1",
+                                    border: "1px solid #7dd3fc",
+                                    padding: "0.15rem 0.45rem",
+                                    borderRadius: "6px"
+                                  }}
+                                >
+                                  🔄 Guru Pengganti: Gantikan {row.guru_asli_nama || "Guru"}
+                                </span>
+                              )}
+                              {(row.is_rapat || row.tipe_absen === "rapat") && (
+                                <span
+                                  style={{
+                                    fontSize: "0.68rem",
+                                    fontWeight: 800,
+                                    background: "#ede9fe",
+                                    color: "#6d28d9",
+                                    border: "1px solid #c4b5fd",
+                                    padding: "0.15rem 0.45rem",
+                                    borderRadius: "6px"
+                                  }}
+                                >
+                                  🏛️ Rapat Dinas
+                                </span>
+                              )}
+                            </div>
                             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>NIP: {row.nip || "-"}</div>
                           </td>
 

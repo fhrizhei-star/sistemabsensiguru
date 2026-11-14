@@ -7,30 +7,38 @@ export const DEFAULT_SCRIPT_URL =
 export function formatTimeString(val) {
   if (!val) return "";
   const s = String(val).trim();
+  if (!s || s === "-") return "-";
   if (/^\d{2}:\d{2}$/.test(s)) return s;
 
-  // Tangani serialisasi Date Google Sheets (tahun 1899) untuk sel berbasis jam
-  if (s.includes("1899") || (s.includes("T") && s.includes("Z"))) {
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) {
-      // Sel time di Google Sheets berbasis 1899-12-30 dengan offset waktu lokal (Asia/Jakarta UTC+06:55:25 historis)
-      const totalSec = (d.getUTCDate() === 29 ? -86400 : 0) + d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds();
-      let localSec = totalSec + 24925; // 6 jam 55 menit 25 detik offset Jakarta/Batavia
-      if (localSec < 0) localSec += 86400;
-      const roundedMin = Math.round(localSec / 60) % 1440;
-      const h = Math.floor(roundedMin / 60);
-      const m = roundedMin % 60;
-      return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-    }
-  }
-
-  // Jika string memuat format waktu seperti "07:30:00" atau "Sat Dec 30 1899 07:30:00 GMT..."
-  // Ekstrak langsung HH:mm murni dari teks agar tidak bergeser karena konversi zona waktu (WIB vs WITA)
+  // 1. Ekstrak langsung HH:mm dari representasi string jam atau Date string
+  // Menangani format seperti "07:30", "07:30:15", "07.30", "Sat Dec 30 1899 07:30:00 GMT+0800 (Singapore Standard Time)",
+  // "Fri Nov 13 2026 07:30:00 GMT+0800 (Waktu Standar Singapura)", atau ISO string "2026-11-13T07:30:00.000Z"
   const timeRegexMatch = s.match(/(?:^|\s|T)(\d{1,2})[:.](\d{2})(?::\d{2})?/);
   if (timeRegexMatch) {
     const h = timeRegexMatch[1].padStart(2, "0");
     const m = timeRegexMatch[2];
-    return `${h}:${m}`;
+    const hNum = parseInt(h, 10);
+    const mNum = parseInt(m, 10);
+    if (hNum >= 0 && hNum < 24 && mNum >= 0 && mNum < 60) {
+      return `${h}:${m}`;
+    }
+  }
+
+  // 2. Fallback untuk objek Date atau format tanggal lengkap lainnya menggunakan zona waktu WITA (Asia/Makassar)
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    try {
+      return d.toLocaleTimeString("id-ID", {
+        timeZone: "Asia/Makassar",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).replace(".", ":");
+    } catch {
+      const h = String(d.getHours()).padStart(2, "0");
+      const m = String(d.getMinutes()).padStart(2, "0");
+      return `${h}:${m}`;
+    }
   }
 
   const match = s.match(/(\d{1,2})[:.](\d{2})/);
@@ -40,11 +48,126 @@ export function formatTimeString(val) {
   return s;
 }
 
+export function formatDisplayDate(dateStr) {
+  if (!dateStr || dateStr === "-") return "-";
+  const s = String(dateStr).trim();
+  if (s.includes("GMT") || s.includes("T")) {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+  }
+  const parts = s.split("-");
+  if (parts.length === 3 && parts[0].length === 4) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return s;
+}
+
 function getDayNameFromDateStr(dateStr) {
   if (!dateStr) return "-";
   const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
   const d = new Date(dateStr);
   return isNaN(d.getTime()) ? "-" : days[d.getDay()];
+}
+
+// Helper pembersih & deduplikasi teks rapat/kegiatan kedinasan agar tidak double
+export function cleanRapatText(rawText) {
+  if (!rawText || typeof rawText !== "string") return "";
+  let text = rawText.trim();
+  if (!text) return "";
+
+  // 1. Bersihkan prefix berulang seperti "Mengikuti kegiatan kedinasan:"
+  text = text.replace(/^(Mengikuti kegiatan kedinasan:\s*)+/gi, "").trim();
+
+  // 2. Pisahkan berdasarkan bullet "•"
+  if (text.includes("•")) {
+    const parts = text.split("•").map((p) => p.trim()).filter(Boolean);
+    const uniqueParts = [];
+    for (const p of parts) {
+      const pClean = p.replace(/^(Mengikuti kegiatan kedinasan:\s*)+/gi, "").trim();
+      if (!pClean) continue;
+      if (!uniqueParts.some((u) => u.toLowerCase() === pClean.toLowerCase())) {
+        uniqueParts.push(pClean);
+      }
+    }
+    text = uniqueParts.join(" • ");
+  }
+
+  // 3. Tangani jika ada pemisah " - " yang menduplikasi teks yang sama
+  if (text.includes(" - ")) {
+    const parts = text.split(" - ").map((p) => p.trim()).filter(Boolean);
+    const uniqueParts = [];
+    for (const p of parts) {
+      const pClean = p.replace(/^(Mengikuti kegiatan kedinasan:\s*)+/gi, "").trim();
+      if (!pClean) continue;
+      if (!uniqueParts.some((u) => u.toLowerCase() === pClean.toLowerCase())) {
+        uniqueParts.push(pClean);
+      }
+    }
+    text = uniqueParts.join(" - ");
+  }
+
+  // 4. Tangani jika ada pemisah "," yang menduplikasi teks yang sama
+  if (text.includes(",")) {
+    const parts = text.split(",").map((p) => p.trim()).filter(Boolean);
+    const uniqueParts = [];
+    for (const p of parts) {
+      const pClean = p.replace(/^(Mengikuti kegiatan kedinasan:\s*)+/gi, "").trim();
+      if (!pClean) continue;
+      if (!uniqueParts.some((u) => u.toLowerCase() === pClean.toLowerCase())) {
+        uniqueParts.push(pClean);
+      }
+    }
+    if (uniqueParts.length < parts.length) {
+      text = uniqueParts.join(", ");
+    }
+  }
+
+  // 5. Deteksi duplikasi langsung kata/klausa identik berturut-turut tanpa pemisah
+  const words = text.split(/\s+/);
+  if (words.length >= 4 && words.length % 2 === 0) {
+    const half = words.length / 2;
+    const firstHalf = words.slice(0, half).join(" ");
+    const secondHalf = words.slice(half).join(" ");
+    if (firstHalf.toLowerCase() === secondHalf.toLowerCase()) {
+      text = firstHalf;
+    }
+  }
+
+  return text.trim();
+}
+
+// Helper resmi pemformat Judul Aktivitas Dokumen LKB khusus Rapat Kedinasan
+export function formatRapatJudulAktivitas(rec) {
+  if (!rec) return "Mengikuti kegiatan kedinasan: Rapat Dewan Guru & Tenaga Kependidikan";
+  const cCatatan = cleanRapatText(rec.catatan);
+  const cKeterangan = cleanRapatText(rec.keterangan);
+
+  let baseAgenda = "";
+  if (cCatatan && cKeterangan) {
+    if (cCatatan.toLowerCase() === cKeterangan.toLowerCase()) {
+      baseAgenda = cCatatan;
+    } else if (cCatatan.toLowerCase().includes(cKeterangan.toLowerCase())) {
+      baseAgenda = cCatatan;
+    } else if (cKeterangan.toLowerCase().includes(cCatatan.toLowerCase())) {
+      baseAgenda = cKeterangan;
+    } else {
+      baseAgenda = `${cKeterangan} - ${cCatatan}`;
+    }
+  } else {
+    baseAgenda = cCatatan || cKeterangan || "Rapat Dewan Guru & Tenaga Kependidikan";
+  }
+
+  baseAgenda = cleanRapatText(baseAgenda);
+  if (!baseAgenda) {
+    baseAgenda = "Rapat Dewan Guru & Tenaga Kependidikan";
+  }
+
+  return `Mengikuti kegiatan kedinasan: ${baseAgenda}`;
 }
 
 function normalizeAttendanceRecord(item) {
@@ -101,11 +224,27 @@ function normalizeAttendanceRecord(item) {
     }
   }
 
+  let cleanKeterangan = item.keterangan;
+  let cleanCatatan = item.catatan;
+  if (
+    item.is_rapat ||
+    item.tipe_absen === "rapat" ||
+    item.jadwal_id === "RAPAT" ||
+    (typeof item.keterangan === "string" && item.keterangan.toLowerCase().includes("rapat")) ||
+    (typeof item.catatan === "string" && item.catatan.toLowerCase().includes("rapat"))
+  ) {
+    if (cleanKeterangan) cleanKeterangan = cleanRapatText(cleanKeterangan);
+    if (cleanCatatan) cleanCatatan = cleanRapatText(cleanCatatan);
+  }
+
   return {
     ...item,
     nip: String(item.nip || "").replace(/^'/, ""),
     tanggal: tgl,
-    jam_absen: String(item.jam_absen || "").replace(/\./g, ":")
+    jam_absen: formatTimeString(item.jam_absen || item.jam || "") || String(item.jam_absen || "").replace(/\./g, ":"),
+    keterangan: cleanKeterangan,
+    catatan: cleanCatatan,
+    foto: item.foto || item.evident || ""
   };
 }
 
@@ -455,7 +594,9 @@ export const Api = {
           if (duplicate) {
             return {
               success: false,
-              message: "Bapak/Ibu Guru sudah melakukan presensi untuk kelas ini hari ini!"
+              message: body.is_pengganti
+                ? "Bapak/Ibu sudah melakukan presensi sebagai guru pengganti untuk kelas ini hari ini!"
+                : "Bapak/Ibu Guru sudah melakukan presensi untuk kelas ini hari ini!"
             };
           }
         }
@@ -505,7 +646,9 @@ export const Api = {
 
       case "getLkb": {
         let list = [...(db.lkb || [])];
-        if (params.user_id) list = list.filter((l) => l.user_id === params.user_id);
+        if (params.user_id) {
+          list = list.filter((l) => String(l.user_id) === String(params.user_id) || (l.nip && String(l.nip) === String(params.user_id)));
+        }
         if (params.bulan && params.bulan !== "Semua") {
           list = list.filter((l) => (l.bulan || "").toLowerCase() === params.bulan.toLowerCase());
         }
@@ -515,65 +658,148 @@ export const Api = {
         if (params.status && params.status !== "Semua") {
           list = list.filter((l) => l.status === params.status);
         }
-        return { success: true, lkb: list.reverse(), list: list.reverse() };
+        const reversed = [...list].reverse();
+        return { success: true, lkb: reversed, list: reversed };
       }
 
       case "submitLkb": {
         if (!db.lkb) db.lkb = [];
         const payload = body || {};
+        const targetId = payload.lkb_id || payload.id;
 
-        if (payload.lkb_id) {
-          const idx = db.lkb.findIndex((l) => l.id === payload.lkb_id);
+        // 1. Cek berdasarkan ID dokumen LKB jika ada
+        if (targetId) {
+          const idx = db.lkb.findIndex((l) => l.id === targetId);
           if (idx !== -1) {
             db.lkb[idx] = {
               ...db.lkb[idx],
               ...payload,
-              status: "Menunggu Verifikasi",
-              alasan_penolakan: "",
-              diverifikasi_oleh: "",
-              diverifikasi_pada: "",
-              created_at: new Date().toISOString()
+              id: targetId,
+              status: payload.status || db.lkb[idx].status || "Menunggu Verifikasi",
+              alasan_penolakan: payload.alasan_penolakan !== undefined ? payload.alasan_penolakan : (db.lkb[idx].alasan_penolakan || ""),
+              diverifikasi_oleh: payload.diverifikasi_oleh !== undefined ? payload.diverifikasi_oleh : (db.lkb[idx].diverifikasi_oleh || ""),
+              diverifikasi_pada: payload.status === "Disetujui" ? (db.lkb[idx].diverifikasi_pada || new Date().toISOString()) : "",
+              tanggal_verifikasi: payload.tanggal_verifikasi || (payload.status === "Disetujui" ? getTodayDateStr() : ""),
+              updated_at: new Date().toISOString()
             };
             MockDB.save(db);
             return {
               success: true,
-              message: "Revisi file LKB berhasil diunggah dan menunggu verifikasi admin",
-              id: payload.lkb_id
+              message: payload.status === "Disetujui" ? "LKB berhasil disahkan" : "LKB berhasil diperbarui",
+              id: targetId
             };
           }
         }
 
+        // 2. Cek apakah sudah ada LKB milik ASN ini untuk bulan dan tahun yang sama
+        const existIdx = db.lkb.findIndex((l) => {
+          const uMatch = String(l.user_id) === String(payload.user_id) || (l.nip && payload.nip && String(l.nip) === String(payload.nip));
+          const bMatch = (l.bulan || "").toLowerCase() === (payload.bulan || "").toLowerCase();
+          const yMatch = String(l.tahun || "") === String(payload.tahun || "");
+          return uMatch && bMatch && yMatch;
+        });
+
+        if (existIdx !== -1) {
+          db.lkb[existIdx] = {
+            ...db.lkb[existIdx],
+            ...payload,
+            status: payload.status || db.lkb[existIdx].status || "Menunggu Verifikasi",
+            alasan_penolakan: payload.alasan_penolakan !== undefined ? payload.alasan_penolakan : (db.lkb[existIdx].alasan_penolakan || ""),
+            diverifikasi_oleh: payload.diverifikasi_oleh !== undefined ? payload.diverifikasi_oleh : (db.lkb[existIdx].diverifikasi_oleh || ""),
+            diverifikasi_pada: payload.status === "Disetujui" ? (db.lkb[existIdx].diverifikasi_pada || new Date().toISOString()) : "",
+            tanggal_verifikasi: payload.tanggal_verifikasi || (payload.status === "Disetujui" ? getTodayDateStr() : ""),
+            updated_at: new Date().toISOString()
+          };
+          MockDB.save(db);
+          return {
+            success: true,
+            message: payload.status === "Disetujui" ? "LKB berhasil disahkan" : "LKB berhasil diperbarui",
+            id: db.lkb[existIdx].id
+          };
+        }
+
+        // 3. Jika belum pernah ada pengajuan sama sekali, buat record baru
         const newLkb = {
           id: "LKB" + Date.now(),
-          status: "Menunggu Verifikasi",
-          alasan_penolakan: "",
-          diverifikasi_oleh: "",
-          diverifikasi_pada: "",
+          status: payload.status || "Menunggu Verifikasi",
+          alasan_penolakan: payload.alasan_penolakan || "",
+          diverifikasi_oleh: payload.diverifikasi_oleh || (payload.status === "Disetujui" ? "Admin" : ""),
+          diverifikasi_pada: payload.status === "Disetujui" ? new Date().toISOString() : "",
+          tanggal_verifikasi: payload.tanggal_verifikasi || (payload.status === "Disetujui" ? getTodayDateStr() : ""),
           created_at: new Date().toISOString(),
-          file_url: payload.file_url || "https://drive.google.com",
-          file_name: payload.file_name || "LKB_Dokumen.pdf",
-          file_size: payload.file_size || "1.2 MB",
+          file_url: payload.file_url || "SISTEM_PRESENSI_OTOMATIS",
+          file_name: payload.file_name || `LKB_${payload.bulan || 'Dokumen'}.pdf`,
+          file_size: payload.file_size || "Terdata",
           ...payload
         };
         db.lkb.push(newLkb);
         MockDB.save(db);
-        return { success: true, message: "File LKB berhasil diunggah", id: newLkb.id };
+        return { success: true, message: payload.status === "Disetujui" ? "LKB berhasil disahkan" : "Pengajuan LKB berhasil", id: newLkb.id };
       }
 
       case "updateLkbStatus": {
         if (!db.lkb) db.lkb = [];
-        const idx = db.lkb.findIndex((l) => l.id === body?.id);
+        const payload = body || {};
+        const targetId = payload.id || payload.lkb_id;
+
+        let idx = -1;
+        if (targetId) {
+          idx = db.lkb.findIndex((l) => l.id === targetId);
+        }
+
+        // Fallback jika id tidak ketemu, cari berdasarkan user_id, bulan, dan tahun
+        if (idx === -1 && payload.user_id && payload.bulan) {
+          idx = db.lkb.findIndex((l) => {
+            const uMatch = String(l.user_id) === String(payload.user_id) || (l.nip && payload.nip && String(l.nip) === String(payload.nip));
+            const bMatch = (l.bulan || "").toLowerCase() === (payload.bulan || "").toLowerCase();
+            const yMatch = payload.tahun ? String(l.tahun || "") === String(payload.tahun || "") : true;
+            return uMatch && bMatch && yMatch;
+          });
+        }
+
         if (idx !== -1) {
-          db.lkb[idx].status = body.status;
-          db.lkb[idx].alasan_penolakan = body.alasan_penolakan || "";
-          db.lkb[idx].diverifikasi_oleh = body.diverifikasi_oleh || "Admin";
+          db.lkb[idx].status = payload.status || "Disetujui";
+          db.lkb[idx].alasan_penolakan = payload.alasan_penolakan || "";
+          db.lkb[idx].diverifikasi_oleh = payload.diverifikasi_oleh || "Admin";
           db.lkb[idx].diverifikasi_pada = new Date().toISOString();
+          db.lkb[idx].tanggal_verifikasi = payload.tanggal_verifikasi || getTodayDateStr();
           MockDB.save(db);
           return {
             success: true,
-            message: `Status LKB berhasil diperbarui menjadi: ${body.status}`
+            message: `Status LKB berhasil diperbarui menjadi: ${payload.status || "Disetujui"}`,
+            lkb: db.lkb[idx]
           };
         }
+
+        // Jika tidak ditemukan sama sekali, buatkan record otomatis langsung dengan status yang diminta
+        if (payload.user_id && payload.bulan) {
+          const autoLkb = {
+            id: "LKB" + Date.now(),
+            user_id: payload.user_id,
+            nama: payload.nama || "ASN",
+            nip: payload.nip || "-",
+            role: payload.role || "guru",
+            bulan: payload.bulan,
+            tahun: payload.tahun || String(new Date().getFullYear()),
+            status: payload.status || "Disetujui",
+            alasan_penolakan: payload.alasan_penolakan || "",
+            diverifikasi_oleh: payload.diverifikasi_oleh || "Admin",
+            diverifikasi_pada: new Date().toISOString(),
+            tanggal_verifikasi: payload.tanggal_verifikasi || getTodayDateStr(),
+            created_at: new Date().toISOString(),
+            file_url: "SISTEM_PRESENSI_OTOMATIS",
+            file_name: `LKB_${payload.bulan}.pdf`,
+            file_size: "Disahkan Admin"
+          };
+          db.lkb.push(autoLkb);
+          MockDB.save(db);
+          return {
+            success: true,
+            message: `LKB berhasil dibuat dan disahkan`,
+            lkb: autoLkb
+          };
+        }
+
         return { success: false, message: "Data LKB tidak ditemukan" };
       }
 

@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import Navbar from "@/components/Navbar";
 import TeacherNav from "@/components/TeacherNav";
-import RadarScanner from "@/components/RadarScanner";
+import CameraCapture from "@/components/CameraCapture";
 import { Auth } from "@/lib/auth";
-import { Api, formatTimeString } from "@/lib/api";
+import { Api, formatTimeString, cleanRapatText, formatRapatJudulAktivitas } from "@/lib/api";
 import { formatDriveUrl, getAvatarUrl } from "@/lib/drive";
 import { getTodayDateStr, getTodayDayName } from "@/lib/mockData";
 import {
@@ -27,7 +27,13 @@ import {
   Sun,
   Moon,
   Briefcase,
-  KeyRound
+  KeyRound,
+  Camera,
+  Users,
+  Search,
+  Filter,
+  ArrowRight,
+  UserPlus
 } from "lucide-react";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
 
@@ -120,38 +126,24 @@ function evaluateAttendanceTiming(schedule, settings, dateObj = new Date()) {
     };
   }
 
-  // 1. Belum Waktunya (Misal jadwal 07:30, sekarang 07:28) -> TIDAK BISA ABSEN
-  if (nowMin < startMin) {
-    const diffBefore = startMin - nowMin;
+  // 1. Dibuka 15 menit sebelum jam mulai kelas agar guru dapat bersiap di ruang kelas
+  const earlyOpenMinutes = 15;
+  if (nowMin < startMin - earlyOpenMinutes) {
+    const diffBefore = (startMin - earlyOpenMinutes) - nowMin;
     return {
       allowed: false,
       phase: "too_early",
       recordStatus: "Hadir",
-      badgeText: `⏳ Dibuka ${schedule.jam_mulai}`,
+      badgeText: `⏳ Dibuka ${formatMinutesToTime(startMin - earlyOpenMinutes)}`,
       badgeColor: "#b45309",
       badgeBg: "#fffbeb",
       badgeBorder: "#fde68a",
-      message: `Sesi kelas ${schedule.kelas} (${schedule.mapel}) belum dimulai! Presensi baru dapat dilakukan tepat pukul ${schedule.jam_mulai} (saat ini ${currentTimeStr}). Harap menunggu ${diffBefore} menit lagi.`,
+      message: `Sesi kelas ${schedule.kelas} (${schedule.mapel}) dibuka 15 menit sebelum jam mulai (pukul ${formatMinutesToTime(startMin - earlyOpenMinutes)}, jam mulai ${schedule.jam_mulai}). Saat ini pukul ${currentTimeStr} (menunggu ${diffBefore} menit lagi).`,
       keterangan: "Tepat Waktu"
     };
   }
 
-  // 2. Sudah Melewati Jam Selesai (Misal jadwal 10:00, sekarang 10:01) -> SESI BERAKHIR
-  if (nowMin > endMin) {
-    return {
-      allowed: false,
-      phase: "ended",
-      recordStatus: "Terlambat",
-      badgeText: `⛔ Selesai (${schedule.jam_selesai})`,
-      badgeColor: "#475569",
-      badgeBg: "#f1f5f9",
-      badgeBorder: "#cbd5e1",
-      message: `Sesi kelas ${schedule.kelas} (${schedule.mapel}) telah berakhir pada pukul ${schedule.jam_selesai} (saat ini ${currentTimeStr}). Presensi untuk sesi ini sudah ditutup.`,
-      keterangan: "Sesi Berakhir"
-    };
-  }
-
-  // 3. Waktu Presensi Tepat Waktu (07:30 s/d 07:30 + 15 menit = 07:45) -> HADIR
+  // 2. Presensi Tepat Waktu (mulai 15 menit sebelum jam mulai hingga batas toleransi)
   if (nowMin <= startMin + toleransi) {
     return {
       allowed: true,
@@ -161,23 +153,55 @@ function evaluateAttendanceTiming(schedule, settings, dateObj = new Date()) {
       badgeColor: "#065f46",
       badgeBg: "#ecfdf5",
       badgeBorder: "#a7f3d0",
-      message: `Sesi kelas ${schedule.kelas} sedang berlangsung. Anda melakukan presensi tepat waktu (toleransi s/d ${formatMinutesToTime(startMin + toleransi)}).`,
+      message: `Sesi kelas ${schedule.kelas} (${schedule.mapel}) sedang berlangsung. Anda melakukan presensi tepat waktu (batas toleransi s/d ${formatMinutesToTime(startMin + toleransi)}).`,
       keterangan: "Tepat Waktu"
     };
   }
 
-  // 4. Melewati Batas Toleransi 15 Menit (Misal 07:46 s/d 10:00) -> TERLAMBAT
-  const lateMinutes = nowMin - startMin;
+  // 3. Melewati batas toleransi tetapi jam kelas masih berlangsung -> Terlambat, presensi tetap dibuka
+  if (nowMin <= endMin) {
+    const lateMinutes = nowMin - startMin;
+    return {
+      allowed: true,
+      phase: "late",
+      recordStatus: "Terlambat",
+      badgeText: `🟠 Terlambat (${lateMinutes} mnt)`,
+      badgeColor: "#c2410c",
+      badgeBg: "#fff7ed",
+      badgeBorder: "#fed7aa",
+      message: `Peringatan Keterlambatan: Melewati toleransi ${toleransi} menit (jam mulai ${schedule.jam_mulai}, saat ini ${currentTimeStr}). Kehadiran dicatat TERLAMBAT ${lateMinutes} menit.`,
+      keterangan: `Terlambat ${lateMinutes} menit`
+    };
+  }
+
+  // 4. Toleransi tambahan pasca jam selesai kelas (30 menit) untuk menyelesaikan jurnal & bukti mengajar
+  const gracePeriodAfterEnd = 30;
+  if (nowMin <= endMin + gracePeriodAfterEnd) {
+    const lateMinutes = nowMin - startMin;
+    return {
+      allowed: true,
+      phase: "late",
+      recordStatus: "Terlambat",
+      badgeText: `🟡 Selesai Mengajar`,
+      badgeColor: "#d97706",
+      badgeBg: "#fffbeb",
+      badgeBorder: "#fde68a",
+      message: `Jam mengajar kelas ${schedule.kelas} telah usai pukul ${schedule.jam_selesai}. Anda masih dapat merekam bukti presensi/jurnal mengajar sesi ini (terlambat ${lateMinutes} menit).`,
+      keterangan: `Selesai Mengajar (Terlambat ${lateMinutes} mnt)`
+    };
+  }
+
+  // 5. Melewati batas toleransi penutupan (> 30 menit setelah jam selesai)
   return {
-    allowed: true,
-    phase: "late",
+    allowed: false,
+    phase: "ended",
     recordStatus: "Terlambat",
-    badgeText: `🟠 Terlambat (${lateMinutes} mnt)`,
-    badgeColor: "#c2410c",
-    badgeBg: "#fff7ed",
-    badgeBorder: "#fed7aa",
-    message: `Peringatan Keterlambatan: Anda melewati batas toleransi ${toleransi} menit (jam mulai ${schedule.jam_mulai}, saat ini ${currentTimeStr}). Kehadiran Anda dicatat TERLAMBAT ${lateMinutes} menit.`,
-    keterangan: `Terlambat ${lateMinutes} menit`
+    badgeText: `⛔ Selesai (${schedule.jam_selesai})`,
+    badgeColor: "#475569",
+    badgeBg: "#f1f5f9",
+    badgeBorder: "#cbd5e1",
+    message: `Sesi kelas ${schedule.kelas} (${schedule.mapel}) telah berakhir pada pukul ${schedule.jam_selesai} (saat ini ${currentTimeStr}). Presensi untuk sesi ini sudah ditutup.`,
+    keterangan: "Sesi Berakhir"
   };
 }
 
@@ -271,8 +295,17 @@ export default function TeacherDashboard() {
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [attendanceType, setAttendanceType] = useState("jadwal");
   const [pegawaiMode, setPegawaiMode] = useState("masuk"); // "masuk" | "pulang"
+  const [scheduleMode, setScheduleMode] = useState("mandiri"); // "mandiri" | "inval" | "rapat"
+  const [selectedRapatAgenda, setSelectedRapatAgenda] = useState("Rapat Dewan Guru & Tenaga Kependidikan");
+  const [customRapatAgenda, setCustomRapatAgenda] = useState("");
+  const [allTodaySchedules, setAllTodaySchedules] = useState([]);
+  const [leavesToday, setLeavesToday] = useState([]);
+  const [allAttendanceToday, setAllAttendanceToday] = useState([]);
+  const [invalTeacherFilter, setInvalTeacherFilter] = useState("semua");
+  const [invalClassFilter, setInvalClassFilter] = useState("semua");
   const [todayRecords, setTodayRecords] = useState([]);
-  const [gpsLocation, setGpsLocation] = useState(null);
+  const [gpsLocation, setGpsLocation] = useState({ lat: 0, lng: 0, string: "Presensi Kamera Device" });
+  const [capturedPhoto, setCapturedPhoto] = useState(null);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [successNotice, setSuccessNotice] = useState(null);
@@ -284,6 +317,25 @@ export default function TeacherDashboard() {
   useEffect(() => {
     const timer = setInterval(() => setNowDate(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Background GPS silent detection (non-blocking)
+  useEffect(() => {
+    if (typeof window !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setGpsLocation({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            string: `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`
+          });
+        },
+        () => {
+          setGpsLocation({ lat: 0, lng: 0, string: "Presensi Kamera Device" });
+        },
+        { enableHighAccuracy: false, timeout: 5000 }
+      );
+    }
   }, []);
 
   useEffect(() => {
@@ -310,10 +362,25 @@ export default function TeacherDashboard() {
         if (attRes && attRes.attendance) setTodayRecords(attRes.attendance);
 
         if (user.role !== "pegawai") {
-          const schedRes = await Api.request("GET", "getSchedules", {
-            hari: day,
-            guru_id: user.id || user.nip
-          });
+          const [schedRes, allSchedRes, leavesRes, allAttRes] = await Promise.all([
+            Api.request("GET", "getSchedules", {
+              hari: day,
+              guru_id: user.id || user.nip
+            }),
+            Api.request("GET", "getSchedules", { hari: day }),
+            Api.request("GET", "getLeaves", {}),
+            Api.request("GET", "getAttendance", { tanggal: todayDate })
+          ]);
+
+          if (allSchedRes && allSchedRes.schedules) {
+            setAllTodaySchedules(allSchedRes.schedules);
+          }
+          if (leavesRes && leavesRes.leaves) {
+            setLeavesToday(leavesRes.leaves);
+          }
+          if (allAttRes && allAttRes.attendance) {
+            setAllAttendanceToday(allAttRes.attendance);
+          }
 
           if (schedRes && schedRes.schedules) {
             const teacherSchedules = schedRes.schedules.filter(
@@ -324,7 +391,25 @@ export default function TeacherDashboard() {
             );
             setSchedules(teacherSchedules);
             if (teacherSchedules.length > 0) {
-              setSelectedSchedule(teacherSchedules[0]);
+              const now = new Date();
+              const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+              // Prioritaskan jadwal yang saat ini sedang aktif berlangsung
+              const activeScheduleNow = teacherSchedules.find((s) => {
+                const evalTiming = evaluateAttendanceTiming(s, setRes?.settings, now);
+                return evalTiming.allowed;
+              });
+
+              if (activeScheduleNow) {
+                setSelectedSchedule(activeScheduleNow);
+              } else {
+                // Jika tidak ada yang sedang aktif, cari jadwal terdekat berikutnya hari ini
+                const upcoming = teacherSchedules.find((s) => {
+                  const sMin = parseTimeToMinutes(s.jam_mulai);
+                  return sMin !== null && sMin > nowMinutes;
+                });
+                setSelectedSchedule(upcoming || teacherSchedules[0]);
+              }
             }
           }
         }
@@ -359,10 +444,77 @@ export default function TeacherDashboard() {
   const hasCheckOut = todayRecords.some(r => r.tipe_absen === "pulang" || r.jadwal_id === "PULANG");
   const checkOutRecord = todayRecords.find(r => r.tipe_absen === "pulang" || r.jadwal_id === "PULANG");
 
-  const activeSchedule = attendanceType === "jadwal" ? selectedSchedule : null;
+  // Filter jadwal guru lain hari ini yang dapat digantikan
+  const invalSchedules = useMemo(() => {
+    if (!currentUser) return [];
+    return (allTodaySchedules || []).filter((s) => {
+      const isMine =
+        String(s.guru_id) === String(currentUser.id) ||
+        String(s.nip) === String(currentUser.nip);
+      if (isMine) return false;
+
+      if (invalTeacherFilter !== "semua" && s.nama_guru !== invalTeacherFilter) {
+        return false;
+      }
+      if (invalClassFilter !== "semua" && s.kelas !== invalClassFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [allTodaySchedules, currentUser, invalTeacherFilter, invalClassFilter]);
+
+  // Daftar nama guru lain hari ini untuk dropdown filter
+  const invalTeachersList = useMemo(() => {
+    if (!currentUser) return [];
+    const others = (allTodaySchedules || []).filter(
+      (s) => String(s.guru_id) !== String(currentUser.id) && String(s.nip) !== String(currentUser.nip)
+    );
+    return Array.from(new Set(others.map((s) => s.nama_guru).filter(Boolean)));
+  }, [allTodaySchedules, currentUser]);
+
+  // Daftar kelas hari ini untuk dropdown filter
+  const invalClassesList = useMemo(() => {
+    return Array.from(new Set((allTodaySchedules || []).map((s) => s.kelas).filter(Boolean)));
+  }, [allTodaySchedules]);
+
+  // Cek apakah guru asli berhalangan / izin hari ini
+  const getLeaveInfoForSchedule = (schedule) => {
+    if (!schedule) return null;
+    return (leavesToday || []).find(
+      (l) =>
+        (String(l.user_id) === String(schedule.guru_id) || String(l.nip) === String(schedule.nip) || l.nama === schedule.nama_guru) &&
+        (l.status === "Disetujui" || l.status === "Menunggu Verifikasi" || l.status === "Menunggu")
+    );
+  };
+
+  // Cek apakah jadwal kelas ini sudah terabsen hari ini
+  const getAttendanceForSchedule = (schedule) => {
+    if (!schedule) return null;
+    return (allAttendanceToday || []).find(
+      (a) =>
+        String(a.jadwal_id) === String(schedule.id) ||
+        (a.kelas === schedule.kelas && a.mapel === schedule.mapel && a.jam_jadwal?.includes(schedule.jam_mulai))
+    );
+  };
+
+  const isSubstitute = !isPegawai && scheduleMode === "inval" && selectedSchedule;
+  const isRapat = !isPegawai && scheduleMode === "rapat";
+  const activeSchedule = attendanceType === "jadwal" && !isRapat ? selectedSchedule : null;
   const timingEval = isPegawai
     ? evaluatePegawaiTiming(pegawaiMode, settings, nowDate)
-    : evaluateAttendanceTiming(activeSchedule, settings, nowDate);
+    : isRapat
+      ? {
+        allowed: true,
+        phase: "on_time",
+        recordStatus: "Hadir",
+        badgeText: "🟢 Presensi Tugas Kedinasan",
+        badgeColor: "#059669",
+        badgeBg: "#ecfdf5",
+        badgeBorder: "#a7f3d0",
+        message: "Presensi rapat dewan guru / tugas dinas bersama dibuka. Jam kelas dialihkan dan tercatat di LKB.",
+        keterangan: "Tugas Kedinasan / Rapat Resmi"
+      }
+      : evaluateAttendanceTiming(activeSchedule, settings, nowDate);
 
   const handleAttendanceSubmit = async () => {
     setErrorNotice(null);
@@ -379,22 +531,30 @@ export default function TeacherDashboard() {
       }
     }
 
-    // 2. Validasi Waktu Sesi Kelas & Aturan Toleransi
+    // 1b. Validasi presensi ganda untuk rapat dinas
+    if (isRapat) {
+      const hasRapatToday = todayRecords.some(r => r.tipe_absen === "rapat" || r.jadwal_id === "RAPAT" || r.is_rapat);
+      if (hasRapatToday) {
+        setErrorNotice("Bapak/Ibu sudah merekam presensi rapat dinas hari ini!");
+        return;
+      }
+    }
+
+    // 2. Validasi jadwal terpilih pada mode guru pengganti
+    if (scheduleMode === "inval" && !selectedSchedule) {
+      setErrorNotice("Silakan pilih jadwal kelas yang akan Anda gantikan terlebih dahulu!");
+      return;
+    }
+
+    // 3. Validasi Waktu Sesi Kelas & Aturan Toleransi
     if (!timingEval.allowed) {
       setErrorNotice(timingEval.message);
       return;
     }
 
-    // 3. Validasi GPS & Radius Geofencing
-    if (!gpsLocation) {
-      setErrorNotice("Sinyal GPS belum terdeteksi. Harap tunggu radar geofencing.");
-      return;
-    }
-
-    if (!gpsLocation.isInside) {
-      setErrorNotice(
-        `Lokasi Anda berada ${gpsLocation.distance}m dari sekolah (toleransi maksimal ${settings?.radius_meter || 250}m). Harap mendekat ke area sekolah.`
-      );
+    // 4. Validasi Foto Presensi Kamera Device
+    if (!capturedPhoto) {
+      setErrorNotice("Harap ambil foto bukti presensi langsung menggunakan kamera perangkat terlebih dahulu!");
       return;
     }
 
@@ -406,6 +566,12 @@ export default function TeacherDashboard() {
         minute: "2-digit",
         second: "2-digit"
       });
+
+      const coordStr = gpsLocation?.string || "Presensi Foto Perangkat";
+
+      const effectiveRapatAgenda = selectedRapatAgenda === "Lainnya"
+        ? (customRapatAgenda.trim() || "Rapat Dinas Dewan Guru")
+        : selectedRapatAgenda;
 
       const body = isPegawai ? {
         user_id: currentUser.id,
@@ -420,15 +586,44 @@ export default function TeacherDashboard() {
           : `Pulang (${formatTimeString(settings?.jam_pulang_mulai) || "15:00"})`,
         jam_absen: jamAbsen,
         status: timingEval.recordStatus,
-        koordinat: gpsLocation.string,
+        koordinat: coordStr,
         keterangan: notes ? `${notes} • ${timingEval.keterangan}` : timingEval.keterangan,
-        foto: ""
+        foto: capturedPhoto
+      } : isRapat ? {
+        user_id: currentUser.id,
+        nama: currentUser.nama || currentUser.username,
+        nip: currentUser.nip || "-",
+        mapel: "Tugas Kedinasan",
+        tipe_absen: "rapat",
+        jadwal_id: "RAPAT",
+        kelas: "Ruang Pertemuan / Rapat",
+        jam_jadwal: "Hari Dinas",
+        jam_absen: jamAbsen,
+        status: "Hadir",
+        koordinat: coordStr,
+        keterangan: (() => {
+          const cleanNote = notes ? cleanRapatText(notes) : "";
+          if (cleanNote && cleanNote.toLowerCase() !== effectiveRapatAgenda.toLowerCase()) {
+            return `${effectiveRapatAgenda} • ${cleanNote}`;
+          }
+          return effectiveRapatAgenda;
+        })(),
+        catatan: (() => {
+          const cleanNote = notes ? cleanRapatText(notes) : "";
+          if (cleanNote && cleanNote.toLowerCase() !== effectiveRapatAgenda.toLowerCase()) {
+            return `Mengikuti kegiatan kedinasan: ${effectiveRapatAgenda} - ${cleanNote}`;
+          }
+          return `Mengikuti kegiatan kedinasan: ${effectiveRapatAgenda}`;
+        })(),
+        foto: capturedPhoto,
+        is_rapat: true,
+        is_pengganti: false
       } : {
         user_id: currentUser.id,
         nama: currentUser.nama || currentUser.username,
         nip: currentUser.nip || "-",
-        mapel: currentUser.mapel || "Umum",
-        tipe_absen: attendanceType,
+        mapel: selectedSchedule ? selectedSchedule.mapel : (currentUser.mapel || "Umum"),
+        tipe_absen: isSubstitute ? "inval" : attendanceType,
         jadwal_id: selectedSchedule ? selectedSchedule.id : null,
         kelas: selectedSchedule ? selectedSchedule.kelas : "Umum",
         jam_jadwal: selectedSchedule
@@ -436,9 +631,15 @@ export default function TeacherDashboard() {
           : "Harian",
         jam_absen: jamAbsen,
         status: timingEval.recordStatus,
-        koordinat: gpsLocation.string,
-        keterangan: notes ? `${notes} • ${timingEval.keterangan}` : timingEval.keterangan,
-        foto: ""
+        koordinat: coordStr,
+        keterangan: notes
+          ? (isSubstitute ? `${notes} • Tugas Guru Pengganti` : `${notes} • ${timingEval.keterangan}`)
+          : (isSubstitute ? `Menggantikan ${selectedSchedule.nama_guru} • Tugas Guru Pengganti` : timingEval.keterangan),
+        catatan: notes || (isSubstitute ? `Menggantikan ${selectedSchedule.nama_guru} mengajar di kelas ${selectedSchedule.kelas} (${selectedSchedule.mapel})` : ""),
+        foto: capturedPhoto,
+        is_pengganti: Boolean(isSubstitute),
+        guru_asli_id: isSubstitute ? (selectedSchedule.guru_id || selectedSchedule.nip) : null,
+        guru_asli_nama: isSubstitute ? selectedSchedule.nama_guru : null
       };
 
       const res = await Api.request("POST", "recordAttendance", {}, body);
@@ -452,20 +653,24 @@ export default function TeacherDashboard() {
 
         const newRec = res.record || { ...body, id: "ATT" + Date.now(), tanggal: getTodayDateStr() };
         setTodayRecords((prev) => [newRec, ...prev]);
+        setAllAttendanceToday((prev) => [newRec, ...prev]);
 
         setSuccessNotice({
           time: jamAbsen,
           type: isPegawai
             ? `Presensi ${pegawaiMode === "masuk" ? "Masuk" : "Pulang"}`
-            : attendanceType === "jadwal"
-            ? `Sesi ${selectedSchedule?.kelas}`
-            : "Harian",
-          coords: gpsLocation.string,
+            : isSubstitute
+              ? `Guru Pengganti - Kelas ${selectedSchedule?.kelas} (${selectedSchedule?.nama_guru})`
+              : attendanceType === "jadwal"
+                ? `Sesi ${selectedSchedule?.kelas}`
+                : "Harian",
+          coords: coordStr,
           status: timingEval.recordStatus,
           keterangan: timingEval.keterangan
         });
 
         setNotes("");
+        setCapturedPhoto(null);
       } else {
         setErrorNotice(res?.message || "Gagal mencatat absensi.");
       }
@@ -600,7 +805,7 @@ export default function TeacherDashboard() {
                     Presensi Berhasil Terverifikasi!
                   </h3>
                   <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
-                    Tercatat pada jam <strong>{successNotice.time} WIB</strong> &bull; GPS: {successNotice.coords}
+                    Tercatat pada jam <strong>{successNotice.time} WITA</strong> &bull; Kamera Perangkat Terverifikasi
                   </p>
                 </div>
               </div>
@@ -843,9 +1048,8 @@ export default function TeacherDashboard() {
                   <ShieldCheck size={16} style={{ flexShrink: 0 }} /> Ketentuan Presensi Pegawai
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", wordBreak: "break-word" }}>
-                  <div>&bull; Presensi wajib menggunakan GPS dalam radius <strong>{settings?.radius_meter || 250} meter</strong> dari sekolah.</div>
                   <div>&bull; Pengajuan surat izin atau dinas luar dapat diisi pada menu <strong>Izin / Cuti</strong>.</div>
-                  <div>&bull; Pengumpulan laporan bulanan pegawai diunggah pada menu <strong>Dokumen LKB</strong>.</div>
+                  <div>&bull; Laporan Kinerja Pegawai (LKP) diunggah pada menu <strong>Dokumen LKB</strong>.</div>
                 </div>
               </div>
             </motion.div>
@@ -867,134 +1071,726 @@ export default function TeacherDashboard() {
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
-                  <BookOpen size={20} color="#059669" style={{ flexShrink: 0 }} />
+                  {scheduleMode === "mandiri" ? (
+                    <BookOpen size={20} color="#059669" style={{ flexShrink: 0 }} />
+                  ) : (
+                    <Users size={20} color="#0284c7" style={{ flexShrink: 0 }} />
+                  )}
                   <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)", margin: 0 }}>
-                    Jadwal Mengajar Hari Ini
+                    {scheduleMode === "mandiri" ? "Jadwal Mengajar Saya" : "Jadwal Guru Pengganti (Gantikan Guru)"}
                   </h2>
                 </div>
                 <span
                   style={{
                     fontSize: "0.78rem",
-                    color: "var(--primary)",
+                    color: scheduleMode === "mandiri" ? "var(--primary)" : "#0284c7",
                     fontWeight: 700,
-                    background: "var(--primary-light)",
+                    background: scheduleMode === "mandiri" ? "var(--primary-light)" : "#e0f2fe",
                     padding: "0.25rem 0.65rem",
                     borderRadius: "var(--radius-full)",
                     whiteSpace: "nowrap",
                     flexShrink: 0
                   }}
                 >
-                  {schedules.length} Sesi
+                  {scheduleMode === "mandiri" ? `${schedules.length} Sesi` : `${invalSchedules.length} Kelas Tersedia`}
                 </span>
               </div>
 
-              {schedules.length === 0 ? (
-                <div
+              {/* Tab Switcher: Jadwal Saya vs Guru Pengganti vs Rapat Dinas */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+                  gap: "0.45rem",
+                  background: "var(--bg-muted)",
+                  padding: "0.3rem",
+                  borderRadius: "12px",
+                  border: "1px solid var(--border-light)"
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduleMode("mandiri");
+                    if (schedules.length > 0) {
+                      setSelectedSchedule(schedules[0]);
+                      setAttendanceType("jadwal");
+                      setNotes("");
+                    }
+                  }}
                   style={{
-                    textAlign: "center",
-                    padding: "2.5rem 1rem",
-                    background: "var(--bg-muted)",
-                    borderRadius: "var(--radius-md)",
-                    border: "1px dashed var(--border-light)"
+                    padding: "0.6rem 0.5rem",
+                    borderRadius: "9px",
+                    border: "none",
+                    fontWeight: 700,
+                    fontSize: "0.84rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.4rem",
+                    transition: "all 0.2s ease",
+                    background: scheduleMode === "mandiri" ? "#ffffff" : "transparent",
+                    color: scheduleMode === "mandiri" ? "#059669" : "var(--text-secondary)",
+                    boxShadow: scheduleMode === "mandiri" ? "0 2px 8px rgba(0, 0, 0, 0.08)" : "none"
                   }}
                 >
-                  <Clock size={36} color="#94a3b8" style={{ margin: "0 auto 0.75rem" }} />
-                  <p style={{ fontWeight: 600, color: "var(--text-secondary)" }}>
-                    Tidak ada jadwal mengajar pada hari {getTodayDayName()}.
-                  </p>
-                  <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>
-                    Anda tetap dapat melakukan presensi kehadiran harian di panel sebelah kanan.
-                  </p>
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                  {schedules.map((item) => {
-                    const isSelected = selectedSchedule && selectedSchedule.id === item.id;
-                    const itemTiming = evaluateAttendanceTiming(item, settings, nowDate);
-                    return (
-                      <motion.div
-                        key={item.id}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        onClick={() => {
-                          setSelectedSchedule(item);
-                          setAttendanceType("jadwal");
-                        }}
+                  <BookOpen size={16} />
+                  <span>Jadwal Saya</span>
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      padding: "0.1rem 0.4rem",
+                      borderRadius: "999px",
+                      background: scheduleMode === "mandiri" ? "#ecfdf5" : "#e2e8f0",
+                      color: scheduleMode === "mandiri" ? "#059669" : "#64748b"
+                    }}
+                  >
+                    {schedules.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduleMode("inval");
+                    if (invalSchedules.length > 0) {
+                      const first = invalSchedules[0];
+                      setSelectedSchedule(first);
+                      setAttendanceType("jadwal");
+                      setNotes(`Menggantikan ${first.nama_guru} mengajar di kelas ${first.kelas} (${first.mapel})`);
+                    }
+                  }}
+                  style={{
+                    padding: "0.6rem 0.5rem",
+                    borderRadius: "9px",
+                    border: "none",
+                    fontWeight: 700,
+                    fontSize: "0.84rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.4rem",
+                    transition: "all 0.2s ease",
+                    background: scheduleMode === "inval" ? "#ffffff" : "transparent",
+                    color: scheduleMode === "inval" ? "#0284c7" : "var(--text-secondary)",
+                    boxShadow: scheduleMode === "inval" ? "0 2px 8px rgba(0, 0, 0, 0.08)" : "none"
+                  }}
+                >
+                  <Users size={16} />
+                  <span>Gantikan Guru</span>
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      padding: "0.1rem 0.4rem",
+                      borderRadius: "999px",
+                      background: scheduleMode === "inval" ? "#e0f2fe" : "#e2e8f0",
+                      color: scheduleMode === "inval" ? "#0369a1" : "#64748b"
+                    }}
+                  >
+                    {invalSchedules.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduleMode("rapat");
+                    setSelectedSchedule(null);
+                    setAttendanceType("rapat");
+                    setNotes("");
+                  }}
+                  style={{
+                    padding: "0.6rem 0.5rem",
+                    borderRadius: "9px",
+                    border: "none",
+                    fontWeight: 700,
+                    fontSize: "0.84rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.4rem",
+                    transition: "all 0.2s ease",
+                    background: scheduleMode === "rapat" ? "#ffffff" : "transparent",
+                    color: scheduleMode === "rapat" ? "#7c3aed" : "var(--text-secondary)",
+                    boxShadow: scheduleMode === "rapat" ? "0 2px 8px rgba(0, 0, 0, 0.08)" : "none"
+                  }}
+                >
+                  <Briefcase size={16} />
+                  <span>Rapat</span>
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      padding: "0.1rem 0.4rem",
+                      borderRadius: "999px",
+                      background: scheduleMode === "rapat" ? "#ede9fe" : "#e2e8f0",
+                      color: scheduleMode === "rapat" ? "#7c3aed" : "#64748b"
+                    }}
+                  >
+                    Dinas
+                  </span>
+                </button>
+              </div>
+
+              {/* Mode Guru Pengganti: Panduan & Filter Dropdown */}
+              {scheduleMode === "inval" && (
+                <>
+                  <div
+                    style={{
+                      background: "#f0f9ff",
+                      border: "1px solid #bae6fd",
+                      borderRadius: "10px",
+                      padding: "0.75rem 0.95rem",
+                      fontSize: "0.8rem",
+                      color: "#0369a1",
+                      lineHeight: 1.45,
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "0.55rem"
+                    }}
+                  >
+                    <Users size={17} style={{ flexShrink: 0, marginTop: "2px" }} />
+                    <div>
+                      <strong>Fitur Gantikan Guru:</strong> Pilih jadwal rekan guru yang izin atau berhalangan hadir hari ini. Foto dan presensi mengajar Anda akan sah dicatat sebagai bukti kinerja Guru Pengganti dan langsung masuk ke LKB Anda.
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "0.25rem" }}>
+                        Filter Guru yang Digantikan:
+                      </label>
+                      <select
+                        value={invalTeacherFilter}
+                        onChange={(e) => setInvalTeacherFilter(e.target.value)}
                         style={{
-                          padding: "1.1rem 1.25rem",
-                          borderRadius: "var(--radius-md)",
-                          background: isSelected ? "linear-gradient(135deg, #eef2ff 0%, #ecfeff 100%)" : "#ffffff",
-                          border: `1.5px solid ${isSelected ? "#4f46e5" : "var(--border-light)"}`,
-                          boxShadow: isSelected ? "0 4px 16px rgba(79, 70, 229, 0.18)" : "var(--shadow-sm)",
-                          cursor: "pointer",
-                          transition: "all 0.2s ease"
+                          width: "100%",
+                          padding: "0.45rem 0.65rem",
+                          borderRadius: "8px",
+                          border: "1px solid var(--border-light)",
+                          background: "#ffffff",
+                          fontSize: "0.82rem",
+                          fontWeight: 600,
+                          color: "var(--text-main)"
                         }}
                       >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: "0.35rem"
-                          }}
-                        >
-                          <span
+                        <option value="semua">Semua Guru ({invalTeachersList.length})</option>
+                        {invalTeachersList.map((tName) => {
+                          const isLeave = leavesToday.some(
+                            (l) => l.nama === tName || l.nama_guru === tName
+                          );
+                          return (
+                            <option key={tName} value={tName}>
+                              {tName} {isLeave ? "🚨 (Izin Hari Ini)" : ""}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "0.25rem" }}>
+                        Filter Kelas:
+                      </label>
+                      <select
+                        value={invalClassFilter}
+                        onChange={(e) => setInvalClassFilter(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "0.45rem 0.65rem",
+                          borderRadius: "8px",
+                          border: "1px solid var(--border-light)",
+                          background: "#ffffff",
+                          fontSize: "0.82rem",
+                          fontWeight: 600,
+                          color: "var(--text-main)"
+                        }}
+                      >
+                        <option value="semua">Semua Kelas ({invalClassesList.length})</option>
+                        {invalClassesList.map((k) => (
+                          <option key={k} value={k}>
+                            Kelas {k}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Konten Tab 1: Jadwal Mandiri */}
+              {scheduleMode === "mandiri" && (
+                <>
+                  {schedules.length === 0 ? (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "2.5rem 1rem",
+                        background: "var(--bg-muted)",
+                        borderRadius: "var(--radius-md)",
+                        border: "1px dashed var(--border-light)"
+                      }}
+                    >
+                      <Clock size={36} color="#94a3b8" style={{ margin: "0 auto 0.75rem" }} />
+                      <p style={{ fontWeight: 600, color: "var(--text-secondary)" }}>
+                        Tidak ada jadwal mengajar pada hari {getTodayDayName()}.
+                      </p>
+                      <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>
+                        Anda dapat memeriksa tab <strong>Gantikan Guru</strong> jika ingin menggantikan kelas rekan guru yang izin hari ini.
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                      {schedules.map((item) => {
+                        const isSelected = selectedSchedule && selectedSchedule.id === item.id && scheduleMode === "mandiri";
+                        const itemTiming = evaluateAttendanceTiming(item, settings, nowDate);
+                        const isDoneToday = todayRecords.some(
+                          (r) =>
+                            String(r.jadwal_id) === String(item.id) ||
+                            (r.kelas === item.kelas && r.mapel === item.mapel && (r.jam_jadwal?.includes(item.jam_mulai) || !r.jam_jadwal))
+                        );
+
+                        return (
+                          <motion.div
+                            key={item.id}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                            onClick={() => {
+                              setSelectedSchedule(item);
+                              setAttendanceType("jadwal");
+                              setNotes("");
+                            }}
                             style={{
-                              fontWeight: 800,
-                              fontSize: "1.05rem",
-                              color: isSelected ? "#4f46e5" : "var(--text-main)"
+                              padding: "1.1rem 1.25rem",
+                              borderRadius: "var(--radius-md)",
+                              background: isSelected
+                                ? "linear-gradient(135deg, #eef2ff 0%, #ecfeff 100%)"
+                                : isDoneToday
+                                  ? "#f8fafc"
+                                  : "#ffffff",
+                              border: `1.5px solid ${isSelected ? "#4f46e5" : isDoneToday ? "#cbd5e1" : "var(--border-light)"}`,
+                              boxShadow: isSelected ? "0 4px 16px rgba(79, 70, 229, 0.18)" : "var(--shadow-sm)",
+                              cursor: "pointer",
+                              transition: "all 0.2s ease"
                             }}
                           >
-                            {item.kelas}
-                          </span>
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                            <span
+                            <div
                               style={{
-                                fontFamily: "var(--font-mono)",
-                                fontSize: "0.82rem",
-                                color: isSelected ? "#4f46e5" : "var(--text-secondary)",
-                                fontWeight: 700,
-                                background: isSelected ? "#ffffff" : "var(--bg-muted)",
-                                padding: "0.2rem 0.55rem",
-                                borderRadius: "6px",
-                                boxShadow: isSelected ? "0 1px 4px rgba(79, 70, 229, 0.15)" : "none"
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "0.35rem"
                               }}
                             >
-                              {item.jam_mulai} - {item.jam_selesai}
-                            </span>
-                          </div>
-                        </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <span
+                                  style={{
+                                    fontWeight: 800,
+                                    fontSize: "1.05rem",
+                                    color: isSelected ? "#4f46e5" : "var(--text-main)"
+                                  }}
+                                >
+                                  {item.kelas}
+                                </span>
+                                {isDoneToday && (
+                                  <span
+                                    style={{
+                                      fontSize: "0.7rem",
+                                      fontWeight: 800,
+                                      background: "#ecfdf5",
+                                      color: "#065f46",
+                                      border: "1px solid #a7f3d0",
+                                      padding: "0.15rem 0.45rem",
+                                      borderRadius: "6px"
+                                    }}
+                                  >
+                                    ✓ Terabsen
+                                  </span>
+                                )}
+                                {!isDoneToday && itemTiming.allowed && (
+                                  <span
+                                    style={{
+                                      fontSize: "0.7rem",
+                                      fontWeight: 800,
+                                      background: "#ecfeff",
+                                      color: "#0284c7",
+                                      border: "1px solid #7dd3fc",
+                                      padding: "0.15rem 0.45rem",
+                                      borderRadius: "6px",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.25rem"
+                                    }}
+                                  >
+                                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#0284c7" }} /> Sesi Aktif
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                <span
+                                  style={{
+                                    fontFamily: "var(--font-mono)",
+                                    fontSize: "0.82rem",
+                                    color: isSelected ? "#4f46e5" : "var(--text-secondary)",
+                                    fontWeight: 700,
+                                    background: isSelected ? "#ffffff" : "var(--bg-muted)",
+                                    padding: "0.2rem 0.55rem",
+                                    borderRadius: "6px",
+                                    boxShadow: isSelected ? "0 1px 4px rgba(79, 70, 229, 0.15)" : "none"
+                                  }}
+                                >
+                                  {item.jam_mulai} - {item.jam_selesai}
+                                </span>
+                              </div>
+                            </div>
 
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            fontSize: "0.82rem",
-                            color: "var(--text-secondary)",
-                            marginTop: "0.25rem"
-                          }}
-                        >
-                          <span style={{ fontWeight: 600, color: isSelected ? "#4338ca" : "inherit" }}>
-                            {item.mapel} &bull; {item.ruangan}
-                          </span>
-                          <span
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                fontSize: "0.82rem",
+                                color: "var(--text-secondary)",
+                                marginTop: "0.25rem"
+                              }}
+                            >
+                              <span style={{ fontWeight: 600, color: isSelected ? "#4338ca" : "inherit" }}>
+                                {item.mapel} &bull; {item.ruangan}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: "0.72rem",
+                                  fontWeight: 700,
+                                  padding: "0.2rem 0.55rem",
+                                  borderRadius: "6px",
+                                  background: itemTiming.badgeBg,
+                                  color: itemTiming.badgeColor,
+                                  border: `1px solid ${itemTiming.badgeBorder || itemTiming.badgeColor}`
+                                }}
+                              >
+                                {itemTiming.badgeText}
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Konten Tab 2: Jadwal Guru Pengganti */}
+              {scheduleMode === "inval" && (
+                <>
+                  {invalSchedules.length === 0 ? (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "2.5rem 1rem",
+                        background: "var(--bg-muted)",
+                        borderRadius: "var(--radius-md)",
+                        border: "1px dashed var(--border-light)"
+                      }}
+                    >
+                      <Users size={36} color="#94a3b8" style={{ margin: "0 auto 0.75rem" }} />
+                      <p style={{ fontWeight: 600, color: "var(--text-secondary)" }}>
+                        Tidak ada jadwal mengajar rekan guru yang cocok dengan filter saat ini.
+                      </p>
+                      <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>
+                        Coba ubah filter guru atau kelas di atas.
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                      {invalSchedules.map((item) => {
+                        const isSelected = selectedSchedule && selectedSchedule.id === item.id && scheduleMode === "inval";
+                        const itemTiming = evaluateAttendanceTiming(item, settings, nowDate);
+                        const leaveInfo = getLeaveInfoForSchedule(item);
+                        const attInfo = getAttendanceForSchedule(item);
+                        const isDiisiSaya = attInfo && (
+                          String(attInfo.user_id) === String(currentUser?.id) ||
+                          (currentUser?.nip && String(attInfo.nip) === String(currentUser?.nip))
+                        );
+
+                        return (
+                          <motion.div
+                            key={item.id}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                            onClick={() => {
+                              setSelectedSchedule(item);
+                              setAttendanceType("jadwal");
+                              setNotes(`Menggantikan ${item.nama_guru} mengajar di kelas ${item.kelas} (${item.mapel})`);
+                            }}
                             style={{
-                              fontSize: "0.72rem",
-                              fontWeight: 700,
-                              padding: "0.2rem 0.55rem",
-                              borderRadius: "6px",
-                              background: itemTiming.badgeBg,
-                              color: itemTiming.badgeColor,
-                              border: `1px solid ${itemTiming.badgeBorder || itemTiming.badgeColor}`
+                              padding: "1.1rem 1.25rem",
+                              borderRadius: "var(--radius-md)",
+                              background: isSelected
+                                ? "linear-gradient(135deg, #e0f2fe 0%, #ede9fe 100%)"
+                                : attInfo
+                                  ? "#f8fafc"
+                                  : leaveInfo
+                                    ? "#fef2f2"
+                                    : "#ffffff",
+                              border: `1.5px solid ${isSelected
+                                ? "#0284c7"
+                                : attInfo
+                                  ? "#cbd5e1"
+                                  : leaveInfo
+                                    ? "#fca5a5"
+                                    : "var(--border-light)"
+                                }`,
+                              boxShadow: isSelected ? "0 4px 16px rgba(2, 132, 199, 0.2)" : "var(--shadow-sm)",
+                              cursor: "pointer",
+                              transition: "all 0.2s ease"
                             }}
                           >
-                            {itemTiming.badgeText}
+                            {/* Baris 1: Kelas, Ruangan, Jam */}
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "0.35rem"
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                                <span
+                                  style={{
+                                    fontWeight: 800,
+                                    fontSize: "1.05rem",
+                                    color: isSelected ? "#0369a1" : "var(--text-main)"
+                                  }}
+                                >
+                                  {item.kelas}
+                                </span>
+                                {itemTiming.allowed && !attInfo && (
+                                  <span
+                                    style={{
+                                      fontSize: "0.7rem",
+                                      fontWeight: 800,
+                                      background: "#ecfeff",
+                                      color: "#0284c7",
+                                      border: "1px solid #7dd3fc",
+                                      padding: "0.15rem 0.45rem",
+                                      borderRadius: "6px",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.25rem"
+                                    }}
+                                  >
+                                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#0284c7" }} /> Sesi Berlangsung
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                <span
+                                  style={{
+                                    fontFamily: "var(--font-mono)",
+                                    fontSize: "0.82rem",
+                                    color: isSelected ? "#0369a1" : "var(--text-secondary)",
+                                    fontWeight: 700,
+                                    background: isSelected ? "#ffffff" : "var(--bg-muted)",
+                                    padding: "0.2rem 0.55rem",
+                                    borderRadius: "6px",
+                                    boxShadow: isSelected ? "0 1px 4px rgba(2, 132, 199, 0.15)" : "none"
+                                  }}
+                                >
+                                  {item.jam_mulai} - {item.jam_selesai}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Baris 2: Mapel & Guru Asli */}
+                            <div style={{ fontSize: "0.83rem", color: "var(--text-main)", fontWeight: 700, marginBottom: "0.4rem" }}>
+                              {item.mapel} &bull; Ruang: {item.ruangan || "-"}
+                            </div>
+                            <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.45rem" }}>
+                              <span style={{ color: "#64748b" }}>Guru Asli:</span>
+                              <strong>{item.nama_guru}</strong>
+                            </div>
+
+                            {/* Baris 3: Status Penugasan & Izin */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.35rem", paddingTop: "0.35rem", borderTop: "1px dashed var(--border-light)" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap" }}>
+                                {leaveInfo && (
+                                  <span
+                                    style={{
+                                      fontSize: "0.72rem",
+                                      fontWeight: 800,
+                                      padding: "0.18rem 0.5rem",
+                                      borderRadius: "6px",
+                                      background: "#fee2e2",
+                                      color: "#b91c1c",
+                                      border: "1px solid #fca5a5"
+                                    }}
+                                  >
+                                    🚨 Guru Izin ({leaveInfo.tipe})
+                                  </span>
+                                )}
+                                {attInfo ? (
+                                  <span
+                                    style={{
+                                      fontSize: "0.72rem",
+                                      fontWeight: 800,
+                                      padding: "0.18rem 0.5rem",
+                                      borderRadius: "6px",
+                                      background: isDiisiSaya ? "#ecfdf5" : "#f1f5f9",
+                                      color: isDiisiSaya ? "#065f46" : "#475569",
+                                      border: `1px solid ${isDiisiSaya ? "#a7f3d0" : "#cbd5e1"}`
+                                    }}
+                                  >
+                                    {isDiisiSaya ? `✓ Telah Anda Gantikan (${attInfo.jam_absen})` : `✓ Digantikan oleh ${attInfo.nama} (${attInfo.jam_absen})`}
+                                  </span>
+                                ) : (
+                                  <span
+                                    style={{
+                                      fontSize: "0.72rem",
+                                      fontWeight: 800,
+                                      padding: "0.18rem 0.5rem",
+                                      borderRadius: "6px",
+                                      background: "#eff6ff",
+                                      color: "#1d4ed8",
+                                      border: "1px solid #bfdbfe"
+                                    }}
+                                  >
+                                    ⚡ Siap Diisi Guru Pengganti
+                                  </span>
+                                )}
+                              </div>
+
+                              <span
+                                style={{
+                                  fontSize: "0.72rem",
+                                  fontWeight: 700,
+                                  padding: "0.18rem 0.5rem",
+                                  borderRadius: "6px",
+                                  background: itemTiming.badgeBg,
+                                  color: itemTiming.badgeColor,
+                                  border: `1px solid ${itemTiming.badgeBorder || itemTiming.badgeColor}`
+                                }}
+                              >
+                                {itemTiming.badgeText}
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Konten Tab 3: Rapat Dinas / Tugas Kedinasan Bersama */}
+              {scheduleMode === "rapat" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                  {(() => {
+                    const hasRapatToday = todayRecords.some(r => r.tipe_absen === "rapat" || r.jadwal_id === "RAPAT" || r.is_rapat);
+                    const rapatRec = todayRecords.find(r => r.tipe_absen === "rapat" || r.jadwal_id === "RAPAT" || r.is_rapat);
+
+                    if (hasRapatToday) {
+                      return (
+                        <div
+                          style={{
+                            padding: "1.25rem",
+                            borderRadius: "12px",
+                            background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)",
+                            border: "1.5px solid #a7f3d0",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.85rem"
+                          }}
+                        >
+                          <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "#d1fae5", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <CheckCircle2 size={24} />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "#065f46" }}>
+                              Presensi Rapat Dinas Hari Ini Telah Terverifikasi!
+                            </div>
+                            <div style={{ fontSize: "0.82rem", color: "#047857", marginTop: "2px" }}>
+                              Agenda: <strong>{cleanRapatText(rapatRec?.keterangan || rapatRec?.catatan) || selectedRapatAgenda}</strong>
+                            </div>
+                            <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
+                              Tercatat pukul <strong>{formatTimeString(rapatRec?.jam_absen) || rapatRec?.jam_absen} WITA</strong> • Masuk dalam butir laporan LKB bulan ini (Hadir Penuh 100%).
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        style={{
+                          padding: "1.25rem",
+                          borderRadius: "12px",
+                          background: "linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%)",
+                          border: "1.5px solid #ddd6fe"
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.6rem" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                            <Briefcase size={20} color="#7c3aed" />
+                            <h4 style={{ fontSize: "0.95rem", fontWeight: 800, color: "#5b21b6", margin: 0 }}>
+                              Agenda Rapat / Tugas Kedinasan Bersama
+                            </h4>
+                          </div>
+                          <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "0.2rem 0.6rem", borderRadius: "999px", background: "#ede9fe", color: "#6d28d9", border: "1px solid #c4b5fd" }}>
+                            Status: Hadir Penuh (100%)
                           </span>
                         </div>
-                      </motion.div>
+
+                        <p style={{ fontSize: "0.8rem", color: "#6d28d9", margin: "0 0 1rem 0", lineHeight: 1.45 }}>
+                          Gunakan opsi ini saat seluruh guru mengadakan rapat atau kegiatan dinas resmi di sekolah. Jam mengajar Anda hari ini otomatis dialihkan sehingga Anda <strong>tidak alpa</strong> dan presensi langsung terdata dalam <strong>LKB</strong>.
+                        </p>
+
+                        <div style={{ marginBottom: "0.85rem" }}>
+                          <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#4c1d95", marginBottom: "0.35rem" }}>
+                            Pilih Topik / Agenda Rapat Hari Ini:
+                          </label>
+                          <select
+                            value={selectedRapatAgenda}
+                            onChange={(e) => {
+                              setSelectedRapatAgenda(e.target.value);
+                            }}
+                            className="neon-select"
+                            style={{ width: "100%", padding: "0.6rem 0.85rem", fontSize: "0.85rem", fontWeight: 700, background: "#ffffff", border: "1.5px solid #c4b5fd" }}
+                          >
+                            <option value="Rapat Dewan Guru & Tenaga Kependidikan">🏛️ Rapat Dewan Guru & Tenaga Kependidikan</option>
+                            <option value="Rapat Koordinasi & Evaluasi Pembelajaran">📊 Rapat Koordinasi & Evaluasi Pembelajaran</option>
+                            <option value="Workshop Implementasi Kurikulum Merdeka (IKM)">📚 Workshop Implementasi Kurikulum Merdeka (IKM)</option>
+                            <option value="Rapat Penilaian & Kelulusan Peserta Didik">🎓 Rapat Penilaian & Kelulusan Peserta Didik</option>
+                            <option value="Upacara / Peringatan Hari Besar Nasional">🇮🇩 Upacara / Peringatan Hari Besar Nasional</option>
+                            <option value="Lainnya">✍️ Agenda Lainnya (Ketik Manual)</option>
+                          </select>
+                        </div>
+
+                        {selectedRapatAgenda === "Lainnya" && (
+                          <div style={{ marginBottom: "0.85rem" }}>
+                            <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "#4c1d95", marginBottom: "0.25rem" }}>
+                              Tuliskan Nama / Topik Kegiatan:
+                            </label>
+                            <input
+                              type="text"
+                              value={customRapatAgenda}
+                              onChange={(e) => {
+                                setCustomRapatAgenda(e.target.value);
+                              }}
+                              placeholder="Contoh: Rapat Persiapan Penilaian Akhir Semester..."
+                              className="neon-input"
+                              style={{ width: "100%", padding: "0.55rem 0.85rem", fontSize: "0.85rem", background: "#ffffff" }}
+                            />
+                          </div>
+                        )}
+
+                        <div style={{ fontSize: "0.76rem", color: "#6b21a8", background: "#ffffff", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px dashed #c4b5fd" }}>
+                          📸 <strong>Langkah Selanjutnya:</strong> Arahkan kamera ke suasana ruang rapat / kegiatan pada panel di samping untuk mengambil foto bukti presensi.
+                        </div>
+                      </div>
                     );
-                  })}
+                  })()}
                 </div>
               )}
             </motion.div>
@@ -1107,13 +1903,55 @@ export default function TeacherDashboard() {
               )}
             </AnimatePresence>
 
-            {/* Radar Geofencing */}
-            <RadarScanner
-              schoolLat={settings?.lat_sekolah || -6.2088}
-              schoolLng={settings?.lng_sekolah || 106.8456}
-              radiusMeter={settings?.radius_meter || 250}
-              onLocationUpdate={(loc) => setGpsLocation(loc)}
+            {/* Kamera Device Langsung untuk Presensi */}
+            <CameraCapture
+              capturedPhoto={capturedPhoto}
+              onCapture={(photoData) => setCapturedPhoto(photoData)}
+              onPhotoCaptured={(photoData) => setCapturedPhoto(photoData)}
+              onRetake={() => setCapturedPhoto(null)}
+              user={currentUser}
+              userName={currentUser?.nama || currentUser?.username}
             />
+
+            {/* Banner Mode Guru Pengganti */}
+            {!isPegawai && scheduleMode === "inval" && selectedSchedule && (
+              <div
+                style={{
+                  background: "linear-gradient(135deg, #e0f2fe 0%, #ede9fe 100%)",
+                  border: "1.5px solid #7dd3fc",
+                  borderRadius: "var(--radius-md)",
+                  padding: "0.85rem 1rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.4rem"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.4rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontWeight: 800, fontSize: "0.88rem", color: "#0369a1" }}>
+                    <Users size={16} color="#0284c7" />
+                    <span>Mode: Guru Pengganti (Gantikan Guru)</span>
+                  </div>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "0.15rem 0.5rem", borderRadius: "6px", background: "#ffffff", color: "#0284c7", border: "1px solid #bae6fd" }}>
+                    Kelas {selectedSchedule.kelas}
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.84rem", color: "var(--text-main)", lineHeight: 1.4 }}>
+                  Menggantikan Rekan: <strong>{selectedSchedule.nama_guru}</strong> ({selectedSchedule.mapel})
+                </div>
+                {(() => {
+                  const leaveInfo = getLeaveInfoForSchedule(selectedSchedule);
+                  if (leaveInfo) {
+                    return (
+                      <div style={{ fontSize: "0.78rem", color: "#b91c1c", background: "#fef2f2", padding: "0.3rem 0.55rem", borderRadius: "6px", border: "1px solid #fca5a5", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                        <AlertTriangle size={13} style={{ flexShrink: 0 }} />
+                        <span>Keterangan Izin Guru Asli: {leaveInfo.tipe} {leaveInfo.keterangan ? `(${leaveInfo.keterangan})` : ""}</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            )}
 
             {/* Status Validasi Presensi Geofencing & Jam Sesi */}
             <div
@@ -1130,8 +1968,14 @@ export default function TeacherDashboard() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.45rem" }}>
-                <span style={{ fontSize: "0.78rem", fontWeight: 800, color: isPegawai ? "#0284c7" : "#4f46e5", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  {isPegawai ? `Status Presensi ${pegawaiMode === "masuk" ? "Masuk" : "Pulang"}` : "Status Sesi & Validasi Waktu"}
+                <span style={{ fontSize: "0.78rem", fontWeight: 800, color: isPegawai ? "#0284c7" : scheduleMode === "rapat" ? "#7c3aed" : "#4f46e5", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  {isPegawai
+                    ? `Status Presensi ${pegawaiMode === "masuk" ? "Masuk" : "Pulang"}`
+                    : scheduleMode === "rapat"
+                      ? "Status Presensi Rapat Dinas"
+                      : scheduleMode === "inval"
+                        ? "Status Sesi Guru Pengganti"
+                        : "Status Sesi & Validasi Waktu"}
                 </span>
                 <span
                   style={{
@@ -1153,9 +1997,13 @@ export default function TeacherDashboard() {
               <div style={{ fontSize: "0.92rem", color: "var(--text-main)", fontWeight: 800, wordBreak: "break-word" }}>
                 {isPegawai
                   ? `Presensi ${pegawaiMode === "masuk" ? "Masuk Kantor" : "Kepulangan Kantor"} (${pegawaiMode === "masuk" ? `${formatTimeString(settings?.jam_masuk_mulai) || "06:30"} - ${formatTimeString(settings?.jam_masuk_batas) || "07:15"}` : `Mulai ${formatTimeString(settings?.jam_pulang_mulai) || "15:00"}`})`
-                  : selectedSchedule
-                  ? `${selectedSchedule.kelas} • ${selectedSchedule.mapel} (${selectedSchedule.jam_mulai} - ${selectedSchedule.jam_selesai})`
-                  : "Presensi Kehadiran Harian Sekolah"}
+                  : scheduleMode === "rapat"
+                    ? `🏛️ ${selectedRapatAgenda === "Lainnya" ? (customRapatAgenda || "Rapat Kedinasan") : selectedRapatAgenda}`
+                    : scheduleMode === "inval" && selectedSchedule
+                      ? `[Guru Pengganti] Kelas ${selectedSchedule.kelas} • ${selectedSchedule.mapel} (Gantikan: ${selectedSchedule.nama_guru})`
+                      : selectedSchedule
+                        ? `${selectedSchedule.kelas} • ${selectedSchedule.mapel} (${selectedSchedule.jam_mulai} - ${selectedSchedule.jam_selesai})`
+                        : "Presensi Kehadiran Harian Sekolah"}
               </div>
 
               {/* Banner Aturan Waktu Sesi */}
@@ -1176,15 +2024,6 @@ export default function TeacherDashboard() {
                 <Clock size={16} style={{ flexShrink: 0, marginTop: "2px" }} />
                 <span>{timingEval.message}</span>
               </div>
-
-              <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                <MapPin size={13} color="#059669" />
-                <span>
-                  {gpsLocation
-                    ? `GPS Terkunci: ${gpsLocation.string}`
-                    : "Mendeteksi sinyal GPS perangkat..."}
-                </span>
-              </div>
             </div>
 
             {/* Catatan Tugas Harian (Pegawai) atau Jurnal (Guru) */}
@@ -1198,21 +2037,57 @@ export default function TeacherDashboard() {
                   marginBottom: "0.4rem"
                 }}
               >
-                {isPegawai ? "Catatan Aktivitas / Tugas Harian (Opsional)" : "Catatan / Materi Pembelajaran (Opsional)"}
+                {isPegawai
+                  ? "Catatan Aktivitas / Tugas Harian (Opsional)"
+                  : scheduleMode === "rapat"
+                    ? "Catatan Tambahan Agenda Rapat (Opsional)"
+                    : scheduleMode === "inval"
+                      ? "Catatan Aktivitas Guru Pengganti"
+                      : "Catatan / Materi Pembelajaran (Opsional)"}
               </label>
               <input
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder={isPegawai ? "Contoh: Mengarsipkan surat masuk & layanan legalisir..." : "Contoh: Pembahasan Bab 3 Persamaan Linear..."}
+                placeholder={
+                  isPegawai
+                    ? "Contoh: Mengarsipkan surat masuk & layanan legalisir..."
+                    : scheduleMode === "rapat"
+                      ? "Contoh: Mengikuti sesi rapat dan pembahasan evaluasi..."
+                      : scheduleMode === "inval"
+                        ? "Contoh: Menggantikan materi Bab 4 dan mendampingi diskusi kelompok..."
+                        : "Contoh: Pembahasan Bab 3 Persamaan Linear..."
+                }
                 className="neon-input"
               />
             </div>
 
             {/* Submit Button */}
             {(() => {
-              const isAlreadyRecorded = isPegawai && ((pegawaiMode === "masuk" && hasCheckIn) || (pegawaiMode === "pulang" && hasCheckOut));
-              const isDisabled = loading || !timingEval.allowed || isAlreadyRecorded;
+              const invalAttRecord = (!isPegawai && scheduleMode === "inval" && selectedSchedule)
+                ? getAttendanceForSchedule(selectedSchedule)
+                : null;
+              const isAlreadyRecordedByMe = invalAttRecord && (
+                String(invalAttRecord.user_id) === String(currentUser?.id) ||
+                (currentUser?.nip && String(invalAttRecord.nip) === String(currentUser?.nip))
+              );
+
+              const isScheduleAlreadyRecorded = !isPegawai && selectedSchedule && todayRecords.some(r =>
+                String(r.jadwal_id) === String(selectedSchedule.id) ||
+                (r.kelas === selectedSchedule.kelas && r.mapel === selectedSchedule.mapel && (r.jam_jadwal?.includes(selectedSchedule.jam_mulai) || !r.jam_jadwal))
+              );
+
+              const hasRapatToday = todayRecords.some(r => r.tipe_absen === "rapat" || r.jadwal_id === "RAPAT" || r.is_rapat);
+
+              const isAlreadyRecorded = isPegawai
+                ? ((pegawaiMode === "masuk" && hasCheckIn) || (pegawaiMode === "pulang" && hasCheckOut))
+                : scheduleMode === "rapat"
+                  ? hasRapatToday
+                  : scheduleMode === "inval"
+                    ? Boolean(invalAttRecord)
+                    : (attendanceType === "jadwal" && isScheduleAlreadyRecorded);
+
+              const isDisabled = loading || !timingEval.allowed || isAlreadyRecorded || !capturedPhoto;
 
               return (
                 <motion.button
@@ -1238,21 +2113,33 @@ export default function TeacherDashboard() {
                     background: isAlreadyRecorded
                       ? "#f1f5f9"
                       : !timingEval.allowed
-                      ? timingEval.badgeBg
-                      : timingEval.phase === "late"
-                      ? "linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%)"
-                      : isPegawai && pegawaiMode === "pulang"
-                      ? "linear-gradient(135deg, #2563eb 0%, #0284c7 100%)"
-                      : "linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)",
+                        ? timingEval.badgeBg
+                        : !capturedPhoto
+                          ? "#fef3c7"
+                          : scheduleMode === "rapat"
+                            ? "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)"
+                            : timingEval.phase === "late"
+                              ? "linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%)"
+                              : isPegawai && pegawaiMode === "pulang"
+                                ? "linear-gradient(135deg, #2563eb 0%, #0284c7 100%)"
+                                : scheduleMode === "inval"
+                                  ? "linear-gradient(135deg, #0284c7 0%, #2563eb 100%)"
+                                  : "linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)",
                     color: isAlreadyRecorded
                       ? "#64748b"
                       : !timingEval.allowed
-                      ? timingEval.badgeColor
-                      : "#ffffff",
+                        ? timingEval.badgeColor
+                        : !capturedPhoto
+                          ? "#92400e"
+                          : "#ffffff",
                     boxShadow: !isDisabled
-                      ? timingEval.phase === "late"
-                        ? "0 4px 16px rgba(234, 88, 12, 0.35)"
-                        : "0 4px 16px rgba(5, 150, 105, 0.35)"
+                      ? scheduleMode === "rapat"
+                        ? "0 4px 16px rgba(124, 58, 237, 0.35)"
+                        : timingEval.phase === "late"
+                          ? "0 4px 16px rgba(234, 88, 12, 0.35)"
+                          : scheduleMode === "inval"
+                            ? "0 4px 16px rgba(2, 132, 199, 0.35)"
+                            : "0 4px 16px rgba(5, 150, 105, 0.35)"
                       : "none"
                   }}
                 >
@@ -1261,22 +2148,50 @@ export default function TeacherDashboard() {
                   ) : isAlreadyRecorded ? (
                     <>
                       <CheckCircle2 size={18} color="#166534" />
-                      <span>SUDAH ABSEN {pegawaiMode.toUpperCase()} HARI INI</span>
+                      <span>
+                        {isPegawai
+                          ? `SUDAH ABSEN ${pegawaiMode.toUpperCase()} HARI INI`
+                          : scheduleMode === "rapat"
+                            ? "SUDAH PRESENSI RAPAT DINAS HARI INI"
+                            : scheduleMode === "inval"
+                              ? isAlreadyRecordedByMe
+                                ? `SUDAH MENGGANTIKAN KELAS ${selectedSchedule?.kelas}`
+                                : `KELAS SUDAH DIISI OLEH ${invalAttRecord?.nama}`
+                              : `SUDAH PRESENSI KELAS ${selectedSchedule?.kelas} HARI INI`}
+                      </span>
                     </>
                   ) : !timingEval.allowed ? (
                     <>
                       <Timer size={18} />
                       <span>{timingEval.badgeText} - Presensi Dikunci</span>
                     </>
+                  ) : !capturedPhoto ? (
+                    <>
+                      <Camera size={18} />
+                      <span>AMBIL FOTO KAMERA TERLEBIH DAHULU</span>
+                    </>
+                  ) : scheduleMode === "rapat" ? (
+                    <>
+                      <CheckCircle2 size={18} />
+                      <span>KIRIM PRESENSI</span>
+                    </>
                   ) : timingEval.phase === "late" ? (
                     <>
                       <AlertTriangle size={18} />
-                      <span>KIRIM PRESENSI {isPegawai ? pegawaiMode.toUpperCase() : ""} (TERLAMBAT)</span>
+                      <span>
+                        {scheduleMode === "inval"
+                          ? `KIRIM PRESENSI GURU PENGGANTI (TERLAMBAT)`
+                          : `KIRIM PRESENSI ${isPegawai ? pegawaiMode.toUpperCase() : selectedSchedule ? `KELAS ${selectedSchedule.kelas}` : "HARIAN"} (TERLAMBAT)`}
+                      </span>
                     </>
                   ) : (
                     <>
                       <CheckCircle2 size={18} />
-                      <span>KIRIM PRESENSI {isPegawai ? pegawaiMode.toUpperCase() : ""} (TEPAT WAKTU)</span>
+                      <span>
+                        {scheduleMode === "inval"
+                          ? `KIRIM PRESENSI GURU PENGGANTI (TEPAT WAKTU)`
+                          : `KIRIM PRESENSI ${isPegawai ? pegawaiMode.toUpperCase() : selectedSchedule ? `KELAS ${selectedSchedule.kelas}` : "HARIAN"} (TEPAT WAKTU)`}
+                      </span>
                     </>
                   )}
                 </motion.button>

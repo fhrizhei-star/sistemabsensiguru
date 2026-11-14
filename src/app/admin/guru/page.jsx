@@ -51,6 +51,7 @@ export default function AdminGuruPage() {
     role: "guru",
     mapel: "",
     jabatan: "Guru Pertama",
+    satker: "PENDIS",
     no_hp: "",
     email: "",
     status: "aktif",
@@ -156,6 +157,7 @@ export default function AdminGuruPage() {
         role: teacher.role || "guru",
         mapel: teacher.mapel || "",
         jabatan: teacher.jabatan || "Guru Pertama",
+        satker: teacher.satker || teacher.satuan_kerja || "PENDIS",
         no_hp: teacher.no_hp || "",
         email: teacher.email || "",
         status: teacher.status || "aktif",
@@ -173,6 +175,7 @@ export default function AdminGuruPage() {
         role: "guru",
         mapel: "",
         jabatan: "Guru Pertama",
+        satker: "PENDIS",
         no_hp: "",
         email: "",
         status: "aktif",
@@ -429,6 +432,9 @@ export default function AdminGuruPage() {
                       <div className="truncate-1">NIP: <strong style={{ color: "var(--text-main)" }}>{teacher.nip || "-"}</strong></div>
                       <div className="truncate-1">
                         Jabatan: {teacher.jabatan || (teacher.role === "pegawai" ? "Tenaga Kependidikan" : teacher.role === "admin" ? "Administrator TU" : "Tenaga Pendidik")}
+                      </div>
+                      <div className="truncate-1" style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                        Satuan Kerja: <strong style={{ color: "var(--text-main)" }}>{teacher.satker || teacher.satuan_kerja || "PENDIS"}</strong>
                       </div>
                       {teacher.no_hp && (
                         <div className="truncate-1" style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
@@ -783,13 +789,14 @@ export default function AdminGuruPage() {
                     </div>
                     <div>
                       <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                        Nomor HP / WhatsApp
+                        Satuan Kerja (Satker) *
                       </label>
                       <input
                         type="text"
-                        value={formData.no_hp}
-                        onChange={(e) => setFormData({ ...formData, no_hp: e.target.value })}
-                        placeholder="0812..."
+                        required
+                        value={formData.satker}
+                        onChange={(e) => setFormData({ ...formData, satker: e.target.value })}
+                        placeholder="Contoh: PENDIS, MTsN Gowa, dll."
                         className="neon-input"
                       />
                     </div>

@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import AdminSidebar from "@/components/AdminSidebar";
 import { Auth } from "@/lib/auth";
-import { Api } from "@/lib/api";
+import { Api, formatTimeString } from "@/lib/api";
 import { getAvatarUrl } from "@/lib/drive";
 import { getTodayDateStr, getTodayDayName } from "@/lib/mockData";
 import {
@@ -365,7 +365,7 @@ export default function AdminDashboardPage() {
                         <div>
                           <p style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--text-main)" }}>{act.nama}</p>
                           <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                            {act.kelas || "Sesi Mengajar"} &bull; {act.jam_absen} WIB
+                            {act.kelas || "Sesi Mengajar"} &bull; {formatTimeString(act.jam_absen) || act.jam_absen} WITA
                           </p>
                         </div>
                       </div>
@@ -445,7 +445,7 @@ export default function AdminDashboardPage() {
                 },
                 {
                   title: "Pengaturan Sistem",
-                  desc: "Konfigurasi koordinat GPS sekolah dan server database",
+                  desc: "Konfigurasi profil sekolah, jam kerja, dan integrasi database",
                   href: "/admin/setting",
                   icon: School,
                   color: "#8b5cf6"

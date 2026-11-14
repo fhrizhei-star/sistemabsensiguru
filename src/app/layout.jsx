@@ -2,8 +2,8 @@ import "./globals.css";
 import ThemeBackground from "@/components/ThemeBackground";
 
 export const metadata = {
-  title: "Sistem Presensi Guru Modern & Geofencing - MTsN GOWA",
-  description: "Platform Presensi Guru & Tenaga Pendidik Berbasis Jadwal Pelajaran, Kamera Biometrik Selfie, dan Radar Geofencing GPS.",
+  title: "SIDIAN - Sistem Informasi Digital ASN MTsN GOWA",
+  description: "Sistem Informasi Digital ASN MTsN GOWA.",
   icons: {
     icon: "/favicon.png",
     shortcut: "/favicon.png",

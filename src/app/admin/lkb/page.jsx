@@ -6,10 +6,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import Navbar from "@/components/Navbar";
 import AdminSidebar from "@/components/AdminSidebar";
+import OfficialLkbIndividualDocument from "@/components/OfficialLkbIndividualDocument";
+import { OfficialLkbSummaryDocument, PrintLkbSummaryModal } from "@/components/OfficialLkbSummaryDocument";
 import { Auth } from "@/lib/auth";
 import { Api } from "@/lib/api";
-import { formatDriveUrl, getAvatarUrl } from "@/lib/drive";
-import { LOGO_KEMENAG, LOGO_SEKOLAH } from "@/lib/logos";
+import { getAvatarUrl } from "@/lib/drive";
 import { getTodayDateStr } from "@/lib/mockData";
 import {
   FileCheck,
@@ -21,427 +22,70 @@ import {
   Clock,
   AlertTriangle,
   Search,
-  ExternalLink,
   RefreshCw,
-  Trash2,
   Filter,
   Check,
   X,
-  FileUp,
-  Inbox,
   Printer,
   GraduationCap,
-  Briefcase
+  Briefcase,
+  Camera,
+  Download,
+  Eye,
+  UserCheck,
+  ShieldCheck,
+  Sparkles
 } from "lucide-react";
 
 const MONTH_NAMES = [
-  "Semua",
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
-const YEAR_OPTIONS = ["Semua", String(CURRENT_YEAR - 1), String(CURRENT_YEAR), String(CURRENT_YEAR + 1)];
+const YEAR_OPTIONS = [String(CURRENT_YEAR - 1), String(CURRENT_YEAR), String(CURRENT_YEAR + 1)];
 
-function formatTanggalIndonesia(dateStr) {
-  if (!dateStr) return "-";
-  if (dateStr instanceof Date) {
-    if (isNaN(dateStr.getTime())) return "-";
-    const d = dateStr.getDate();
-    const m = dateStr.getMonth();
-    const y = dateStr.getFullYear();
-    const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    return `${d} ${bulan[m]} ${y}`;
-  }
-  const s = String(dateStr).trim();
-  if (!s || s === "null" || s === "undefined") return "-";
-  const mYmd = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
-  if (mYmd) {
-    const y = mYmd[1];
-    const m = parseInt(mYmd[2], 10) - 1;
-    const d = parseInt(mYmd[3], 10);
-    const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    return `${d} ${bulan[m] || mYmd[2]} ${y}`;
-  }
-  return s;
-}
-
-// --- Komponen Dokumen Cetak Format Resmi LKB Sekolah ---
-function OfficialLkbDocument({ data = [], settings = {}, currentUser = null, filterBulan, filterTahun, roleFilter = "Semua" }) {
-  const safeData = Array.isArray(data) ? data : [];
-  const safeSettings = settings || {};
-  const todayStr = formatTanggalIndonesia(getTodayDateStr());
-
-  const roleLabel = roleFilter === "pegawai"
-    ? "PEGAWAI / TATA USAHA"
-    : roleFilter === "guru"
-    ? "GURU / PENDIDIK"
-    : "GURU & PEGAWAI";
-
-  const periodeLabel = `Periode: Bulan ${filterBulan} Tahun ${filterTahun}`;
-
-  const namaOperator = safeSettings.operator_nama || safeSettings.nama_operator || currentUser?.nama || "___________________________";
-  const nipOperator = safeSettings.operator_nip || safeSettings.nip_operator || currentUser?.nip || "___________________________";
-
-  const totalDisetujui = safeData.filter(d => d.status === "Disetujui").length;
-  const totalMenunggu = safeData.filter(d => d.status === "Menunggu Verifikasi" || d.status === "Menunggu").length;
-  const totalDitolak = safeData.filter(d => d.status === "Ditolak").length;
-
-  return (
-    <div className="official-school-document" style={{
-      width: "100%",
-      background: "#ffffff",
-      color: "#000000",
-      fontFamily: "'Times New Roman', Times, Georgia, serif",
-      fontSize: "9.5pt",
-      lineHeight: 1.35
-    }}>
-      {/* ===== KOP SURAT RESMI ===== */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: "1rem",
-        paddingBottom: "0.5rem"
-      }}>
-        <div style={{ width: "82px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <img src={LOGO_KEMENAG} alt="Logo Kementerian Agama" style={{ width: "72px", height: "auto", maxHeight: "82px", objectFit: "contain", display: "block" }} />
-        </div>
-
-        <div style={{ textAlign: "center", flex: 1, padding: "0 0.5rem" }}>
-          <div style={{ fontSize: "10.5pt", fontWeight: 700, color: "#000", textTransform: "uppercase", letterSpacing: "0.04em", lineHeight: 1.25 }}>
-            KEMENTERIAN AGAMA REPUBLIK INDONESIA
-          </div>
-          <div style={{ fontSize: "10pt", fontWeight: 700, color: "#111", textTransform: "uppercase", letterSpacing: "0.03em", marginTop: "2px", lineHeight: 1.25 }}>
-            KANTOR KEMENTERIAN AGAMA {safeSettings.kota ? safeSettings.kota.toUpperCase() : "KABUPATEN GOWA"}
-          </div>
-          <div style={{ fontSize: "14pt", fontWeight: 900, color: "#000", letterSpacing: "0.02em", margin: "3px 0", lineHeight: 1.2, textTransform: "uppercase" }}>
-            {safeSettings.nama_sekolah || "MADRASAH TSANAWIYAH NEGERI GOWA"}
-          </div>
-          <div style={{ fontSize: "8.5pt", color: "#222", fontStyle: "italic", marginTop: "2px", lineHeight: 1.3 }}>
-            <span>{safeSettings.alamat_sekolah || "Jl. Pendidikan Nasional, Kabupaten Gowa, Sulawesi Selatan"}</span>
-            <span style={{ margin: "0 6px", fontStyle: "normal" }}>•</span>
-            <span>Telp: {safeSettings.no_telp || safeSettings.telepon || safeSettings.telepon_sekolah || "(0411) 861234"}</span>
-          </div>
-        </div>
-
-        <div style={{ width: "82px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <img src={LOGO_SEKOLAH} alt="Logo Sekolah" style={{ width: "72px", height: "auto", maxHeight: "82px", objectFit: "contain", display: "block" }} />
-        </div>
-      </div>
-
-      <div style={{ borderBottom: "3px solid #000", width: "100%", margin: "4px 0 2px 0" }} />
-      <div style={{ borderBottom: "1px solid #000", width: "100%", margin: "0 0 14px 0" }} />
-
-      {/* ===== JUDUL LAPORAN ===== */}
-      <div style={{ textAlign: "center", marginBottom: "14px" }}>
-        <div style={{ fontSize: "11.5pt", fontWeight: 900, textDecoration: "underline", letterSpacing: "0.04em", color: "#000", textTransform: "uppercase" }}>
-          REKAPITULASI DOKUMEN LEMBAR KINERJA BULANAN (LKB) {roleLabel}
-        </div>
-        <div style={{ fontSize: "9.5pt", fontWeight: 600, color: "#222", marginTop: "3px" }}>
-          {periodeLabel}
-        </div>
-      </div>
-
-      {/* ===== RINGKASAN LKB ===== */}
-      <div style={{ display: "flex", gap: "10px", marginBottom: "12px", fontSize: "8.5pt" }}>
-        <div style={{ border: "1px solid #999", padding: "4px 10px", borderRadius: "4px" }}>
-          <strong>Total Dokumen:</strong> {safeData.length}
-        </div>
-        <div style={{ border: "1px solid #059669", background: "#f0fdf4", color: "#065f46", padding: "4px 10px", borderRadius: "4px" }}>
-          <strong>Disetujui:</strong> {totalDisetujui}
-        </div>
-        <div style={{ border: "1px solid #d97706", background: "#fffbeb", color: "#b45309", padding: "4px 10px", borderRadius: "4px" }}>
-          <strong>Menunggu:</strong> {totalMenunggu}
-        </div>
-        <div style={{ border: "1px solid #e11d48", background: "#fff1f2", color: "#be123c", padding: "4px 10px", borderRadius: "4px" }}>
-          <strong>Ditolak:</strong> {totalDitolak}
-        </div>
-      </div>
-
-      {/* ===== TABEL REKAP ===== */}
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "8.5pt", border: "1.5px solid #000" }}>
-        <thead>
-          <tr style={{ background: "#4338ca", color: "#ffffff" }}>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "30px", color: "#ffffff" }}>No</th>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "85px", color: "#ffffff" }}>Periode</th>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>Nama</th>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "115px", color: "#ffffff" }}>NIP</th>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>Peran & Jabatan</th>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>Judul Dokumen</th>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "85px", color: "#ffffff" }}>Status</th>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "95px", color: "#ffffff" }}>Tgl Verifikasi</th>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>Catatan / Revisi</th>
-          </tr>
-        </thead>
-        <tbody>
-          {safeData.length === 0 ? (
-            <tr>
-              <td colSpan={9} style={{ textAlign: "center", padding: "1.5rem", color: "#666", fontStyle: "italic", border: "1px solid #333" }}>
-                Tidak ada dokumen LKB untuk periode ini
-              </td>
-            </tr>
-          ) : safeData.map((row, idx) => (
-            <tr key={row.id || idx} style={{
-              background: idx % 2 === 0 ? "#ffffff" : "#fbfbff",
-              pageBreakInside: "avoid"
-            }}>
-              <td style={{ border: "1px solid #333", padding: "5px 6px", textAlign: "center" }}>{idx + 1}</td>
-              <td style={{ border: "1px solid #333", padding: "5px 6px", textAlign: "center", whiteSpace: "nowrap" }}>
-                {row.bulan} {row.tahun}
-              </td>
-              <td style={{ border: "1px solid #333", padding: "5px 6px", fontWeight: 700 }}>{row.nama || "-"}</td>
-              <td style={{ border: "1px solid #333", padding: "5px 6px", fontSize: "8.5pt" }}>{row.nip || "-"}</td>
-              <td style={{ border: "1px solid #333", padding: "5px 6px" }}>{row.mapel_jabatan || "-"}</td>
-              <td style={{ border: "1px solid #333", padding: "5px 6px" }}>{row.judul || row.file_name || "-"}</td>
-              <td style={{
-                border: "1px solid #333", padding: "5px 6px", textAlign: "center", fontWeight: 700,
-                color: row.status === "Disetujui" ? "#065f46" : row.status === "Ditolak" ? "#be123c" : "#b45309"
-              }}>
-                {row.status || "-"}
-              </td>
-              <td style={{ border: "1px solid #333", padding: "5px 6px", textAlign: "center", fontSize: "8pt" }}>
-                {row.diverifikasi_pada ? String(row.diverifikasi_pada).slice(0, 16) : "-"}
-              </td>
-              <td style={{ border: "1px solid #333", padding: "5px 6px", fontSize: "8pt", color: "#333" }}>
-                {row.alasan_penolakan || row.catatan || "-"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* ===== FOOTER TANDA TANGAN ===== */}
-      <div className="print-signature-area" style={{
-        marginTop: "32px",
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "2.5rem",
-        pageBreakInside: "avoid"
-      }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "8.5pt", color: "#333", marginBottom: "2px" }}>Mengetahui,</div>
-          <div style={{ fontSize: "9pt", fontWeight: 700, color: "#000" }}>Kepala {safeSettings.nama_sekolah || "MTsN GOWA"}</div>
-          <div style={{ height: "65px", margin: "8px auto", borderBottom: "1px solid #000", width: "70%" }} />
-          <div style={{ fontSize: "9.5pt", fontWeight: 800, color: "#000" }}>{safeSettings.kepala_sekolah || "___________________________"}</div>
-          <div style={{ fontSize: "8pt", color: "#333" }}>NIP. {safeSettings.nip_kepsek || "___________________________"}</div>
-        </div>
-
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "8.5pt", color: "#333", marginBottom: "2px" }}>{safeSettings.kota || "Kabupaten Gowa"}, {todayStr}</div>
-          <div style={{ fontSize: "9pt", fontWeight: 700, color: "#000" }}>Kepala Tata Usaha / Verifikator</div>
-          <div style={{ height: "65px", margin: "8px auto", borderBottom: "1px solid #000", width: "70%" }} />
-          <div style={{ fontSize: "9.5pt", fontWeight: 800, color: "#000" }}>{namaOperator}</div>
-          <div style={{ fontSize: "8pt", color: "#333" }}>NIP. {nipOperator}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- Print Preview Modal untuk LKB ---
-function LkbPrintPreviewModal({ data = [], settings = {}, currentUser, filterBulan, filterTahun, roleFilter, orientation, setOrientation, onClose }) {
-  const safeData = Array.isArray(data) ? data : [];
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleOpenNewTab = () => {
-    const printEl = document.getElementById("native-lkb-print");
-    if (!printEl) return;
-    const newWin = window.open("", "_blank");
-    if (!newWin) {
-      alert("Izinkan pop-up untuk membuka dokumen cetak di tab baru.");
-      return;
-    }
-    const pageMargin = orientation === "landscape" ? "12mm 15mm 12mm 15mm" : "15mm 12mm 15mm 12mm";
-    newWin.document.write(`
-      <!DOCTYPE html>
-      <html lang="id">
-      <head>
-        <meta charset="UTF-8">
-        <title>Rekap Dokumen LKB - ${settings.nama_sekolah || "Sekolah"}</title>
-        <style>
-          @page { size: A4 ${orientation}; margin: ${pageMargin}; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
-          body { font-family: 'Times New Roman', Times, Georgia, serif; margin: 0; padding: 1.5cm; color: #000; background: #fff; }
-          * { font-family: 'Times New Roman', Times, Georgia, serif !important; }
-          table { width: 100%; border-collapse: collapse; page-break-inside: auto; break-inside: auto; }
-          tr { page-break-inside: avoid; break-inside: avoid; page-break-after: auto; break-after: auto; }
-          thead { display: table-header-group; }
-          .print-signature-area { page-break-inside: avoid; break-inside: avoid; }
-          @media print { body { padding: 0 !important; } }
-        </style>
-      </head>
-      <body>
-        ${printEl.innerHTML}
-        <script>
-          window.onload = function() {
-            window.focus();
-            window.print();
-          };
-        </script>
-      </body>
-      </html>
-    `);
-    newWin.document.close();
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
-      <motion.div
-        className="modal-print-backdrop"
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={onClose}
-        style={{ position: "absolute", inset: 0, background: "rgba(15,23,42,0.65)", backdropFilter: "blur(4px)" }}
-      />
-
-      <motion.div
-        className="modal-print-container"
-        initial={{ scale: 0.92, opacity: 0, y: 20 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.92, opacity: 0 }}
-        style={{
-          position: "relative", width: "100%",
-          maxWidth: orientation === "landscape" ? "1100px" : "860px",
-          maxHeight: "92vh", display: "flex", flexDirection: "column",
-          background: "#ffffff", borderRadius: "16px",
-          boxShadow: "0 25px 60px rgba(0,0,0,0.25)", overflow: "hidden",
-          transition: "max-width 0.25s ease"
-        }}
-      >
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "1rem 1.5rem", borderBottom: "1px solid #e2e8f0",
-          background: "linear-gradient(135deg, #eef2ff 0%, #ede9fe 100%)",
-          flexWrap: "wrap", gap: "0.75rem"
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-            <FileSpreadsheet size={22} color="#4f46e5" />
-            <div>
-              <div style={{ fontWeight: 800, fontSize: "1rem", color: "#3730a3" }}>
-                Preview Cetak Dokumen LKB {roleFilter === "pegawai" ? "Pegawai" : roleFilter === "guru" ? "Guru" : ""}
-              </div>
-              <div style={{ fontSize: "0.78rem", color: "#6366f1" }}>Bulan {filterBulan} {filterTahun} • {safeData.length} data</div>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", background: "#ffffff", padding: "3px", borderRadius: "10px", border: "1.5px solid #c7d2fe" }}>
-            <button
-              type="button"
-              onClick={() => setOrientation("landscape")}
-              style={{
-                padding: "0.35rem 0.8rem", borderRadius: "7px", border: "none", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer",
-                background: orientation === "landscape" ? "#4f46e5" : "transparent",
-                color: orientation === "landscape" ? "#ffffff" : "#475569"
-              }}
-            >
-              📄 Landscape (Mendatar)
-            </button>
-            <button
-              type="button"
-              onClick={() => setOrientation("portrait")}
-              style={{
-                padding: "0.35rem 0.8rem", borderRadius: "7px", border: "none", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer",
-                background: orientation === "portrait" ? "#4f46e5" : "transparent",
-                color: orientation === "portrait" ? "#ffffff" : "#475569"
-              }}
-            >
-              📋 Portrait (Tegak)
-            </button>
-          </div>
-
-          <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
-            <button
-              type="button"
-              onClick={handleOpenNewTab}
-              style={{
-                display: "flex", alignItems: "center", gap: "0.35rem", padding: "0.55rem 0.9rem",
-                background: "#ffffff", color: "#4f46e5", border: "1.5px solid #c7d2fe", borderRadius: "10px",
-                fontWeight: 700, fontSize: "0.82rem", cursor: "pointer"
-              }}
-            >
-              <ExternalLink size={15} /> Tab Baru
-            </button>
-            <button
-              type="button"
-              onClick={handlePrint}
-              style={{
-                display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.55rem 1.1rem",
-                background: "linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)",
-                color: "#fff", border: "none", borderRadius: "10px",
-                fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
-                boxShadow: "0 4px 12px rgba(79,70,229,0.3)"
-              }}
-            >
-              <Printer size={16} /> Cetak Sekarang
-            </button>
-            <button type="button" onClick={onClose}
-              style={{ background: "#f1f5f9", border: "none", borderRadius: "8px", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-              <X size={18} color="#64748b" />
-            </button>
-          </div>
-        </div>
-
-        <div style={{ overflowY: "auto", padding: "1.75rem", flex: 1, background: "#f8fafc" }}>
-          <div style={{
-            background: "#ffffff", padding: "2rem 2.25rem", borderRadius: "8px",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-            maxWidth: orientation === "landscape" ? "1020px" : "800px", margin: "0 auto"
-          }}>
-            <OfficialLkbDocument
-              data={safeData}
-              settings={settings}
-              currentUser={currentUser}
-              filterBulan={filterBulan}
-              filterTahun={filterTahun}
-              roleFilter={roleFilter}
-            />
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-// ====== MAIN PAGE ======
 export default function AdminLkbPage({ fixedRole = null }) {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
   const [lkbList, setLkbList] = useState([]);
   const [teachers, setTeachers] = useState([]);
+  const [allAttendance, setAllAttendance] = useState([]);
+  const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Tab Utama: "persetujuan" | "rekap"
-  const [activeTab, setActiveTab] = useState("persetujuan");
+  // Tab Utama: "preview_dokumen" (Pratinjau & Pengesahan) | "monitoring_asn" (Monitoring Status Semua ASN)
+  const [activeTab, setActiveTab] = useState("preview_dokumen");
 
-  // Sub-filter Kategori Peran: "Semua" | "guru" | "pegawai"
+  // Filter Kategori ASN: "Semua" | "guru" | "pegawai"
   const [roleFilter, setRoleFilter] = useState(fixedRole || "Semua");
+
+  // State Pilihan ASN & Periode untuk Pratinjau Dokumen
+  const now = new Date();
+  const [selectedAsnId, setSelectedAsnId] = useState("");
+  const [kinerjaBulan, setKinerjaBulan] = useState(MONTH_NAMES[now.getMonth()] || "Oktober");
+  const [kinerjaTahun, setKinerjaTahun] = useState(String(CURRENT_YEAR));
+
+  // Search query di tabel monitoring
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Reject Modal State
+  const [rejectModalItem, setRejectModalItem] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+
+  // Modal Cetak Rekap Keseluruhan LKB
+  const [showPrintSummaryModal, setShowPrintSummaryModal] = useState(false);
+  const [summaryOrientation, setSummaryOrientation] = useState("landscape");
+
+  // Toast Notification
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     if (fixedRole) {
       setRoleFilter(fixedRole);
     }
   }, [fixedRole]);
-
-  // Filters
-  const [filterStatus, setFilterStatus] = useState("Menunggu Verifikasi"); // Default to pending for persetujuan
-  const [filterBulan, setFilterBulan] = useState("Semua");
-  const [filterTahun, setFilterTahun] = useState("Semua");
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Print modal state
-  const [showPrintModal, setShowPrintModal] = useState(false);
-  const [printOrientation, setPrintOrientation] = useState("landscape");
-
-  // Reject Modal
-  const [rejectModalItem, setRejectModalItem] = useState(null);
-  const [rejectionReason, setRejectionReason] = useState("");
-
-  // Toast / notification
-  const [toast, setToast] = useState(null);
-  const [settings, setSettings] = useState({});
 
   useEffect(() => {
     const user = Auth.getCurrentUser();
@@ -461,73 +105,177 @@ export default function AdminLkbPage({ fixedRole = null }) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await Api.request("GET", "getLkb", {});
+      const [res, tRes, aRes, sRes] = await Promise.all([
+        Api.request("GET", "getLkb", {}),
+        Api.request("GET", "getUsers"),
+        Api.request("GET", "getAttendance", {}),
+        Api.request("GET", "getSettings")
+      ]);
+
       if (res && res.lkb) setLkbList(res.lkb);
 
-      const tRes = await Api.request("GET", "getUsers");
-      if (tRes && tRes.users) setTeachers(tRes.users.filter(u => u.role !== "admin"));
+      if (tRes && tRes.users) {
+        const nonAdmin = tRes.users.filter((u) => u.role !== "admin");
+        setTeachers(nonAdmin);
+        if (nonAdmin.length > 0 && !selectedAsnId) {
+          // Prioritaskan Zulhana jika ada, atau ASN pertama
+          const zul = nonAdmin.find((u) => (u.nama || "").toLowerCase().includes("zulhana"));
+          setSelectedAsnId(zul ? zul.id : nonAdmin[0].id);
+        }
+      }
 
-      const sRes = await Api.request("GET", "getSettings");
+      if (aRes && (aRes.attendance || aRes.list)) {
+        setAllAttendance(aRes.attendance || aRes.list || []);
+      }
+
       if (sRes && sRes.settings) setSettings(sRes.settings);
     } catch (err) {
-      console.error("Gagal mengambil data LKB:", err);
+      console.error("Gagal mengambil data LKB & Presensi:", err);
       showToast("error", "Gagal memuat data LKB dari server.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Map users untuk mendeteksi role guru vs pegawai
-  const userRoleMap = useMemo(() => {
-    const m = {};
-    (teachers || []).forEach(u => {
-      if (u && u.id) m[String(u.id)] = u;
+  // List opsi ASN yang disaring berdasarkan fixedRole atau roleFilter
+  const asnOptions = useMemo(() => {
+    let list = teachers;
+    if (roleFilter === "guru") list = list.filter((t) => t.role === "guru");
+    if (roleFilter === "pegawai") list = list.filter((t) => t.role === "pegawai");
+    return list;
+  }, [teachers, roleFilter]);
+
+  // ASN yang sedang aktif dipilih untuk pratinjau & pengesahan
+  const selectedAsnUser = useMemo(() => {
+    if (!asnOptions || asnOptions.length === 0) return null;
+    const found = asnOptions.find((t) => t.id === selectedAsnId);
+    return found || asnOptions[0];
+  }, [asnOptions, selectedAsnId]);
+
+  // Presensi berfoto milik ASN terpilih pada bulan & tahun terpilih
+  const selectedAsnAttendance = useMemo(() => {
+    if (!selectedAsnUser) return [];
+    const mIdx = MONTH_NAMES.indexOf(kinerjaBulan) + 1; // 1 - 12
+    const padMonth = String(mIdx).padStart(2, "0");
+    const yearStr = String(kinerjaTahun);
+
+    return (allAttendance || []).filter((rec) => {
+      if (String(rec.user_id) !== String(selectedAsnUser.id) && String(rec.nip) !== String(selectedAsnUser.nip)) return false;
+      if (!rec.tanggal) return false;
+      const t = String(rec.tanggal).trim();
+      if (t.startsWith(`${yearStr}-${padMonth}`)) return true;
+      const d = new Date(t);
+      if (!isNaN(d.getTime())) {
+        return d.getFullYear() === Number(yearStr) && d.getMonth() + 1 === mIdx;
+      }
+      return false;
     });
-    return m;
-  }, [teachers]);
+  }, [allAttendance, selectedAsnUser, kinerjaBulan, kinerjaTahun]);
 
-  const getItemRole = (item) => {
-    if (!item) return "guru";
-    if (item.role) return item.role;
-    const u = userRoleMap[String(item.user_id)];
-    if (u && u.role) return u.role;
-    const mj = String(item.mapel_jabatan || "").toLowerCase();
-    if (mj.includes("tata usaha") || mj.includes("pegawai") || mj.includes("administrasi") || mj.includes("staf")) {
-      return "pegawai";
-    }
-    return "guru";
-  };
+  // Record pengajuan LKB milik ASN terpilih pada bulan & tahun terpilih
+  const selectedAsnLkbRecord = useMemo(() => {
+    if (!selectedAsnUser) return null;
+    return lkbList.find((item) => {
+      const isUserMatch = String(item.user_id) === String(selectedAsnUser.id) ||
+        (item.nip && item.nip === selectedAsnUser.nip) ||
+        (item.nama && selectedAsnUser.nama && item.nama.toLowerCase() === selectedAsnUser.nama.toLowerCase());
+      const isBulanMatch = (item.bulan || "").toLowerCase() === kinerjaBulan.toLowerCase();
+      const isTahunMatch = String(item.tahun || "") === String(kinerjaTahun);
+      return isUserMatch && isBulanMatch && isTahunMatch;
+    });
+  }, [lkbList, selectedAsnUser, kinerjaBulan, kinerjaTahun]);
 
-  const handleApprove = async (item) => {
+  const approvalStatus = selectedAsnLkbRecord?.status || "Belum Diajukan";
+
+  // Pengesahan LKB (Konfirmasi & Approve) Langsung oleh Admin
+  const handleApproveCurrentAsn = async (customAsn = null) => {
+    const targetUser = customAsn || selectedAsnUser;
+    if (!targetUser) return;
+
     setActionLoading(true);
     try {
-      const res = await Api.request("POST", "updateLkbStatus", {}, {
-        id: item.id,
-        status: "Disetujui",
-        alasan_penolakan: "",
-        diverifikasi_oleh: currentUser?.nama || "Admin"
+      const isPegawai = targetUser.role === "pegawai";
+      const count = customAsn
+        ? (allAttendance || []).filter((r) => {
+          const mIdx = MONTH_NAMES.indexOf(kinerjaBulan) + 1;
+          const padMonth = String(mIdx).padStart(2, "0");
+          const t = String(r.tanggal || "").trim();
+          return (String(r.user_id) === String(targetUser.id) || String(r.nip) === String(targetUser.nip)) && t.startsWith(`${kinerjaTahun}-${padMonth}`);
+        }).length
+        : selectedAsnAttendance.length;
+
+      const verifikator = currentUser?.nama || settings?.kepala_madrasah || "Admin Madrasah";
+      const todayDate = getTodayDateStr();
+
+      // Cari apakah sudah ada pengajuan LKB sebelumnya
+      const existing = lkbList.find((item) => {
+        const matchU = String(item.user_id) === String(targetUser.id) || (item.nip && item.nip === targetUser.nip);
+        const matchB = (item.bulan || "").toLowerCase() === kinerjaBulan.toLowerCase();
+        const matchY = String(item.tahun || "") === String(kinerjaTahun);
+        return matchU && matchB && matchY;
       });
 
-      if (res && res.success) {
+      let res;
+      if (existing?.id) {
+        // Dokumen sudah ada di database -> perbarui status menjadi Disetujui
+        res = await Api.request("POST", "updateLkbStatus", {}, {
+          id: existing.id,
+          user_id: targetUser.id,
+          nip: targetUser.nip || "-",
+          bulan: kinerjaBulan,
+          tahun: kinerjaTahun,
+          status: "Disetujui",
+          alasan_penolakan: "",
+          diverifikasi_oleh: verifikator,
+          tanggal_verifikasi: todayDate
+        });
+      } else {
+        // Direct Approve: dokumen belum diajukan oleh guru -> buatkan record langsung berstatus Disetujui
+        const payload = {
+          user_id: targetUser.id,
+          nama: targetUser.nama || targetUser.username,
+          nip: targetUser.nip || "-",
+          role: targetUser.role || (targetUser.mapel ? "guru" : "pegawai"),
+          satker: targetUser.satker || targetUser.satuan_kerja || settings?.satuan_kerja || settings?.satker || "PENDIS",
+          mapel_jabatan: isPegawai
+            ? (targetUser.jabatan || "Staf Tata Usaha")
+            : (targetUser.mapel || "Guru Mata Pelajaran"),
+          bulan: kinerjaBulan,
+          tahun: kinerjaTahun,
+          judul: `Laporan Capaian Kinerja Bulanan ASN - ${kinerjaBulan} ${kinerjaTahun}`,
+          catatan: `Disahkan oleh Admin/Verifikator (${count} sesi presensi berfoto)`,
+          status: "Disetujui",
+          diverifikasi_oleh: verifikator,
+          tanggal_verifikasi: todayDate,
+          file_name: `LKB_${kinerjaBulan}_${kinerjaTahun}.pdf`,
+          file_url: "SISTEM_PRESENSI_OTOMATIS",
+          file_size: `${count} Sesi Terdata`
+        };
+        res = await Api.request("POST", "submitLkb", {}, payload);
+      }
+
+      if (res && (res.success || res.status === "success")) {
         confetti({
-          particleCount: 60,
+          particleCount: 80,
           spread: 60,
           origin: { y: 0.6 }
         });
-        showToast("success", `Dokumen LKB milik ${item.nama} berhasil disetujui!`);
-        fetchData();
+        showToast("success", `Dokumen LKB Bulan ${kinerjaBulan} milik ${targetUser.nama || targetUser.username} BERHASIL DISAHKAN!`);
+        await fetchData();
       } else {
-        showToast("error", res?.message || "Gagal menyetujui dokumen.");
+        showToast("error", res?.message || "Gagal mengesahkan LKB.");
       }
     } catch (err) {
-      showToast("error", "Terjadi kesalahan koneksi.");
+      console.error("Error approving LKB:", err);
+      showToast("error", "Terjadi kesalahan sistem saat mengesahkan LKB.");
     } finally {
       setActionLoading(false);
     }
   };
 
-  const openRejectModal = (item) => {
-    setRejectModalItem(item);
+  // Buka Modal Penolakan / Catatan Revisi
+  const openRejectModal = (customAsn = null) => {
+    setRejectModalItem(customAsn || selectedAsnUser);
     setRejectionReason("");
   };
 
@@ -539,89 +287,155 @@ export default function AdminLkbPage({ fixedRole = null }) {
   const handleRejectConfirm = async () => {
     if (!rejectModalItem) return;
     if (!rejectionReason.trim()) {
-      alert("Harap masukkan alasan penolakan atau catatan revisi agar pengguna tahu apa yang harus diperbaiki.");
+      alert("Harap masukkan catatan revisi atau alasan penolakan agar ASN mengetahui bagian mana yang perlu diperbaiki.");
       return;
     }
 
     setActionLoading(true);
     try {
-      const res = await Api.request("POST", "updateLkbStatus", {}, {
-        id: rejectModalItem.id,
-        status: "Ditolak",
-        alasan_penolakan: rejectionReason.trim(),
-        diverifikasi_oleh: currentUser?.nama || "Admin"
+      const verifikator = currentUser?.nama || "Admin Madrasah";
+      const todayDate = getTodayDateStr();
+
+      const existing = lkbList.find((item) => {
+        const matchU = String(item.user_id) === String(rejectModalItem.id) || (item.nip && item.nip === rejectModalItem.nip);
+        const matchB = (item.bulan || "").toLowerCase() === kinerjaBulan.toLowerCase();
+        const matchY = String(item.tahun || "") === String(kinerjaTahun);
+        return matchU && matchB && matchY;
       });
 
-      if (res && res.success) {
-        showToast("success", `Dokumen LKB ${rejectModalItem.nama} telah ditolak dengan catatan revisi.`);
+      let res;
+      if (existing?.id) {
+        res = await Api.request("POST", "updateLkbStatus", {}, {
+          id: existing.id,
+          user_id: rejectModalItem.id,
+          nip: rejectModalItem.nip || "-",
+          bulan: kinerjaBulan,
+          tahun: kinerjaTahun,
+          status: "Ditolak",
+          alasan_penolakan: rejectionReason.trim(),
+          diverifikasi_oleh: verifikator,
+          tanggal_verifikasi: todayDate
+        });
+      } else {
+        const isPegawai = rejectModalItem.role === "pegawai";
+        const payload = {
+          user_id: rejectModalItem.id,
+          nama: rejectModalItem.nama || rejectModalItem.username,
+          nip: rejectModalItem.nip || "-",
+          role: rejectModalItem.role || (rejectModalItem.mapel ? "guru" : "pegawai"),
+          satker: rejectModalItem.satker || rejectModalItem.satuan_kerja || settings?.satuan_kerja || "PENDIS",
+          mapel_jabatan: isPegawai ? (rejectModalItem.jabatan || "Staf TU") : (rejectModalItem.mapel || "Guru"),
+          bulan: kinerjaBulan,
+          tahun: kinerjaTahun,
+          judul: `Laporan Capaian Kinerja Bulanan ASN - ${kinerjaBulan} ${kinerjaTahun}`,
+          catatan: `Perlu perbaikan: ${rejectionReason.trim()}`,
+          status: "Ditolak",
+          alasan_penolakan: rejectionReason.trim(),
+          diverifikasi_oleh: verifikator,
+          tanggal_verifikasi: todayDate,
+          file_name: `LKB_${kinerjaBulan}_${kinerjaTahun}.pdf`,
+          file_url: "SISTEM_PRESENSI_OTOMATIS",
+          file_size: "Perlu Revisi"
+        };
+        res = await Api.request("POST", "submitLkb", {}, payload);
+      }
+
+      if (res && (res.success || res.status === "success")) {
+        showToast("info", `Dokumen LKB milik ${rejectModalItem.nama || rejectModalItem.username} dikembalikan dengan catatan revisi.`);
         closeRejectModal();
-        fetchData();
+        await fetchData();
       } else {
         showToast("error", res?.message || "Gagal memperbarui status.");
       }
     } catch (err) {
-      showToast("error", "Terjadi gangguan sistem.");
+      console.error("Error rejecting LKB:", err);
+      showToast("error", "Terjadi kesalahan sistem saat menolak LKB.");
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleDelete = async (id, nama) => {
-    if (!confirm(`Hapus pengajuan LKB milik ${nama}? Tindakan ini tidak dapat dibatalkan.`)) return;
+  // Data Tabel Monitoring Seluruh ASN pada Bulan & Tahun yang Dipilih
+  const monitoringData = useMemo(() => {
+    const mIdx = MONTH_NAMES.indexOf(kinerjaBulan) + 1;
+    const padMonth = String(mIdx).padStart(2, "0");
+    const yearStr = String(kinerjaTahun);
 
-    try {
-      const res = await Api.request("POST", "deleteLkb", {}, { id });
-      if (res && res.success) {
-        showToast("success", "Dokumen LKB berhasil dihapus.");
-        fetchData();
-      }
-    } catch (err) {
-      showToast("error", "Gagal menghapus dokumen.");
-    }
-  };
+    return asnOptions.map((user) => {
+      // Hitung sesi presensi berfoto pada bulan ini
+      const attCount = (allAttendance || []).filter((r) => {
+        if (String(r.user_id) !== String(user.id) && String(r.nip) !== String(user.nip)) return false;
+        const t = String(r.tanggal || "").trim();
+        return t.startsWith(`${yearStr}-${padMonth}`);
+      }).length;
 
-  const exportLkbExcel = () => {
-    const dataToExport = filteredList;
-    const kota = settings.kota || "Kabupaten Gowa";
-    const namaSekolah = settings.nama_sekolah || "MADRASAH TSANAWIYAH NEGERI GOWA";
-    const alamatSekolah = settings.alamat_sekolah || "Jl. Pendidikan Nasional, Kabupaten Gowa, Sulawesi Selatan";
-    const telpSekolah = settings.no_telp || settings.telepon || "(0411) 861234";
-    const namaKepsek = settings.kepala_sekolah || "Drs. H. Mulyadi, M.Pd";
-    const nipKepsek = settings.nip_kepsek || "196805121994031004";
-    const namaAdmin = settings.operator_nama || settings.nama_operator || currentUser?.nama || "Bpk. Hendra Gunawan, S.Kom";
-    const nipAdmin = settings.operator_nip || settings.nip_operator || currentUser?.nip || "198001012005011001";
-    const nowStr = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+      // Cari status LKB
+      const lkbRec = lkbList.find((item) => {
+        const isUserMatch = String(item.user_id) === String(user.id) ||
+          (item.nip && item.nip === user.nip) ||
+          (item.nama && user.nama && item.nama.toLowerCase() === user.nama.toLowerCase());
+        const isBulanMatch = (item.bulan || "").toLowerCase() === kinerjaBulan.toLowerCase();
+        const isTahunMatch = String(item.tahun || "") === String(kinerjaTahun);
+        return isUserMatch && isBulanMatch && isTahunMatch;
+      });
 
-    const roleTitle = roleFilter === "pegawai"
-      ? "PEGAWAI / TATA USAHA"
-      : roleFilter === "guru"
-      ? "GURU / PENDIDIK"
-      : "GURU & PEGAWAI";
+      return {
+        user,
+        attCount,
+        lkbRec,
+        status: lkbRec?.status || (attCount > 0 ? "Belum Diajukan" : "Belum Ada Presensi")
+      };
+    }).filter((item) => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      const n = (item.user.nama || "").toLowerCase();
+      const nip = (item.user.nip || "").toLowerCase();
+      const m = (item.user.mapel || item.user.jabatan || "").toLowerCase();
+      return n.includes(q) || nip.includes(q) || m.includes(q);
+    });
+  }, [asnOptions, allAttendance, lkbList, kinerjaBulan, kinerjaTahun, searchQuery]);
+
+  // Statistik Pengesahan Bulan Terpilih
+  const monthStats = useMemo(() => {
+    let approved = 0;
+    let pending = 0;
+    let rejected = 0;
+    let unsubmitted = 0;
+
+    monitoringData.forEach((d) => {
+      if (d.status === "Disetujui") approved++;
+      else if (d.status === "Menunggu Verifikasi" || d.status === "Menunggu") pending++;
+      else if (d.status === "Ditolak") rejected++;
+      else unsubmitted++;
+    });
+
+    return { total: monitoringData.length, approved, pending, rejected, unsubmitted };
+  }, [monitoringData]);
+
+  // Ekspor Rekapitulasi Seluruh LKB ASN ke Excel (.xls)
+  const handleExportExcelAll = () => {
+    const kota = settings?.kota || "Kabupaten Gowa";
+    const namaSekolah = settings?.nama_sekolah || "MTsN GOWA";
+    const today = new Date();
+    const tglCetak = `${today.getDate()} ${MONTH_NAMES[today.getMonth()]} ${today.getFullYear()}`;
 
     let rowsHtml = "";
-    dataToExport.forEach((item, i) => {
-      let statusStyle = "background-color: #dcfce7; color: #065f46; font-weight: bold; text-align: center;";
-      if (item.status === "Menunggu Verifikasi" || item.status === "Menunggu") {
-        statusStyle = "background-color: #fef3c7; color: #92400e; font-weight: bold; text-align: center;";
-      } else if (item.status === "Ditolak") {
-        statusStyle = "background-color: #fff1f2; color: #be123c; font-weight: bold; text-align: center;";
-      }
+    monitoringData.forEach((item, idx) => {
+      const isPegawai = item.user.role === "pegawai";
+      const satkerDisplay = item.user.satker || item.user.satuan_kerja || settings?.satuan_kerja || "PENDIS";
+      const jabatanDisplay = isPegawai ? (item.user.jabatan || "Staf Tata Usaha") : (item.user.mapel || "Guru Mapel");
 
       rowsHtml += `
         <tr>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${i + 1}</td>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${item.bulan} ${item.tahun}</td>
-          <td style="text-align: left; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 8px;">${item.nama || "-"}</td>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: '\\@';">${String(item.nip || "-").replace(/^'/, "")}</td>
-          <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${item.mapel_jabatan || "-"}</td>
-          <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${item.judul || "-"}</td>
-          <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${item.file_name || "-"}</td>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${item.file_size || "-"}</td>
-          <td style="border: 1px solid #cbd5e1; padding: 6px; ${statusStyle}">${item.status || "-"}</td>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${item.created_at ? String(item.created_at).slice(0, 16) : "-"}</td>
-          <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${item.diverifikasi_oleh || "-"}</td>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${item.diverifikasi_pada ? String(item.diverifikasi_pada).slice(0, 16) : "-"}</td>
-          <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${item.alasan_penolakan || item.catatan || "-"}</td>
+          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${idx + 1}</td>
+          <td style="text-align: left; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 8px;">${item.user.nama || item.user.username}</td>
+          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px; mso-number-format: '\\@';">${String(item.user.nip || "-").replace(/^'/, "")}</td>
+          <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${jabatanDisplay}</td>
+          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${satkerDisplay}</td>
+          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px;">${isPegawai ? "Pegawai TU" : "Guru"}</td>
+          <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px;">${item.attCount || 0}</td>
+          <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px;">${item.status}</td>
+          <td style="text-align: left; border: 1px solid #cbd5e1; padding: 6px 8px;">${item.status === "Disetujui" ? `Disahkan (${item.lkbRec?.tanggal_verifikasi || tglCetak})` : "-"}</td>
         </tr>
       `;
     });
@@ -629,270 +443,73 @@ export default function AdminLkbPage({ fixedRole = null }) {
     const excelHtml = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
       <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-        <!--[if gte mso 9]>
-        <xml>
-          <x:ExcelWorkbook>
-            <x:ExcelWorksheets>
-              <x:ExcelWorksheet>
-                <x:Name>Rekap LKB ${roleTitle}</x:Name>
-                <x:WorksheetOptions>
-                  <x:DisplayGridlines/>
-                  <x:FitToPage/>
-                </x:WorksheetOptions>
-              </x:ExcelWorksheet>
-            </x:ExcelWorksheets>
-          </x:ExcelWorkbook>
-        </xml>
-        <![endif]-->
+        <meta charset="utf-8">
         <style>
-          body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; font-size: 10pt; }
-          table { border-collapse: collapse; width: 100%; }
-          .th-header { background-color: #6d28d9; color: #ffffff; font-weight: bold; text-align: center; padding: 9px 6px; border: 1px solid #5b21b6; font-size: 10pt; }
+          body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; }
+          .th-header { background-color: #065f46; color: #ffffff; font-weight: bold; text-align: center; border: 1px solid #000; padding: 8px; }
+          td { mso-number-format: '\\@'; }
         </style>
       </head>
       <body>
-        <table>
+        <table style="width: 100%; border-collapse: collapse;">
           <tr>
-            <td colspan="13" style="text-align: center; font-size: 11pt; font-weight: bold; text-transform: uppercase; color: #1e293b; padding-top: 8px;">
-              KEMENTERIAN AGAMA REPUBLIK INDONESIA
+            <td colspan="9" style="text-align: center; font-size: 14pt; font-weight: bold; padding: 8px;">
+              KEMENTERIAN AGAMA REPUBLIK INDONESIA - ${namaSekolah.toUpperCase()}
             </td>
           </tr>
           <tr>
-            <td colspan="13" style="text-align: center; font-size: 10pt; font-weight: bold; text-transform: uppercase; color: #334155;">
-              KANTOR KEMENTERIAN AGAMA ${kota.toUpperCase()}
+            <td colspan="9" style="text-align: center; font-size: 12pt; font-weight: bold; padding: 4px;">
+              REKAPITULASI LAPORAN CAPAIAN KINERJA BULANAN (LKB) SELURUH ASN
             </td>
           </tr>
           <tr>
-            <td colspan="13" style="text-align: center; font-size: 15pt; font-weight: 800; text-transform: uppercase; color: #6d28d9; padding: 3px 0;">
-              ${namaSekolah}
+            <td colspan="9" style="text-align: center; font-size: 11pt; padding: 4px;">
+              Periode: Bulan ${kinerjaBulan} Tahun ${kinerjaTahun} | Dicetak: ${tglCetak}
             </td>
           </tr>
-          <tr>
-            <td colspan="13" style="text-align: center; font-size: 8.5pt; color: #64748b; font-style: italic;">
-              ${alamatSekolah} • Telp: ${telpSekolah}
-            </td>
-          </tr>
-          <tr>
-            <td colspan="13" style="border-bottom: 2.5px solid #6d28d9; height: 6px;"></td>
-          </tr>
-          <tr><td colspan="13" style="height: 10px;"></td></tr>
-
-          <tr>
-            <td colspan="13" style="text-align: center; font-size: 13pt; font-weight: bold; text-transform: uppercase; color: #0f172a;">
-              REKAPITULASI DOKUMEN LEMBAR KINERJA BULANAN (LKB) ${roleTitle}
-            </td>
-          </tr>
-          <tr>
-            <td colspan="13" style="text-align: center; font-size: 10pt; color: #475569; font-weight: 600;">
-              Periode: ${filterBulan} ${filterTahun} • Status: ${filterStatus}
-            </td>
-          </tr>
-          <tr>
-            <td colspan="13" style="text-align: right; font-size: 8.5pt; color: #64748b; font-style: italic; padding-bottom: 6px;">
-              Dicetak pada: ${nowStr} melalui Sistem Informasi Sekolah
-            </td>
-          </tr>
-
+          <tr><td colspan="9"></td></tr>
           <thead>
             <tr>
-              <th class="th-header" style="width: 45px;">NO</th>
-              <th class="th-header" style="width: 110px;">PERIODE</th>
-              <th class="th-header" style="width: 230px;">NAMA</th>
-              <th class="th-header" style="width: 180px;">NIP</th>
-              <th class="th-header" style="width: 170px;">JABATAN / MAPEL</th>
-              <th class="th-header" style="width: 220px;">JUDUL DOKUMEN</th>
-              <th class="th-header" style="width: 180px;">NAMA FILE</th>
-              <th class="th-header" style="width: 85px;">UKURAN</th>
-              <th class="th-header" style="width: 140px;">STATUS</th>
-              <th class="th-header" style="width: 130px;">TGL UNGGAH</th>
-              <th class="th-header" style="width: 180px;">VERIFIKATOR</th>
-              <th class="th-header" style="width: 130px;">TGL VERIFIKASI</th>
-              <th class="th-header" style="width: 220px;">CATATAN / REVISI</th>
+              <th class="th-header" style="width: 40px;">NO</th>
+              <th class="th-header" style="width: 220px;">NAMA LENGKAP ASN</th>
+              <th class="th-header" style="width: 160px;">NIP</th>
+              <th class="th-header" style="width: 180px;">JABATAN</th>
+              <th class="th-header" style="width: 120px;">SATKER</th>
+              <th class="th-header" style="width: 100px;">KATEGORI</th>
+              <th class="th-header" style="width: 90px;">TOTAL SESI</th>
+              <th class="th-header" style="width: 130px;">STATUS LKB</th>
+              <th class="th-header" style="width: 180px;">KETERANGAN PENGESAHAN</th>
             </tr>
           </thead>
           <tbody>
             ${rowsHtml}
           </tbody>
-
-          <tr><td colspan="13" style="height: 12px;"></td></tr>
-          <tr>
-            <td colspan="3" style="background-color: #f1f5f9; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px;">
-              RINGKASAN LKB:
-            </td>
-            <td colspan="10" style="background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 7px; font-size: 9.5pt;">
-              Total Dokumen: <strong>${dataToExport.length}</strong> &nbsp;|&nbsp;
-              <span style="color: #059669; font-weight: bold;">Disetujui: ${dataToExport.filter(d => d.status === "Disetujui").length}</span> &nbsp;|&nbsp;
-              <span style="color: #d97706; font-weight: bold;">Menunggu: ${dataToExport.filter(d => d.status === "Menunggu Verifikasi" || d.status === "Menunggu").length}</span> &nbsp;|&nbsp;
-              <span style="color: #be123c; font-weight: bold;">Ditolak: ${dataToExport.filter(d => d.status === "Ditolak").length}</span>
-            </td>
-          </tr>
-
-          <tr><td colspan="13" style="height: 25px;"></td></tr>
-          <tr>
-            <td colspan="7" style="text-align: center; font-size: 9.5pt;">
-              Mengetahui,<br><strong>Kepala Madrasah / Sekolah</strong>
-            </td>
-            <td colspan="6" style="text-align: center; font-size: 9.5pt;">
-              ${kota}, ${nowStr}<br><strong>Kepala Tata Usaha / Verifikator</strong>
-            </td>
-          </tr>
-          <tr><td colspan="13" style="height: 55px;"></td></tr>
-          <tr>
-            <td colspan="7" style="text-align: center; font-size: 10.5pt; font-weight: bold; text-decoration: underline;">
-              ${namaKepsek}
-            </td>
-            <td colspan="6" style="text-align: center; font-size: 10.5pt; font-weight: bold; text-decoration: underline;">
-              ${namaAdmin}
-            </td>
-          </tr>
-          <tr>
-            <td colspan="7" style="text-align: center; font-size: 9pt; color: #334155; mso-number-format: '\\@';">
-              NIP. ${nipKepsek}
-            </td>
-            <td colspan="6" style="text-align: center; font-size: 9pt; color: #334155; mso-number-format: '\\@';">
-              NIP. ${nipAdmin}
-            </td>
-          </tr>
         </table>
       </body>
       </html>
     `;
 
-    const blob = new Blob([excelHtml], { type: "application/vnd.ms-excel;charset=utf-8" });
+    const blob = new Blob(["\ufeff" + excelHtml], { type: "application/vnd.ms-excel;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `Rekap_LKB_${roleFilter}_${filterBulan}_${filterTahun}.xls`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `REKAP_LKB_${kinerjaBulan.toUpperCase()}_${kinerjaTahun}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
-  // Filtered list
-  const filteredList = useMemo(() => {
-    return lkbList.filter((item) => {
-      // Filter Kategori Peran (Guru vs Pegawai)
-      if (roleFilter !== "Semua") {
-        const itemRole = getItemRole(item);
-        if (itemRole !== roleFilter) return false;
-      }
-
-      // Filter status
-      if (filterStatus !== "Semua" && item.status !== filterStatus) return false;
-
-      // Filter bulan
-      if (filterBulan !== "Semua" && (item.bulan || "").toLowerCase() !== filterBulan.toLowerCase()) return false;
-
-      // Filter tahun
-      if (filterTahun !== "Semua" && String(item.tahun) !== String(filterTahun)) return false;
-
-      // Search query (nama, nip, judul, mapel_jabatan)
-      if (searchQuery.trim() !== "") {
-        const q = searchQuery.toLowerCase();
-        const matchNama = (item.nama || "").toLowerCase().includes(q);
-        const matchNip = (item.nip || "").toLowerCase().includes(q);
-        const matchJudul = (item.judul || "").toLowerCase().includes(q);
-        const matchMapel = (item.mapel_jabatan || "").toLowerCase().includes(q);
-        if (!matchNama && !matchNip && !matchJudul && !matchMapel) return false;
-      }
-
-      return true;
-    });
-  }, [lkbList, roleFilter, filterStatus, filterBulan, filterTahun, searchQuery, userRoleMap]);
-
-  // Statistics global & filtered
-  const stats = useMemo(() => {
-    const list = roleFilter === "Semua" ? lkbList : lkbList.filter(l => getItemRole(l) === roleFilter);
-    const total = list.length;
-    const pending = list.filter((l) => l.status === "Menunggu Verifikasi" || l.status === "Menunggu").length;
-    const approved = list.filter((l) => l.status === "Disetujui").length;
-    const rejected = list.filter((l) => l.status === "Ditolak").length;
-    return { total, pending, approved, rejected };
-  }, [lkbList, roleFilter, userRoleMap]);
 
   if (!currentUser) return null;
 
   return (
     <>
-      <style>{`
-        @media print {
-          @page {
-            size: A4 ${printOrientation};
-            margin: ${printOrientation === "landscape" ? "12mm 15mm 12mm 15mm" : "15mm 12mm 15mm 12mm"};
-          }
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
-          }
-          html, body {
-            background: #ffffff !important;
-            color: #000000 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            height: auto !important;
-            min-height: auto !important;
-            overflow: visible !important;
-            font-family: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
-          }
-          nav,
-          .admin-sidebar,
-          .edu-background,
-          .no-print,
-          button,
-          .modal-print-backdrop,
-          .modal-print-container {
-            display: none !important;
-          }
-          #native-lkb-print {
-            display: block !important;
-            position: static !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-            overflow: visible !important;
-            visibility: visible !important;
-          }
-          #native-lkb-print * {
-            visibility: visible !important;
-          }
-          #native-lkb-print table {
-            page-break-inside: auto !important;
-            break-inside: auto !important;
-            width: 100% !important;
-            border-collapse: collapse !important;
-          }
-          #native-lkb-print tr {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-            page-break-after: auto !important;
-            break-after: auto !important;
-          }
-          #native-lkb-print thead {
-            display: table-header-group !important;
-          }
-          #native-lkb-print .print-signature-area {
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-          }
-        }
-        @media screen {
-          #native-lkb-print {
-            display: none !important;
-          }
-        }
-      `}</style>
-
       <Navbar role="admin" />
       <div className="no-print" style={{ display: "flex", flex: 1 }}>
         <AdminSidebar />
 
         <main style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
-          {/* Header */}
+          {/* Header Title */}
           <div
             style={{
               display: "flex",
@@ -904,180 +521,127 @@ export default function AdminLkbPage({ fixedRole = null }) {
             }}
           >
             <div>
-              <h1 style={{ fontSize: "1.55rem", fontWeight: 800, color: "var(--text-main)" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", padding: "0.2rem 0.7rem", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 800, marginBottom: "0.35rem" }}>
+                <ShieldCheck size={14} color="#059669" /> PANEL PENGESAHAN LKB RESMI
+              </div>
+              <h1 style={{ fontSize: "1.5rem", fontWeight: 900, color: "var(--text-main)", margin: "0 0 0.25rem" }}>
                 {roleFilter === "pegawai"
-                  ? "Dokumen & Rekap LKB Pegawai"
+                  ? "Verifikasi LKB Pegawai"
                   : roleFilter === "guru"
-                  ? "Dokumen & Rekap LKB Guru"
-                  : "Lembar Kinerja Bulanan (LKB)"}
+                    ? "Verifikasi LKB Guru"
+                    : "Verifikasi LKB ASN"}
               </h1>
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
-                {roleFilter === "pegawai"
-                  ? "Persetujuan berkas verifikasi dan rekapitulasi laporan kinerja bulanan Staf Tata Usaha / Pegawai."
-                  : roleFilter === "guru"
-                  ? "Persetujuan berkas verifikasi dan rekapitulasi laporan kinerja bulanan Tenaga Pendidik / Guru."
-                  : "Pemisahan modul persetujuan/verifikasi berkas dan modul rekapitulasi laporan dokumen"}
+              <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: 0 }}>
+                Pemeriksaan evident kamera dan pengesahan resmi Laporan Kinerja Bulanan {roleFilter === "pegawai" ? "pegawai tata usaha" : roleFilter === "guru" ? "guru madrasah" : "seluruh ASN"}.
               </p>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              {activeTab === "rekap" && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setShowPrintModal(true)}
-                    style={{
-                      padding: "0.55rem 1.1rem",
-                      borderRadius: "var(--radius-md)",
-                      border: "none",
-                      background: "linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)",
-                      color: "#ffffff",
-                      fontSize: "0.85rem",
-                      fontWeight: 700,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.45rem",
-                      cursor: "pointer",
-                      boxShadow: "0 2px 8px rgba(79, 70, 229, 0.25)",
-                      transition: "all 0.2s"
-                    }}
-                  >
-                    <Printer size={16} />
-                    Cetak Format {roleFilter === "pegawai" ? "Pegawai" : roleFilter === "guru" ? "Guru" : "Resmi"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={exportLkbExcel}
-                    style={{
-                      padding: "0.55rem 1.1rem",
-                      borderRadius: "var(--radius-md)",
-                      border: "1.5px solid #10b981",
-                      background: "#ffffff",
-                      color: "#059669",
-                      fontSize: "0.85rem",
-                      fontWeight: 700,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.45rem",
-                      cursor: "pointer",
-                      boxShadow: "0 2px 8px rgba(16, 185, 129, 0.15)",
-                      transition: "all 0.2s"
-                    }}
-                  >
-                    <FileSpreadsheet size={16} color="#059669" />
-                    Ekspor Excel ({roleFilter === "pegawai" ? "Pegawai" : roleFilter === "guru" ? "Guru" : "LKB"})
-                  </button>
-                </>
-              )}
-
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
               <button
                 type="button"
                 onClick={fetchData}
                 style={{
-                  padding: "0.55rem 1rem",
-                  borderRadius: "var(--radius-md)",
+                  padding: "0.5rem 0.9rem",
+                  borderRadius: "10px",
                   border: "1px solid var(--border-light)",
                   background: "#ffffff",
                   color: "var(--text-main)",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
+                  fontSize: "0.82rem",
+                  fontWeight: 700,
                   display: "flex",
                   alignItems: "center",
                   gap: "0.4rem",
                   cursor: "pointer",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.04)"
                 }}
               >
-                <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
-                Segarkan
+                <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+                Segarkan Data
               </button>
             </div>
           </div>
 
-          {/* TAB UTAMA: PERSETUJUAN VS REKAPITULASI */}
+          {/* Tab Utama: Pratinjau Dokumen vs Tabel Monitoring Semua ASN */}
           <div
             style={{
               display: "flex",
-              gap: "0.75rem",
-              marginBottom: "1.5rem",
+              gap: "0.65rem",
+              marginBottom: "1.25rem",
               flexWrap: "wrap"
             }}
           >
             <button
               type="button"
-              onClick={() => {
-                setActiveTab("persetujuan");
-                setFilterStatus("Menunggu Verifikasi");
-              }}
+              onClick={() => setActiveTab("preview_dokumen")}
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: "0.6rem",
-                padding: "0.75rem 1.4rem",
-                borderRadius: "14px",
-                border: activeTab === "persetujuan" ? "2px solid #7c3aed" : "1.5px solid var(--border-light)",
-                background: activeTab === "persetujuan" ? "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)" : "#ffffff",
-                color: activeTab === "persetujuan" ? "#6d28d9" : "var(--text-secondary)",
+                gap: "0.5rem",
+                padding: "0.65rem 1.15rem",
+                borderRadius: "10px",
+                border: activeTab === "preview_dokumen" ? "2px solid #059669" : "1.5px solid var(--border-light)",
+                background: activeTab === "preview_dokumen" ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)" : "#ffffff",
+                color: activeTab === "preview_dokumen" ? "#065f46" : "var(--text-secondary)",
                 fontWeight: 800,
-                fontSize: "0.92rem",
+                fontSize: "0.88rem",
                 cursor: "pointer",
-                boxShadow: activeTab === "persetujuan" ? "0 4px 14px rgba(124, 58, 237, 0.2)" : "var(--shadow-sm)",
+                boxShadow: activeTab === "preview_dokumen" ? "0 4px 12px rgba(5, 150, 105, 0.18)" : "var(--shadow-sm)",
                 transition: "all 0.2s ease"
               }}
             >
-              <FileCheck size={19} color={activeTab === "persetujuan" ? "#7c3aed" : "#64748b"} />
-              <span>Persetujuan Dokumen LKB</span>
-              <span style={{
-                fontSize: "0.74rem",
-                background: activeTab === "persetujuan" ? "#7c3aed" : (stats.pending > 0 ? "#f59e0b" : "#f1f5f9"),
-                color: activeTab === "persetujuan" || stats.pending > 0 ? "#ffffff" : "#64748b",
-                padding: "0.15rem 0.55rem",
-                borderRadius: "999px",
-                fontWeight: 800
-              }}>
-                {stats.pending} Menunggu
+              <Eye size={17} color={activeTab === "preview_dokumen" ? "#059669" : "#64748b"} />
+              <span>Pratinjau Dokumen</span>
+              <span
+                style={{
+                  fontSize: "0.72rem",
+                  background: activeTab === "preview_dokumen" ? "#059669" : "#f1f5f9",
+                  color: activeTab === "preview_dokumen" ? "#ffffff" : "#64748b",
+                  padding: "0.1rem 0.5rem",
+                  borderRadius: "999px",
+                  fontWeight: 600
+                }}
+              >
+                {selectedAsnAttendance.length} Sesi
               </span>
             </button>
 
             <button
               type="button"
-              onClick={() => {
-                setActiveTab("rekap");
-                setFilterStatus("Semua");
-              }}
+              onClick={() => setActiveTab("monitoring_asn")}
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
-                gap: "0.6rem",
-                padding: "0.75rem 1.4rem",
-                borderRadius: "14px",
-                border: activeTab === "rekap" ? "2px solid #059669" : "1.5px solid var(--border-light)",
-                background: activeTab === "rekap" ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)" : "#ffffff",
-                color: activeTab === "rekap" ? "#065f46" : "var(--text-secondary)",
+                gap: "0.5rem",
+                padding: "0.65rem 1.15rem",
+                borderRadius: "10px",
+                border: activeTab === "monitoring_asn" ? "2px solid #2563eb" : "1.5px solid var(--border-light)",
+                background: activeTab === "monitoring_asn" ? "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)" : "#ffffff",
+                color: activeTab === "monitoring_asn" ? "#1e40af" : "var(--text-secondary)",
                 fontWeight: 800,
-                fontSize: "0.92rem",
+                fontSize: "0.88rem",
                 cursor: "pointer",
-                boxShadow: activeTab === "rekap" ? "0 4px 14px rgba(5, 150, 105, 0.2)" : "var(--shadow-sm)",
+                boxShadow: activeTab === "monitoring_asn" ? "0 4px 12px rgba(37, 99, 235, 0.18)" : "var(--shadow-sm)",
                 transition: "all 0.2s ease"
               }}
             >
-              <FileSpreadsheet size={19} color={activeTab === "rekap" ? "#059669" : "#64748b"} />
-              <span>Rekapitulasi & Arsip LKB</span>
-              <span style={{
-                fontSize: "0.74rem",
-                background: activeTab === "rekap" ? "#059669" : "#f1f5f9",
-                color: activeTab === "rekap" ? "#ffffff" : "#64748b",
-                padding: "0.15rem 0.55rem",
-                borderRadius: "999px",
-                fontWeight: 800
-              }}>
-                {stats.total} Dokumen
+              <FileCheck size={17} color={activeTab === "monitoring_asn" ? "#2563eb" : "#64748b"} />
+              <span>Daftar LKB ASN</span>
+              <span
+                style={{
+                  fontSize: "0.72rem",
+                  background: activeTab === "monitoring_asn" ? "#2563eb" : monthStats.pending > 0 ? "#f59e0b" : "#f1f5f9",
+                  color: activeTab === "monitoring_asn" || monthStats.pending > 0 ? "#ffffff" : "#64748b",
+                  padding: "0.1rem 0.5rem",
+                  borderRadius: "999px",
+                  fontWeight: 600
+                }}
+              >
+                {monthStats.pending > 0 ? `${monthStats.pending} Perlu Tindakan` : `${monthStats.total} ASN`}
               </span>
             </button>
           </div>
 
-          {/* Sub-Filter Kategori Peran: SEMUA PERAN vs GURU vs PEGAWAI (Hanya tampil jika panel umum) */}
+          {/* Sub-Filter Kategori Peran: SEMUA PERAN vs GURU vs PEGAWAI (Jika panel umum) */}
           {!fixedRole && (
             <div
               style={{
@@ -1089,37 +653,26 @@ export default function AdminLkbPage({ fixedRole = null }) {
               }}
             >
               <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-secondary)" }}>
-                Kategori Pengirim:
+                Kategori ASN:
               </span>
 
               {[
-                { id: "Semua", label: "Semua Peran", icon: Inbox, color: "#6366f1" },
-                { id: "guru", label: "Khusus Guru", icon: GraduationCap, color: "#7c3aed" },
-                { id: "pegawai", label: "Khusus Pegawai", icon: Briefcase, color: "#0284c7" }
-              ].map(r => {
+                { id: "Semua", label: "Semua ASN", icon: UserCheck, color: "#4f46e5" },
+                { id: "guru", label: "Guru / Pendidik", icon: GraduationCap, color: "#059669" },
+                { id: "pegawai", label: "Pegawai / Staf TU", icon: Briefcase, color: "#0284c7" }
+              ].map((r) => {
                 const active = roleFilter === r.id;
                 const IconComp = r.icon;
-                const count = r.id === "Semua"
-                  ? lkbList.length
-                  : lkbList.filter(l => getItemRole(l) === r.id).length;
-
                 return (
                   <button
                     key={r.id}
                     type="button"
-                    onClick={() => {
-                      setRoleFilter(r.id);
-                      if (fixedRole && r.id !== fixedRole) {
-                        if (r.id === "guru") router.push("/admin/lkb/guru");
-                        else if (r.id === "pegawai") router.push("/admin/lkb/pegawai");
-                        else router.push("/admin/lkb");
-                      }
-                    }}
+                    onClick={() => setRoleFilter(r.id)}
                     style={{
                       display: "flex",
                       alignItems: "center",
                       gap: "0.45rem",
-                      padding: "0.45rem 0.95rem",
+                      padding: "0.42rem 0.95rem",
                       borderRadius: "999px",
                       border: `1.5px solid ${active ? r.color : "var(--border-light)"}`,
                       background: active ? r.color : "#ffffff",
@@ -1133,15 +686,6 @@ export default function AdminLkbPage({ fixedRole = null }) {
                   >
                     <IconComp size={15} color={active ? "#ffffff" : r.color} />
                     <span>{r.label}</span>
-                    <span style={{
-                      fontSize: "0.72rem",
-                      padding: "0.1rem 0.4rem",
-                      borderRadius: "999px",
-                      background: active ? "rgba(255,255,255,0.25)" : "#f1f5f9",
-                      color: active ? "#ffffff" : "#64748b"
-                    }}>
-                      {count}
-                    </span>
                   </button>
                 );
               })}
@@ -1160,7 +704,7 @@ export default function AdminLkbPage({ fixedRole = null }) {
                   top: "85px",
                   right: "25px",
                   zIndex: 9999,
-                  background: toast.type === "success" ? "#065f46" : "#9f1239",
+                  background: toast.type === "success" ? "#065f46" : toast.type === "info" ? "#1e40af" : "#9f1239",
                   color: "#ffffff",
                   padding: "0.85rem 1.25rem",
                   borderRadius: "var(--radius-lg)",
@@ -1178,612 +722,518 @@ export default function AdminLkbPage({ fixedRole = null }) {
             )}
           </AnimatePresence>
 
-          {/* Statistik Ringkasan Cards (Khusus Rekapitulasi) */}
-          {activeTab === "rekap" && (
-            <div className="admin-metrics-grid" style={{ gap: "1rem", marginBottom: "1.5rem" }}>
-              <div className="glass-panel" style={{ padding: "1.25rem", borderRadius: "var(--radius-lg)", background: "linear-gradient(135deg, #ffffff 0%, #eef2ff 100%)", border: "1.5px solid #c7d2fe" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#4f46e5", textTransform: "uppercase" }}>Total Dokumen</div>
-                    <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--text-main)", marginTop: "0.2rem" }}>{stats.total}</div>
+          {/* TAB 1: PRATINJAU DOKUMEN & PENGESAHAN LANGSUNG */}
+          {activeTab === "preview_dokumen" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              {/* Filter Bar Pemilihan ASN & Periode */}
+              <div
+                className="glass-panel"
+                style={{
+                  padding: "1.25rem 1.5rem",
+                  borderRadius: "var(--radius-lg)",
+                  background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)",
+                  border: "1.5px solid #bbf7d0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "1rem"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <div
+                    style={{
+                      width: "44px",
+                      height: "44px",
+                      borderRadius: "12px",
+                      background: "#dcfce7",
+                      border: "1px solid #86efac",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#059669"
+                    }}
+                  >
+                    <Camera size={22} />
                   </div>
-                  <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Inbox size={22} color="#4f46e5" />
+                  <div>
+                    <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--text-main)" }}>
+                      Pilih ASN & Periode Bulan
+                    </div>
+                    <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                      Dokumen resmi tabel 5 kolom otomatis tersusun dari data presensi kamera madrasah
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", flexWrap: "wrap" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 800, color: "var(--text-secondary)", marginBottom: "0.25rem", textTransform: "uppercase" }}>
+                      Nama Guru / Pegawai
+                    </label>
+                    <select
+                      value={selectedAsnId}
+                      onChange={(e) => setSelectedAsnId(e.target.value)}
+                      className="neon-select"
+                      style={{ padding: "0.55rem 0.95rem", fontSize: "0.88rem", fontWeight: 700, borderRadius: "8px", minWidth: "220px", background: "#ffffff" }}
+                    >
+                      {asnOptions.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.nama || u.username} ({u.role === "pegawai" ? "Pegawai" : "Guru"})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 800, color: "var(--text-secondary)", marginBottom: "0.25rem", textTransform: "uppercase" }}>
+                      Bulan
+                    </label>
+                    <select
+                      value={kinerjaBulan}
+                      onChange={(e) => setKinerjaBulan(e.target.value)}
+                      className="neon-select"
+                      style={{ padding: "0.55rem 0.95rem", fontSize: "0.88rem", fontWeight: 700, borderRadius: "8px", minWidth: "130px", background: "#ffffff" }}
+                    >
+                      {MONTH_NAMES.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 800, color: "var(--text-secondary)", marginBottom: "0.25rem", textTransform: "uppercase" }}>
+                      Tahun
+                    </label>
+                    <select
+                      value={kinerjaTahun}
+                      onChange={(e) => setKinerjaTahun(e.target.value)}
+                      className="neon-select"
+                      style={{ padding: "0.55rem 0.95rem", fontSize: "0.88rem", fontWeight: 700, borderRadius: "8px", minWidth: "100px", background: "#ffffff" }}
+                    >
+                      {YEAR_OPTIONS.map((y) => (
+                        <option key={y} value={String(y)}>{y}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
 
-              <div className="glass-panel" style={{ padding: "1.25rem", borderRadius: "var(--radius-lg)", background: "linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)", border: "1.5px solid #fde68a" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#d97706", textTransform: "uppercase" }}>Menunggu Review</div>
-                    <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "#b45309", marginTop: "0.2rem" }}>{stats.pending}</div>
-                  </div>
-                  <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Clock size={22} color="#d97706" />
-                  </div>
+              {/* Komponen Dokumen Cetak A4, Live Preview & One-Click Approval */}
+              {selectedAsnUser ? (
+                <OfficialLkbIndividualDocument
+                  user={selectedAsnUser}
+                  bulan={kinerjaBulan}
+                  tahun={kinerjaTahun}
+                  attendanceRecords={selectedAsnAttendance}
+                  settings={settings}
+                  approvalStatus={approvalStatus}
+                  verifiedBy={selectedAsnLkbRecord?.diverifikasi_oleh || ""}
+                  verifiedAt={selectedAsnLkbRecord?.tanggal_verifikasi || ""}
+                  rejectionNote={selectedAsnLkbRecord?.alasan_penolakan || ""}
+                  isViewerAdmin={true}
+                  onApprove={() => handleApproveCurrentAsn()}
+                  onReject={() => openRejectModal()}
+                />
+              ) : (
+                <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-secondary)" }}>
+                  Silakan pilih ASN untuk melihat laporan kinerja bulanan.
                 </div>
-              </div>
-
-              <div className="glass-panel" style={{ padding: "1.25rem", borderRadius: "var(--radius-lg)", background: "linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)", border: "1.5px solid #a7f3d0" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#059669", textTransform: "uppercase" }}>Telah Disetujui</div>
-                    <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "#047857", marginTop: "0.2rem" }}>{stats.approved}</div>
-                  </div>
-                  <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "#d1fae5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <CheckCircle2 size={22} color="#059669" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass-panel" style={{ padding: "1.25rem", borderRadius: "var(--radius-lg)", background: "linear-gradient(135deg, #ffffff 0%, #fff1f2 100%)", border: "1.5px solid #fecdd3" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#e11d48", textTransform: "uppercase" }}>Ditolak / Revisi</div>
-                    <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "#be123c", marginTop: "0.2rem" }}>{stats.rejected}</div>
-                  </div>
-                  <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "#ffe4e6", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <XCircle size={22} color="#e11d48" />
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
-          {/* Filter Bar & Search */}
-          <div
-            className="glass-panel"
-            style={{
-              padding: "1.15rem",
-              borderRadius: "var(--radius-lg)",
-              background: "#ffffff",
-              marginBottom: "1.5rem",
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "0.85rem",
-              alignItems: "center",
-              justifyContent: "space-between"
-            }}
-          >
-            {/* Search Input */}
-            <div style={{ flex: "1 1 260px", position: "relative" }}>
-              <Search size={17} color="#9ca3af" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }} />
-              <input
-                type="text"
-                placeholder={`Cari nama ${roleFilter === 'pegawai' ? 'pegawai' : roleFilter === 'guru' ? 'guru' : 'guru / pegawai'}, NIP, atau judul LKB...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="neon-input"
-                style={{ paddingLeft: "2.35rem", fontSize: "0.88rem" }}
-              />
-            </div>
+          {/* TAB 2: MONITORING PENGESAHAN SELURUH ASN */}
+          {activeTab === "monitoring_asn" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              {/* Stat Cards Monitoring Bulan Terpilih */}
+              <div className="admin-metrics-grid" style={{ gap: "1rem" }}>
+                <div className="glass-panel" style={{ padding: "1.15rem 1.25rem", borderRadius: "var(--radius-lg)", background: "linear-gradient(135deg, #ffffff 0%, #eef2ff 100%)", border: "1.5px solid #c7d2fe" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ fontSize: "0.76rem", fontWeight: 800, color: "#4f46e5", textTransform: "uppercase" }}>Total Seluruh ASN</div>
+                      <div style={{ fontSize: "1.65rem", fontWeight: 900, color: "var(--text-main)", marginTop: "0.2rem" }}>{monthStats.total}</div>
+                    </div>
+                    <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "#e0e7ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <UserCheck size={20} color="#4f46e5" />
+                    </div>
+                  </div>
+                </div>
 
-            {/* Dropdown Filters */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.6rem", alignItems: "center" }}>
-              <select
-                value={filterBulan}
-                onChange={(e) => setFilterBulan(e.target.value)}
-                className="neon-input"
-                style={{ width: "auto", fontSize: "0.82rem", padding: "0.5rem 0.8rem", cursor: "pointer" }}
-              >
-                <option value="Semua">Semua Bulan</option>
-                {MONTH_NAMES.filter((m) => m !== "Semua").map((m) => (
-                  <option key={m} value={m}>Bulan {m}</option>
-                ))}
-              </select>
+                <div className="glass-panel" style={{ padding: "1.15rem 1.25rem", borderRadius: "var(--radius-lg)", background: "linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)", border: "1.5px solid #a7f3d0" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ fontSize: "0.76rem", fontWeight: 800, color: "#059669", textTransform: "uppercase" }}>Telah Disahkan</div>
+                      <div style={{ fontSize: "1.65rem", fontWeight: 900, color: "#047857", marginTop: "0.2rem" }}>{monthStats.approved}</div>
+                    </div>
+                    <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "#d1fae5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <CheckCircle2 size={20} color="#059669" />
+                    </div>
+                  </div>
+                </div>
 
-              <select
-                value={filterTahun}
-                onChange={(e) => setFilterTahun(e.target.value)}
-                className="neon-input"
-                style={{ width: "auto", fontSize: "0.82rem", padding: "0.5rem 0.8rem", cursor: "pointer" }}
-              >
-                <option value="Semua">Semua Tahun</option>
-                {YEAR_OPTIONS.filter((y) => y !== "Semua").map((y) => (
-                  <option key={y} value={y}>Tahun {y}</option>
-                ))}
-              </select>
+                <div className="glass-panel" style={{ padding: "1.15rem 1.25rem", borderRadius: "var(--radius-lg)", background: "linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)", border: "1.5px solid #fde68a" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ fontSize: "0.76rem", fontWeight: 800, color: "#d97706", textTransform: "uppercase" }}>Menunggu Konfirmasi</div>
+                      <div style={{ fontSize: "1.65rem", fontWeight: 900, color: "#b45309", marginTop: "0.2rem" }}>{monthStats.pending}</div>
+                    </div>
+                    <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Clock size={20} color="#d97706" />
+                    </div>
+                  </div>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => { setFilterBulan("Semua"); setFilterTahun("Semua"); setSearchQuery(""); }}
+                <div className="glass-panel" style={{ padding: "1.15rem 1.25rem", borderRadius: "var(--radius-lg)", background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)", border: "1.5px solid #cbd5e1" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ fontSize: "0.76rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>Belum Mengajukan</div>
+                      <div style={{ fontSize: "1.65rem", fontWeight: 900, color: "#475569", marginTop: "0.2rem" }}>{monthStats.unsubmitted}</div>
+                    </div>
+                    <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "#e2e8f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <AlertTriangle size={20} color="#64748b" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Rekapitulasi & Export Semua LKB */}
+              <div
+                className="glass-panel"
                 style={{
-                  padding: "0.5rem 0.85rem",
-                  fontSize: "0.82rem",
-                  background: "#ffffff",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                  color: "#6b7280",
-                  fontWeight: 600
+                  padding: "1.25rem 1.5rem",
+                  borderRadius: "var(--radius-lg)",
+                  background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)",
+                  border: "1.5px solid #a7f3d0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "1rem"
                 }}
               >
-                Reset
-              </button>
-            </div>
-          </div>
-
-          {/* Filter Status Pills */}
-          <div style={{ display: "flex", gap: "0.6rem", marginBottom: "1.5rem", overflowX: "auto", paddingBottom: "0.25rem" }}>
-            {[
-              { label: "Menunggu Verifikasi", color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
-              { label: "Semua", color: "#4f46e5", bg: "#eef2ff", border: "#c7d2fe" },
-              { label: "Disetujui", color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
-              { label: "Ditolak", color: "#e11d48", bg: "#fff1f2", border: "#fecdd3" }
-            ].map((f) => {
-              const active = filterStatus === f.label;
-              return (
-                <button
-                  key={f.label}
-                  type="button"
-                  onClick={() => setFilterStatus(f.label)}
-                  style={{
-                    padding: "0.45rem 1.1rem",
-                    borderRadius: "var(--radius-full)",
-                    border: `1.5px solid ${active ? f.color : f.border}`,
-                    background: active ? f.color : f.bg,
-                    color: active ? "#ffffff" : f.color,
-                    fontSize: "0.82rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    boxShadow: active ? `0 4px 12px ${f.color}35` : "none"
-                  }}
-                >
-                  {f.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* KONTEN BERDASARKAN TAB AKTIF */}
-          {loading ? (
-            <div style={{ textAlign: "center", padding: "4rem", color: "var(--text-secondary)" }}>
-              <RefreshCw size={28} className="animate-spin" style={{ margin: "0 auto 0.75rem" }} />
-              Memuat data dokumen LKB...
-            </div>
-          ) : filteredList.length === 0 ? (
-            <div
-              className="glass-panel"
-              style={{
-                padding: "3.5rem",
-                textAlign: "center",
-                border: "1px dashed var(--border-light)",
-                background: "var(--bg-muted)",
-                borderRadius: "var(--radius-xl)"
-              }}
-            >
-              <FileCheck size={44} color="#94a3b8" style={{ margin: "0 auto 1rem" }} />
-              <h3 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: "0.3rem", color: "var(--text-main)" }}>
-                Tidak Ada Dokumen LKB
-              </h3>
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                Tidak ada dokumen pengajuan yang sesuai dengan kriteria filter ({roleFilter === 'pegawai' ? 'Pegawai' : roleFilter === 'guru' ? 'Guru' : 'Semua Peran'}).
-              </p>
-            </div>
-          ) : activeTab === "persetujuan" ? (
-            /* TAB 1: KARTU PERSETUJUAN & AKSI CEPAT */
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              {filteredList.map((item, idx) => {
-                const isApproved = item.status === "Disetujui";
-                const isRejected = item.status === "Ditolak";
-                const isPending = !isApproved && !isRejected;
-                const isItemPegawai = getItemRole(item) === "pegawai";
-
-                const cardBorder = isApproved ? "#a7f3d0" : isRejected ? "#fecdd3" : "#fde68a";
-                const cardBg = isApproved
-                  ? "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)"
-                  : isRejected
-                  ? "linear-gradient(135deg, #ffffff 0%, #fff1f2 100%)"
-                  : "linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)";
-
-                return (
-                  <motion.div
-                    key={item.id || idx}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.03 }}
-                    className="glass-panel"
+                <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
+                  <div
                     style={{
-                      padding: "1.5rem",
-                      borderRadius: "var(--radius-xl)",
-                      border: `1.5px solid ${cardBorder}`,
-                      background: cardBg,
+                      width: "44px",
+                      height: "44px",
+                      borderRadius: "12px",
+                      background: "#059669",
+                      color: "#ffffff",
                       display: "flex",
-                      flexWrap: "wrap",
                       alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "1.25rem",
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.03)"
+                      justifyContent: "center",
+                      boxShadow: "0 4px 12px rgba(5, 150, 105, 0.25)"
                     }}
                   >
-                    {/* Sisi Kiri: Profil & Dokumen */}
-                    <div style={{ flex: "1 1 360px", display: "flex", gap: "1rem", alignItems: "flex-start" }}>
-                      <img
-                        src={getAvatarUrl("", item.nama)}
-                        alt={item.nama}
-                        style={{
-                          width: "50px",
-                          height: "50px",
-                          borderRadius: "14px",
-                          objectFit: "cover",
-                          border: "2px solid #ffffff",
-                          boxShadow: "0 3px 10px rgba(0,0,0,0.08)",
-                          flexShrink: 0
-                        }}
-                      />
+                    <FileSpreadsheet size={22} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: "1.05rem", fontWeight: 800, color: "#065f46", margin: 0 }}>
+                      Rekapitulasi Laporan Kinerja Bulanan (LKB) Seluruh ASN
+                    </h3>
+                    <p style={{ fontSize: "0.82rem", color: "#047857", margin: "0.2rem 0 0 0" }}>
+                      Export dan pratinjau rekap data LKB gabungan seluruh Guru & Pegawai periode {kinerjaBulan} {kinerjaTahun} berformat resmi kedinasan.
+                    </p>
+                  </div>
+                </div>
 
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                          <h3 style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--text-main)" }}>
-                            {item.nama}
-                          </h3>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={handleExportExcelAll}
+                    className="btn-neon-secondary"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.45rem",
+                      background: "#ffffff",
+                      color: "#059669",
+                      borderColor: "#a7f3d0",
+                      fontWeight: 700,
+                      fontSize: "0.84rem",
+                      padding: "0.55rem 1rem",
+                      borderRadius: "8px",
+                      boxShadow: "0 2px 6px rgba(5, 150, 105, 0.12)"
+                    }}
+                  >
+                    <Download size={15} />
+                    <span>Export Rekap Excel (.xls)</span>
+                  </button>
 
-                          {/* Role Badge - Hanya tampil jika panel umum/campuran */}
-                          {!fixedRole && (
-                            <span
+                  <button
+                    type="button"
+                    onClick={() => setShowPrintSummaryModal(true)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.45rem",
+                      background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+                      color: "#ffffff",
+                      border: "none",
+                      fontWeight: 800,
+                      fontSize: "0.84rem",
+                      padding: "0.55rem 1.15rem",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 8px rgba(5, 150, 105, 0.3)"
+                    }}
+                  >
+                    <Printer size={15} />
+                    <span>Pratinjau & Cetak Rekap (A4)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Bar Filter & Search Monitoring */}
+              <div
+                className="glass-panel"
+                style={{
+                  padding: "1rem 1.25rem",
+                  borderRadius: "var(--radius-lg)",
+                  background: "#ffffff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "0.85rem"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flex: "1 1 280px" }}>
+                  <Search size={18} color="#94a3b8" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cari nama guru, pegawai, NIP, atau mapel..."
+                    className="neon-input"
+                    style={{ padding: "0.5rem 0.85rem", fontSize: "0.88rem" }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-secondary)" }}>
+                    Periode:
+                  </span>
+                  <select
+                    value={kinerjaBulan}
+                    onChange={(e) => setKinerjaBulan(e.target.value)}
+                    className="neon-select"
+                    style={{ padding: "0.45rem 0.85rem", fontSize: "0.85rem", fontWeight: 700 }}
+                  >
+                    {MONTH_NAMES.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={kinerjaTahun}
+                    onChange={(e) => setKinerjaTahun(e.target.value)}
+                    className="neon-select"
+                    style={{ padding: "0.45rem 0.85rem", fontSize: "0.85rem", fontWeight: 700 }}
+                  >
+                    {YEAR_OPTIONS.map((y) => (
+                      <option key={y} value={String(y)}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Tabel Ringkasan Monitoring ASN */}
+              <div className="glass-panel" style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", background: "#ffffff", border: "1px solid var(--border-light)" }}>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.86rem" }}>
+                    <thead>
+                      <tr style={{ background: "#f8fafc", borderBottom: "1.5px solid var(--border-light)", color: "var(--text-secondary)", textAlign: "left" }}>
+                        <th style={{ padding: "0.85rem 0.75rem", width: "45px", textAlign: "center" }}>No</th>
+                        <th style={{ padding: "0.85rem 1rem", minWidth: "220px" }}>Nama ASN & NIP</th>
+                        <th style={{ padding: "0.85rem 1rem", minWidth: "200px" }}>Jabatan & Satker</th>
+                        <th style={{ padding: "0.85rem 1rem", textAlign: "center", width: "150px" }}>Status LKB</th>
+                        <th style={{ padding: "0.85rem 1rem", textAlign: "center", width: "170px" }}>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monitoringData.length > 0 ? (
+                        monitoringData.map((item, idx) => {
+                          const isApproved = item.status === "Disetujui";
+                          const isPending = item.status === "Menunggu Verifikasi" || item.status === "Menunggu";
+                          const isRejected = item.status === "Ditolak";
+                          const isPegawai = item.user.role === "pegawai";
+                          const satkerDisplay = item.user.satker || item.user.satuan_kerja || settings?.satuan_kerja || settings?.satker || "PENDIS";
+                          const jabatanDisplay = isPegawai ? (item.user.jabatan || "Staf Tata Usaha") : (item.user.mapel || "Guru Mata Pelajaran");
+
+                          return (
+                            <tr
+                              key={item.user.id || idx}
                               style={{
-                                background: isItemPegawai ? "#e0f2fe" : "#f3e8ff",
-                                color: isItemPegawai ? "#0369a1" : "#7c3aed",
-                                border: `1px solid ${isItemPegawai ? "#bae6fd" : "#ddd6fe"}`,
-                                fontSize: "0.72rem",
-                                fontWeight: 800,
-                                padding: "0.15rem 0.55rem",
-                                borderRadius: "999px",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "0.3rem"
+                                borderBottom: "1px solid var(--border-light)",
+                                transition: "background 0.15s ease",
+                                background: idx % 2 === 0 ? "#ffffff" : "#fcfcfd"
                               }}
                             >
-                              {isItemPegawai ? <Briefcase size={12} /> : <GraduationCap size={12} />}
-                              {isItemPegawai ? "Pegawai" : "Guru"}
-                            </span>
-                          )}
+                              <td style={{ padding: "0.85rem 0.75rem", textAlign: "center", color: "var(--text-muted)", fontWeight: 700 }}>
+                                {idx + 1}
+                              </td>
 
-                          <span
-                            style={{
-                              background: "#f1f5f9",
-                              color: "#475569",
-                              fontSize: "0.72rem",
-                              fontWeight: 700,
-                              padding: "0.15rem 0.5rem",
-                              borderRadius: "var(--radius-full)"
-                            }}
-                          >
-                            Periode {item.bulan} {item.tahun}
-                          </span>
-                        </div>
+                              {/* Kolom Nama & NIP */}
+                              <td style={{ padding: "0.85rem 0.1rem" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                  <img
+                                    src={getAvatarUrl(item.user.foto_url, item.user.nama || item.user.username)}
+                                    alt={item.user.nama}
+                                    style={{ width: "35px", height: "35px", borderRadius: "10px", objectFit: "cover", flexShrink: 0, border: "1px solid #e2e8f0" }}
+                                  />
+                                  <div style={{ minWidth: 0, maxWidth: "180px" }}>
+                                    <div
+                                      title={item.user.nama || item.user.username}
+                                      style={{
+                                        fontWeight: 800,
+                                        color: "var(--text-main)",
+                                        whiteSpace: "nowrap",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis"
+                                      }}
+                                    >
+                                      {item.user.nama || item.user.username}
+                                    </div>
+                                    <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", fontFamily: "monospace", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                      NIP: {item.user.nip || "-"}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
 
-                        <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginTop: "0.2rem" }}>
-                          NIP: {item.nip || "-"} • {roleFilter === "pegawai" ? `Jabatan: ${item.mapel_jabatan || "Staf Tata Usaha"}` : roleFilter === "guru" ? `Mata Pelajaran: ${item.mapel_jabatan || "Guru Pengajar"}` : (item.mapel_jabatan || (isItemPegawai ? "Staf Tata Usaha" : "Tenaga Pendidik"))}
-                        </div>
+                              {/* Kolom Jabatan & Satker (Clean Typography) */}
+                              <td style={{ padding: "0.85rem 0.1rem" }}>
+                                <div style={{ fontWeight: 700, color: "var(--text-main)", fontSize: "0.84rem" }}>
+                                  {jabatanDisplay}
+                                </div>
+                                <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "0.15rem", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                                  <span style={{ fontWeight: 700, color: isPegawai ? "#0284c7" : "#059669" }}>
+                                    {isPegawai ? "Pegawai TU" : "Guru"}
+                                  </span>
+                                  <span>•</span>
+                                  <span>Satker: <strong>{satkerDisplay}</strong></span>
+                                </div>
+                              </td>
 
-                        {/* Judul & Catatan */}
-                        <div style={{ marginTop: "0.6rem" }}>
-                          <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-main)" }}>
-                            📄 {item.judul || `LKB Bulan ${item.bulan} ${item.tahun}`}
-                          </div>
-                          {item.catatan && (
-                            <div
-                              style={{
-                                fontSize: "0.82rem",
-                                color: "#4b5563",
-                                background: "rgba(255,255,255,0.7)",
-                                padding: "0.4rem 0.65rem",
-                                borderRadius: "var(--radius-md)",
-                                marginTop: "0.35rem",
-                                borderLeft: `3px solid ${isItemPegawai ? "#0284c7" : "#8b5cf6"}`
-                              }}
-                            >
-                              Catatan Pengaju: "{item.catatan}"
-                            </div>
-                          )}
-                        </div>
+                              {/* Kolom Status LKB */}
+                              <td style={{ padding: "0.85rem 2rem", textAlign: "center" }}>
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "0.35rem",
+                                    fontSize: "0.74rem",
+                                    fontWeight: 800,
+                                    padding: "0.25rem 0.65rem ",
+                                    borderRadius: "999px",
+                                    whiteSpace: "nowrap",
+                                    background: isApproved ? "#ecfdf5" : isPending ? "#fffbeb" : isRejected ? "#fef2f2" : "#f8fafc",
+                                    color: isApproved ? "#065f46" : isPending ? "#92400e" : isRejected ? "#991b1b" : "#475569",
+                                    border: `1px solid ${isApproved ? "#a7f3d0" : isPending ? "#fde68a" : isRejected ? "#fecaca" : "#cbd5e1"}`
+                                  }}
+                                >
+                                  {isApproved && <CheckCircle2 size={12} color="#059669" />}
+                                  {isPending && <Clock size={12} color="#d97706" />}
+                                  {isRejected && <XCircle size={12} color="#dc2626" />}
+                                  {!isApproved && !isPending && !isRejected && <AlertTriangle size={12} color="#64748b" />}
+                                  {isApproved ? "Disetujui" : isPending ? "Menunggu Verifikasi" : isRejected ? "Perlu Revisi" : "Belum Diajukan"}
+                                </span>
+                              </td>
 
-                        {/* File preview badge & waktu upload */}
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", marginTop: "0.6rem", flexWrap: "wrap" }}>
-                          <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                            <Calendar size={13} /> Diunggah: {item.created_at ? String(item.created_at).slice(0, 16) : "-"}
-                          </div>
-                          {item.file_name && (
-                            <div style={{ fontSize: "0.78rem", color: "#6b7280", fontWeight: 600 }}>
-                              📁 {item.file_name} {item.file_size && item.file_size !== "-" ? `(${item.file_size})` : ""}
-                            </div>
-                          )}
-                        </div>
+                              {/* Kolom Aksi */}
+                              <td style={{ padding: "0.85rem 0.8rem", textAlign: "center" }}>
+                                <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedAsnId(item.user.id);
+                                      setActiveTab("preview_dokumen");
+                                    }}
+                                    className="btn-neon-secondary"
+                                    style={{
+                                      fontSize: "0.76rem",
+                                      padding: "0.32rem 0.65rem",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.3rem",
+                                      borderRadius: "8px",
+                                      whiteSpace: "nowrap"
+                                    }}
+                                    title="Buka Dokumen LKB"
+                                  >
+                                    <Eye size={13} /> Lihat
+                                  </button>
 
-                        {/* Banner Catatan Penolakan Jika Ditolak */}
-                        {isRejected && (
-                          <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.85rem", background: "#fff1f2", borderRadius: "var(--radius-md)", border: "1px solid #fecdd3", fontSize: "0.82rem" }}>
-                            <span style={{ fontWeight: 700, color: "#be123c" }}>Catatan Revisi: </span>
-                            <span style={{ color: "#9f1239" }}>{item.alasan_penolakan || "Perlu revisi dokumen."}</span>
-                          </div>
-                        )}
-
-                        {/* Info Disetujui */}
-                        {isApproved && item.diverifikasi_oleh && (
-                          <div style={{ marginTop: "0.5rem", fontSize: "0.78rem", color: "#065f46", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                            <CheckCircle2 size={14} color="#059669" /> Disetujui oleh {item.diverifikasi_oleh} {item.diverifikasi_pada ? `pada ${item.diverifikasi_pada}` : ""}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Sisi Kanan: Aksi & Tombol Verifikasi */}
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.75rem" }}>
-                      {/* Status Badge */}
-                      <span
-                        style={{
-                          background: isApproved ? "#ecfdf5" : isRejected ? "#fff1f2" : "#fffbeb",
-                          border: `1.5px solid ${isApproved ? "#a7f3d0" : isRejected ? "#fecdd3" : "#fde68a"}`,
-                          color: isApproved ? "#059669" : isRejected ? "#e11d48" : "#d97706",
-                          padding: "0.35rem 0.85rem",
-                          borderRadius: "var(--radius-full)",
-                          fontSize: "0.8rem",
-                          fontWeight: 700,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.35rem"
-                        }}
-                      >
-                        {isApproved && <CheckCircle2 size={14} />}
-                        {isRejected && <XCircle size={14} />}
-                        {isPending && <Clock size={14} />}
-                        {item.status || "Menunggu Verifikasi"}
-                      </span>
-
-                      {/* Tombol Aksi */}
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                        {item.file_url && (
-                          <button
-                            type="button"
-                            onClick={() => window.open(item.file_url, "_blank")}
-                            style={{
-                              padding: "0.45rem 0.85rem",
-                              borderRadius: "var(--radius-md)",
-                              border: "1px solid #bfdbfe",
-                              background: "#eff6ff",
-                              color: "#1d4ed8",
-                              fontSize: "0.8rem",
-                              fontWeight: 700,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.35rem",
-                              cursor: "pointer",
-                              boxShadow: "var(--shadow-sm)"
-                            }}
-                          >
-                            <ExternalLink size={14} /> Buka Link Drive
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          disabled={actionLoading || isApproved}
-                          onClick={() => handleApprove(item)}
-                          style={{
-                            padding: "0.45rem 0.85rem",
-                            borderRadius: "var(--radius-md)",
-                            border: "none",
-                            background: isApproved ? "#dcfce7" : "#059669",
-                            color: isApproved ? "#065f46" : "#ffffff",
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.35rem",
-                            cursor: isApproved ? "default" : "pointer",
-                            opacity: isApproved ? 0.7 : 1,
-                            transition: "all 0.2s"
-                          }}
-                        >
-                          <CheckCircle2 size={14} /> {isApproved ? "Disetujui" : "Setujui LKB"}
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={actionLoading || isRejected}
-                          onClick={() => openRejectModal(item)}
-                          style={{
-                            padding: "0.45rem 0.85rem",
-                            borderRadius: "var(--radius-md)",
-                            border: "1px solid #e11d48",
-                            background: isRejected ? "#fff1f2" : "#e11d48",
-                            color: isRejected ? "#e11d48" : "#ffffff",
-                            fontSize: "0.8rem",
-                            fontWeight: 700,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.35rem",
-                            cursor: isRejected ? "default" : "pointer",
-                            opacity: isRejected ? 0.7 : 1,
-                            transition: "all 0.2s"
-                          }}
-                        >
-                          <XCircle size={14} /> {isRejected ? "Ditolak" : "Tolak / Revisi"}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item.id, item.nama)}
-                          title="Hapus data LKB"
-                          style={{
-                            padding: "0.45rem",
-                            borderRadius: "var(--radius-md)",
-                            border: "1px solid var(--border-light)",
-                            background: "#ffffff",
-                            color: "#9ca3af",
-                            cursor: "pointer"
-                          }}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          ) : (
-            /* TAB 2: TABEL REKAPITULASI & ARSIP LENGKAP */
-            <div className="glass-panel" style={{ padding: "0", overflow: "hidden", border: "1.5px solid #c7d2fe" }}>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.88rem" }}>
-                  <thead>
-                    <tr style={{ background: "linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%)", borderBottom: "1.5px solid #c7d2fe" }}>
-                      <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>Periode</th>
-                      <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>Nama & NIP</th>
-                      <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>
-                        {roleFilter === "pegawai" ? "Jabatan / Unit Kerja" : roleFilter === "guru" ? "Mata Pelajaran" : "Peran & Jabatan"}
-                      </th>
-                      <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>Judul Dokumen</th>
-                      <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>Status</th>
-                      <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>Verifikator</th>
-                      <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800 }}>Catatan</th>
-                      <th style={{ padding: "1rem 1.15rem", color: "#4338ca", fontWeight: 800, textAlign: "center" }}>Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredList.map((item, idx) => {
-                      const isItemPegawai = getItemRole(item) === "pegawai";
-                      const isApproved = item.status === "Disetujui";
-                      const isRejected = item.status === "Ditolak";
-
-                      return (
-                        <tr key={item.id || idx} style={{
-                          borderBottom: "1px solid var(--border-light)",
-                          background: idx % 2 === 0 ? "#ffffff" : "#fdfdff"
-                        }}>
-                          <td style={{ padding: "1rem 1.15rem", whiteSpace: "nowrap", fontWeight: 700 }}>
-                            {item.bulan} {item.tahun}
-                          </td>
-                          <td style={{ padding: "1rem 1.15rem" }}>
-                            <div style={{ fontWeight: 700, color: "var(--text-main)" }}>{item.nama}</div>
-                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>NIP: {item.nip || "-"}</div>
-                          </td>
-                          <td style={{ padding: "1rem 1.15rem" }}>
-                            {!fixedRole && (
-                              <span style={{
-                                display: "inline-flex", alignItems: "center", gap: "0.3rem",
-                                background: isItemPegawai ? "#e0f2fe" : "#f3e8ff",
-                                color: isItemPegawai ? "#0369a1" : "#7c3aed",
-                                padding: "0.15rem 0.5rem", borderRadius: "999px",
-                                fontSize: "0.72rem", fontWeight: 800, marginBottom: "0.2rem"
-                              }}>
-                                {isItemPegawai ? <Briefcase size={12} /> : <GraduationCap size={12} />}
-                                {isItemPegawai ? "Pegawai" : "Guru"}
-                              </span>
-                            )}
-                            <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-main)" }}>
-                              {item.mapel_jabatan || (isItemPegawai ? "Staf Tata Usaha" : "Guru Pengajar")}
-                            </div>
-                          </td>
-                          <td style={{ padding: "1rem 1.15rem" }}>
-                            <div style={{ fontWeight: 600, color: "var(--text-main)" }}>{item.judul || "-"}</div>
-                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                              {item.file_name} {item.file_size && item.file_size !== "-" ? `(${item.file_size})` : ""}
-                            </div>
-                          </td>
-                          <td style={{ padding: "1rem 1.15rem" }}>
-                            <span style={{
-                              background: isApproved ? "#ecfdf5" : isRejected ? "#fff1f2" : "#fffbeb",
-                              border: `1px solid ${isApproved ? "#a7f3d0" : isRejected ? "#fecdd3" : "#fde68a"}`,
-                              color: isApproved ? "#059669" : isRejected ? "#e11d48" : "#d97706",
-                              padding: "0.25rem 0.65rem", borderRadius: "999px",
-                              fontSize: "0.76rem", fontWeight: 700, whiteSpace: "nowrap"
-                            }}>
-                              {item.status || "Menunggu"}
-                            </span>
-                          </td>
-                          <td style={{ padding: "1rem 1.15rem", fontSize: "0.82rem" }}>
-                            <div style={{ fontWeight: 600 }}>{item.diverifikasi_oleh || "-"}</div>
-                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                              {item.diverifikasi_pada ? String(item.diverifikasi_pada).slice(0, 16) : "-"}
-                            </div>
-                          </td>
-                          <td style={{ padding: "1rem 1.15rem", fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-                            {item.alasan_penolakan || item.catatan || "-"}
-                          </td>
-                          <td style={{ padding: "1rem 1.15rem", textAlign: "center" }}>
-                            {item.file_url ? (
-                              <button
-                                type="button"
-                                onClick={() => window.open(item.file_url, "_blank")}
-                                style={{
-                                  padding: "0.35rem 0.7rem",
-                                  borderRadius: "8px",
-                                  border: "1px solid #c7d2fe",
-                                  background: "#ffffff",
-                                  color: "#4f46e5",
-                                  fontSize: "0.78rem",
-                                  fontWeight: 700,
-                                  cursor: "pointer",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "0.3rem"
-                                }}
-                              >
-                                <ExternalLink size={13} /> Buka Drive
-                              </button>
-                            ) : "-"}
+                                  {!isApproved && item.attCount > 0 ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleApproveCurrentAsn(item.user)}
+                                      disabled={actionLoading}
+                                      style={{
+                                        fontSize: "0.76rem",
+                                        padding: "0.32rem 0.75rem",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "0.3rem",
+                                        background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+                                        color: "#ffffff",
+                                        border: "none",
+                                        borderRadius: "8px",
+                                        fontWeight: 800,
+                                        cursor: actionLoading ? "not-allowed" : "pointer",
+                                        whiteSpace: "nowrap",
+                                        boxShadow: "0 2px 6px rgba(5, 150, 105, 0.2)"
+                                      }}
+                                      title="Sahkan Dokumen LKB ASN"
+                                    >
+                                      <Check size={13} /> Sahkan
+                                    </button>
+                                  ) : isApproved ? (
+                                    <span
+                                      style={{
+                                        fontSize: "0.72rem",
+                                        fontWeight: 700,
+                                        color: "#059669",
+                                        background: "#ecfdf5",
+                                        border: "1px solid #a7f3d0",
+                                        padding: "0.22rem 0.5rem",
+                                        borderRadius: "6px",
+                                        whiteSpace: "nowrap"
+                                      }}
+                                    >
+                                      ✓ Sah
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+                            Tidak ada ASN yang sesuai dengan pencarian Anda.
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
         </main>
       </div>
 
-      {/* Modal Cetak Rekap LKB */}
-      <AnimatePresence>
-        {showPrintModal && (
-          <LkbPrintPreviewModal
-            data={filteredList}
-            settings={settings}
-            currentUser={currentUser}
-            filterBulan={filterBulan}
-            filterTahun={filterTahun}
-            roleFilter={roleFilter}
-            orientation={printOrientation}
-            setOrientation={setPrintOrientation}
-            onClose={() => setShowPrintModal(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Native Browser Print Target for LKB */}
-      <div id="native-lkb-print">
-        <OfficialLkbDocument
-          data={filteredList}
-          settings={settings}
-          currentUser={currentUser}
-          filterBulan={filterBulan}
-          filterTahun={filterTahun}
-          roleFilter={roleFilter}
-        />
-      </div>
-
-      {/* Modal Popup Penolakan LKB */}
+      {/* Reject / Revision Modal */}
       <AnimatePresence>
         {rejectModalItem && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+          <div
             style={{
               position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: "rgba(0, 0, 0, 0.55)",
-              backdropFilter: "blur(4px)",
-              zIndex: 99999,
+              inset: 0,
+              zIndex: 100,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1791,113 +1241,99 @@ export default function AdminLkbPage({ fixedRole = null }) {
             }}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeRejectModal}
               style={{
-                background: "#ffffff",
-                borderRadius: "var(--radius-2xl)",
-                maxWidth: "480px",
+                position: "absolute",
+                inset: 0,
+                background: "rgba(15, 23, 42, 0.5)",
+                backdropFilter: "blur(4px)"
+              }}
+            />
+
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 15 }}
+              style={{
+                position: "relative",
                 width: "100%",
+                maxWidth: "480px",
+                background: "#ffffff",
+                borderRadius: "var(--radius-xl)",
                 padding: "1.75rem",
-                boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1.1rem"
+                boxShadow: "0 20px 40px -10px rgba(0, 0, 0, 0.2)",
+                zIndex: 101
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                <div
-                  style={{
-                    width: "42px",
-                    height: "42px",
-                    borderRadius: "12px",
-                    background: "#ffe4e6",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}
-                >
-                  <XCircle size={24} color="#e11d48" />
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
+                <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "#fef2f2", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <AlertTriangle size={22} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)" }}>
-                    Tolak & Minta Revisi LKB
+                  <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-main)", margin: 0 }}>
+                    Minta Perbaikan Dokumen LKB
                   </h3>
-                  <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-                    {getItemRole(rejectModalItem) === 'pegawai' ? 'Pegawai' : 'Guru'}: <strong>{rejectModalItem.nama}</strong> ({rejectModalItem.bulan} {rejectModalItem.tahun})
+                  <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0 }}>
+                    ASN: <strong>{rejectModalItem.nama}</strong> ({kinerjaBulan} {kinerjaTahun})
                   </p>
                 </div>
               </div>
 
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "0.85rem",
-                    fontWeight: 700,
-                    color: "var(--text-main)",
-                    marginBottom: "0.4rem"
-                  }}
-                >
-                  Catatan Alasan Penolakan / Yang Perlu Diperbaiki <span style={{ color: "#e11d48" }}>*</span>
+              <div style={{ marginBottom: "1.25rem" }}>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
+                  Catatan Perbaikan / Alasan Penolakan:
                 </label>
                 <textarea
                   rows={4}
-                  placeholder="Contoh: Lampiran laporan kinerja belum lengkap, atau tanda tangan atasan langsung belum ada..."
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Contoh: Foto evident pada tanggal 12 kurang jelas, mohon periksa catatan materi mengajar..."
                   className="neon-input"
-                  style={{ resize: "vertical", fontSize: "0.85rem" }}
+                  style={{ width: "100%", resize: "vertical" }}
                 />
-                <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "block", marginTop: "0.3rem" }}>
-                  Catatan ini akan langsung terbaca oleh yang bersangkutan agar dapat mengunggah revisi dokumen.
-                </span>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem", marginTop: "0.5rem" }}>
+              <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
                 <button
                   type="button"
                   onClick={closeRejectModal}
-                  style={{
-                    padding: "0.55rem 1.15rem",
-                    borderRadius: "var(--radius-md)",
-                    border: "1px solid var(--border-light)",
-                    background: "#ffffff",
-                    color: "var(--text-secondary)",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    cursor: "pointer"
-                  }}
+                  className="btn-neon-secondary"
+                  style={{ fontSize: "0.85rem", padding: "0.6rem 1rem" }}
                 >
                   Batal
                 </button>
-
                 <button
                   type="button"
-                  disabled={actionLoading}
                   onClick={handleRejectConfirm}
-                  style={{
-                    padding: "0.55rem 1.25rem",
-                    borderRadius: "var(--radius-md)",
-                    border: "none",
-                    background: "#e11d48",
-                    color: "#ffffff",
-                    fontSize: "0.85rem",
-                    fontWeight: 700,
-                    cursor: actionLoading ? "not-allowed" : "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.4rem",
-                    boxShadow: "0 4px 12px rgba(225, 29, 72, 0.3)"
-                  }}
+                  disabled={actionLoading}
+                  className="btn-neon-danger"
+                  style={{ fontSize: "0.85rem", padding: "0.6rem 1.25rem" }}
                 >
-                  {actionLoading ? <RefreshCw size={14} className="animate-spin" /> : <XCircle size={15} />}
-                  Kirim Penolakan
+                  {actionLoading ? "Menyimpan..." : "Kirim Catatan Revisi"}
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Pratinjau & Cetak Rekapitulasi LKB Seluruh ASN */}
+      <AnimatePresence>
+        {showPrintSummaryModal && (
+          <PrintLkbSummaryModal
+            data={monitoringData}
+            settings={settings}
+            currentUser={currentUser}
+            bulan={kinerjaBulan}
+            tahun={kinerjaTahun}
+            roleFilter={roleFilter}
+            orientation={summaryOrientation}
+            setOrientation={setSummaryOrientation}
+            onClose={() => setShowPrintSummaryModal(false)}
+          />
         )}
       </AnimatePresence>
     </>

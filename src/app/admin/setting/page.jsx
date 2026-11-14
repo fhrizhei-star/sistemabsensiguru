@@ -24,8 +24,14 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
-  Clock
+  Clock,
+  Upload,
+  Image as ImageIcon,
+  FileText,
+  Trash2,
+  Sparkles
 } from "lucide-react";
+import { DEFAULT_SAMPLE_TTD, DEFAULT_SAMPLE_STEMPEL } from "@/lib/signatureAssets";
 
 export default function AdminSettingPage() {
   const router = useRouter();
@@ -36,10 +42,14 @@ export default function AdminSettingPage() {
     kota: "Kabupaten Gowa",
     npsn: "20123456",
     no_telp: "(0411) 861234",
+    satuan_kerja: "PENDIS",
     kepala_sekolah: "Dr. H. Suharto, M.Pd",
     nip_kepsek: "196805121993031002",
     operator_nama: "Bpk. Hendra Gunawan, S.Kom",
     operator_nip: "198001012005011001",
+    ttd_kepsek_url: DEFAULT_SAMPLE_TTD,
+    stempel_sekolah_url: DEFAULT_SAMPLE_STEMPEL,
+    agenda_rapat_hari_ini: "",
     toleransi_menit: 15,
     jam_masuk_mulai: "06:30",
     jam_masuk_batas: "07:15",
@@ -105,6 +115,42 @@ export default function AdminSettingPage() {
       },
       { enableHighAccuracy: true }
     );
+  };
+
+  const handleUploadTtd = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      alert("Ukuran file tanda tangan maksimal 3MB!");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setSettings((prev) => ({ ...prev, ttd_kepsek_url: ev.target.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadStempel = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      alert("Ukuran file stempel maksimal 3MB!");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setSettings((prev) => ({ ...prev, stempel_sekolah_url: ev.target.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleApplySampleSignatures = () => {
+    setSettings((prev) => ({
+      ...prev,
+      ttd_kepsek_url: DEFAULT_SAMPLE_TTD,
+      stempel_sekolah_url: DEFAULT_SAMPLE_STEMPEL
+    }));
   };
 
   const handleTestScript = async () => {
@@ -341,6 +387,18 @@ export default function AdminSettingPage() {
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
+                    Satuan Kerja (Satker) Dokumen LKB
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.satuan_kerja || ""}
+                    onChange={(e) => setSettings({ ...settings, satuan_kerja: e.target.value })}
+                    placeholder="contoh: PENDIS atau MTsN GOWA"
+                    className="neon-input"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
                     Nomor Telepon Sekolah
                   </label>
                   <input
@@ -400,6 +458,241 @@ export default function AdminSettingPage() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Section 1.5: Tanda Tangan Asli (TTE) Kepala Sekolah & Stempel Resmi Pengesahan */}
+            <div className="glass-panel" style={{ padding: "1.75rem", border: "1.5px solid #a7f3d0", background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#ecfdf5", border: "1px solid #a7f3d0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <FileText size={20} color="#059669" />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)" }}>
+                      Tanda Tangan Asli (TTE) & Stempel Resmi Pengesahan
+                    </h2>
+                    <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", margin: 0 }}>
+                      Gambar ini akan otomatis dicetak pada lembar pengesahan LKB ketika Admin / Kepala Sekolah mengesahkan dokumen.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleApplySampleSignatures}
+                  className="btn-neon-secondary"
+                  style={{ fontSize: "0.78rem", padding: "0.45rem 0.8rem", color: "#059669", borderColor: "#a7f3d0", background: "#ffffff" }}
+                  title="Gunakan contoh tanda tangan dan stempel dinas siap pakai"
+                >
+                  <Sparkles size={14} />
+                  <span>Gunakan Contoh Format Bawaan</span>
+                </button>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.25rem" }}>
+                {/* 1. Upload Tanda Tangan Kepala Sekolah */}
+                <div style={{ background: "#ffffff", padding: "1.15rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                    <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)" }}>
+                      Scan Tanda Tangan Kepala Sekolah
+                    </label>
+                    {settings.ttd_kepsek_url && (
+                      <button
+                        type="button"
+                        onClick={() => setSettings(prev => ({ ...prev, ttd_kepsek_url: "" }))}
+                        style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "0.2rem" }}
+                      >
+                        <Trash2 size={12} /> Hapus
+                      </button>
+                    )}
+                  </div>
+                  <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.75rem" }}>
+                    Format PNG transparan disarankan agar tanda tangan menyatu rapi di atas nama.
+                  </p>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                    <div
+                      style={{
+                        width: "120px",
+                        height: "70px",
+                        borderRadius: "8px",
+                        border: "1.5px dashed #cbd5e1",
+                        background: "#f8fafc",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                        padding: "4px"
+                      }}
+                    >
+                      {settings.ttd_kepsek_url ? (
+                        <img
+                          src={settings.ttd_kepsek_url}
+                          alt="Tanda Tangan Kepala Sekolah"
+                          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: "0.72rem", color: "#94a3b8", textAlign: "center" }}>Belum Ada Tanda Tangan</span>
+                      )}
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                      <label
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.4rem",
+                          padding: "0.45rem 0.85rem",
+                          fontSize: "0.8rem",
+                          fontWeight: 700,
+                          borderRadius: "8px",
+                          border: "1px solid #059669",
+                          background: "#ecfdf5",
+                          color: "#059669",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <Upload size={14} />
+                        <span>Pilih File TTD (PNG/JPG)</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleUploadTtd}
+                          style={{ display: "none" }}
+                        />
+                      </label>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>
+                        Maks. 3MB (PNG latar transparan / JPG)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Upload Stempel Resmi Sekolah */}
+                <div style={{ background: "#ffffff", padding: "1.15rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                    <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)" }}>
+                      Scan Stempel Resmi Sekolah / Madrasah
+                    </label>
+                    {settings.stempel_sekolah_url && (
+                      <button
+                        type="button"
+                        onClick={() => setSettings(prev => ({ ...prev, stempel_sekolah_url: "" }))}
+                        style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "0.2rem" }}
+                      >
+                        <Trash2 size={12} /> Hapus
+                      </button>
+                    )}
+                  </div>
+                  <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.75rem" }}>
+                    Format PNG transparan stempel dinas warna biru/ungu resmi.
+                  </p>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                    <div
+                      style={{
+                        width: "80px",
+                        height: "70px",
+                        borderRadius: "8px",
+                        border: "1.5px dashed #cbd5e1",
+                        background: "#f8fafc",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                        padding: "4px"
+                      }}
+                    >
+                      {settings.stempel_sekolah_url ? (
+                        <img
+                          src={settings.stempel_sekolah_url}
+                          alt="Stempel Sekolah"
+                          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: "0.72rem", color: "#94a3b8", textAlign: "center" }}>Belum Ada Stempel</span>
+                      )}
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                      <label
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.4rem",
+                          padding: "0.45rem 0.85rem",
+                          fontSize: "0.8rem",
+                          fontWeight: 700,
+                          borderRadius: "8px",
+                          border: "1px solid #0284c7",
+                          background: "#f0f9ff",
+                          color: "#0284c7",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <Upload size={14} />
+                        <span>Pilih File Stempel (PNG/JPG)</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleUploadStempel}
+                          style={{ display: "none" }}
+                        />
+                      </label>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>
+                        Maks. 3MB (PNG latar transparan / JPG)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Preview Gabungan di Lembar Dokumen */}
+              {(settings.ttd_kepsek_url || settings.stempel_sekolah_url) && (
+                <div style={{ marginTop: "1rem", padding: "0.85rem 1.25rem", borderRadius: "10px", background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
+                  <div>
+                    <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)" }}>
+                      Pratinjau Posisi Pengesahan pada Dokumen:
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                      Stempel otomatis overlap di sisi kiri tanda tangan Kepala Sekolah.
+                    </div>
+                  </div>
+
+                  <div style={{ position: "relative", width: "190px", height: "70px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {settings.stempel_sekolah_url && (
+                      <img
+                        src={settings.stempel_sekolah_url}
+                        alt="Stempel Preview"
+                        style={{
+                          position: "absolute",
+                          left: "8px",
+                          width: "60px",
+                          height: "60px",
+                          objectFit: "contain",
+                          opacity: 0.85,
+                          transform: "rotate(-6deg)",
+                          pointerEvents: "none",
+                          zIndex: 2
+                        }}
+                      />
+                    )}
+                    {settings.ttd_kepsek_url && (
+                      <img
+                        src={settings.ttd_kepsek_url}
+                        alt="TTD Preview"
+                        style={{
+                          position: "relative",
+                          width: "140px",
+                          height: "55px",
+                          objectFit: "contain",
+                          zIndex: 1
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Section 2: Jam Operasional & Batas Presensi Pegawai */}
@@ -472,73 +765,7 @@ export default function AdminSettingPage() {
               </div>
             </div>
 
-            {/* Section 3: Koordinat Geofencing & GPS */}
-            <div className="glass-panel" style={{ padding: "1.75rem", border: "1.5px solid #a7f3d0", background: "linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#ecfdf5", border: "1px solid #a7f3d0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <MapPin size={20} color="#059669" />
-                  </div>
-                  <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)" }}>
-                    Titik Koordinat & Radius Geofencing
-                  </h2>
-                </div>
 
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  type="button"
-                  onClick={handleGetCurrentLocation}
-                  className="btn-neon-secondary"
-                  disabled={gpsLoading}
-                  style={{ fontSize: "0.82rem", padding: "0.5rem 0.9rem", color: "#059669", borderColor: "#a7f3d0", background: "#ffffff" }}
-                >
-                  <Navigation size={14} color="#059669" />
-                  <span>{gpsLoading ? "Mencari GPS..." : "Ambil Lokasi Saya Saat Ini"}</span>
-                </motion.button>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                    Latitude Sekolah
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    required
-                    value={settings.lat_sekolah}
-                    onChange={(e) => setSettings({ ...settings, lat_sekolah: parseFloat(e.target.value) || 0 })}
-                    className="neon-input"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                    Longitude Sekolah
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    required
-                    value={settings.lng_sekolah}
-                    onChange={(e) => setSettings({ ...settings, lng_sekolah: parseFloat(e.target.value) || 0 })}
-                    className="neon-input"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.3rem" }}>
-                    Radius Toleransi (Meter)
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={settings.radius_meter}
-                    onChange={(e) => setSettings({ ...settings, radius_meter: parseInt(e.target.value) || 250 })}
-                    className="neon-input"
-                  />
-                </div>
-              </div>
-            </div>
 
             {/* Section 3: Integrasi Server Database Cloud */}
             <div className="glass-panel" style={{ padding: "1.75rem", border: "1.5px solid #bae6fd", background: "linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)" }}>

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import TeacherNav from "@/components/TeacherNav";
 import { Auth } from "@/lib/auth";
-import { Api } from "@/lib/api";
+import { Api, formatTimeString, formatDisplayDate } from "@/lib/api";
 import {
   History,
   Calendar,
@@ -210,90 +210,84 @@ export default function TeacherRiwayatPage() {
                     boxShadow: "0 4px 16px rgba(0,0,0,0.03)"
                   }}
                 >
-                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                  <div
-                    style={{
-                      width: "48px",
-                      height: "48px",
-                      borderRadius: "14px",
-                      background: item.status === "Hadir" ? "var(--primary-light)" : "var(--warning-light)",
-                      border: `1px solid ${item.status === "Hadir" ? "var(--primary-border)" : "#fde68a"}`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: item.status === "Hadir" ? "var(--primary)" : "var(--warning)"
-                    }}
-                  >
-                    <FileCheck size={22} />
-                  </div>
-
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                      <span style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text-main)" }}>
-                        {item.kelas || item.tipe_absen || "Presensi Mengajar"}
-                      </span>
-                      <span
-                        className={`badge-status ${
-                          item.status === "Hadir" ? "badge-hadir" : "badge-terlambat"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </div>
-
+                  <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                     <div
                       style={{
+                        width: "48px",
+                        height: "48px",
+                        borderRadius: "14px",
+                        background: item.status === "Hadir" ? "var(--primary-light)" : "var(--warning-light)",
+                        border: `1px solid ${item.status === "Hadir" ? "var(--primary-border)" : "#fde68a"}`,
                         display: "flex",
-                        flexWrap: "wrap",
                         alignItems: "center",
-                        gap: "1rem",
-                        marginTop: "0.25rem",
-                        fontSize: "0.82rem",
-                        color: "var(--text-secondary)"
+                        justifyContent: "center",
+                        color: item.status === "Hadir" ? "var(--primary)" : "var(--warning)"
                       }}
                     >
-                      <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                        <Calendar size={14} color="#059669" />
-                        {item.hari}, {item.tanggal}
-                      </span>
-                      <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                        <Clock size={14} color="#0284c7" />
-                        {item.jam_absen} WIB
-                      </span>
-                      {item.koordinat && (
-                        <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                          <MapPin size={14} color="#d97706" />
-                          {item.koordinat}
-                        </span>
-                      )}
+                      <FileCheck size={22} />
                     </div>
 
-                    {item.keterangan && (
-                      <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>
-                        Catatan: {item.keterangan}
-                      </p>
-                    )}
-                  </div>
-                </div>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                        <span style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--text-main)" }}>
+                          {item.kelas || item.tipe_absen || "Presensi Mengajar"}
+                        </span>
+                        <span
+                          className={`badge-status ${item.status === "Hadir" ? "badge-hadir" : "badge-terlambat"
+                            }`}
+                        >
+                          {item.status}
+                        </span>
+                      </div>
 
-                {/* Photo Preview Button */}
-                {item.foto && (
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    type="button"
-                    onClick={() => setSelectedPhoto(item.foto)}
-                    className="btn-neon-secondary"
-                    style={{ fontSize: "0.82rem", padding: "0.45rem 0.85rem" }}
-                  >
-                    <Eye size={15} /> Lihat Foto Selfie
-                  </motion.button>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          alignItems: "center",
+                          gap: "1rem",
+                          marginTop: "0.25rem",
+                          fontSize: "0.82rem",
+                          color: "var(--text-secondary)"
+                        }}
+                      >
+                        <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <Calendar size={14} color="#059669" />
+                          {item.hari}, {formatDisplayDate(item.tanggal)}
+                        </span>
+                        <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <Clock size={14} color="#0284c7" />
+                          {formatTimeString(item.jam_absen) || item.jam_absen} WITA
+                        </span>
+
+                      </div>
+
+                      {item.keterangan && (
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>
+                          Catatan: {item.keterangan}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Photo Preview Button */}
+                  {item.foto && (
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      type="button"
+                      onClick={() => setSelectedPhoto(item.foto)}
+                      className="btn-neon-secondary"
+                      style={{ fontSize: "0.82rem", padding: "0.45rem 0.85rem" }}
+                    >
+                      <Eye size={15} /> Lihat Foto Selfie
+                    </motion.button>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
       </main>
 
       {/* Photo Zoom Modal */}

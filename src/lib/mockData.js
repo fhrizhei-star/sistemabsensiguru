@@ -18,6 +18,8 @@ export function getTodayDayName() {
   return days[new Date().getDay()];
 }
 
+export const SAMPLE_EVIDENT_PHOTO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIwAAACMCAIAAAAhotZpAAACMUlEQVR4nO3cMW7UQBiA0RRQh46OnrQ0SFQcAnGG3ICWS3AXCg5FgQQdPUFrrz1r+4uf9NXrkZ+msD3/3r348lkH7273FWgySIEgBYIU6F+kl98etXuQAkEKBCkQpECQAkEKBCkQpECQAkEKBCkQpECQAkEKBCkQpECQAkEKBCkQpECQAkEKNIH089cf7R6kQJACQQoEKRCkQJACQQoEKRCkQJACQQoEKRCkQPsgvfv4abNeff+65eUgzSKZE6QdkGbabKAFaSTPjaggjecZTgVpWujN2w9zup0TpEtCM3kmqSANQBrCc5kK0iqk4ULDnc6OdAueC1SQDic0yum8SNsIDXGCBOmoSFsKrXeCtIXQUydIh9tGKzfT2ZE2E1qzmSBdcYvf//j9NEjjkZYJ/ZdnGdUCJ0gDhK5yggTplEgzheY7QYIECdIGSAseY2+KNNPpXEh2EiRIkCCtd5r5a5AgnRXJu7utkbwFf+ZI64O0BMmX2YMiOePQQ3Ja6KBIzt1BgjQIyVnwBpKpigaS+aQGkkm/BpKZ2QaS6fMGkv9xaCANpBq4HkjjqYavBNIwrdstANJCti0v93yQdFWQAkEKBCkQpECQAkEKBCkQpECQAkEKBCkQpECQAkEKBCkQpECQAkEKNIF0//pBuwcpEKRAkAJBCgQpEKRAkAJBCgQpEKRAkAJBCgQpEKRAkAJBCgQpEKRAkAJBCgQpEKRAkAJBCjSBpAMGKRCkQJACQQr0F3crwXQIhvuZAAAAAElFTkSuQmCC";
+
 export const INITIAL_MOCK_DATA = {
   settings: {
     nama_sekolah: "MTsN GOWA",
@@ -25,6 +27,7 @@ export const INITIAL_MOCK_DATA = {
     kota: "Kabupaten Gowa",
     npsn: "20123456",
     no_telp: "(0411) 861234",
+    satuan_kerja: "PENDIS",
     kepala_sekolah: "Dr. H. Suharto, M.Pd",
     nip_kepsek: "196805121993031002",
     operator_nama: "Bpk. Hendra Gunawan, S.Kom",
@@ -53,6 +56,7 @@ export const INITIAL_MOCK_DATA = {
       nip: "198001012005011001",
       jabatan: "Kepala Tata Usaha / Admin",
       mapel: "Manajemen Kepegawaian",
+      satker: "PENDIS",
       email: "admin@sekolah.sch.id",
       no_hp: "081234567890",
       status: "aktif",
@@ -67,6 +71,7 @@ export const INITIAL_MOCK_DATA = {
       nip: "198501152010011002",
       jabatan: "Guru Madya",
       mapel: "Matematika",
+      satker: "PENDIS",
       email: "bambang@sekolah.sch.id",
       no_hp: "081234567891",
       status: "aktif",
@@ -81,6 +86,7 @@ export const INITIAL_MOCK_DATA = {
       nip: "199003202015022001",
       jabatan: "Guru Pertama",
       mapel: "Bahasa Indonesia",
+      satker: "PENDIS",
       email: "siti@sekolah.sch.id",
       no_hp: "081234567892",
       status: "aktif",
@@ -95,6 +101,7 @@ export const INITIAL_MOCK_DATA = {
       nip: "199208142019031005",
       jabatan: "Guru Pertama",
       mapel: "Informatika / TIK",
+      satker: "PENDIS",
       email: "fauzi@sekolah.sch.id",
       no_hp: "081234567893",
       status: "aktif",
@@ -109,6 +116,7 @@ export const INITIAL_MOCK_DATA = {
       nip: "198811052014022003",
       jabatan: "Guru Muda",
       mapel: "Fisika",
+      satker: "PENDIS",
       email: "dewi@sekolah.sch.id",
       no_hp: "081234567894",
       status: "aktif",
@@ -123,6 +131,7 @@ export const INITIAL_MOCK_DATA = {
       nip: "199305122020012008",
       jabatan: "Guru Pertama",
       mapel: "Bahasa Inggris",
+      satker: "PENDIS",
       email: "ratna@sekolah.sch.id",
       no_hp: "081234567895",
       status: "aktif",
@@ -137,10 +146,26 @@ export const INITIAL_MOCK_DATA = {
       nip: "199406182022032004",
       jabatan: "Staf Tata Usaha / Keuangan",
       mapel: "Administrasi & Kepegawaian",
+      satker: "PENDIS",
       email: "rahmawati@sekolah.sch.id",
       no_hp: "081234567896",
       status: "aktif",
       foto_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80"
+    },
+    {
+      id: "U008",
+      username: "196905122022212007",
+      password: "guru123",
+      nama: "Zulhana S.Ag",
+      role: "guru",
+      nip: "196905122022212007",
+      jabatan: "Guru",
+      mapel: "Akidah Akhlak",
+      satker: "PENDIS",
+      email: "zulhana@kemenag.go.id",
+      no_hp: "081234567897",
+      status: "aktif",
+      foto_url: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400&auto=format&fit=crop&q=80"
     }
   ],
   schedules: [
@@ -296,6 +321,118 @@ export const INITIAL_MOCK_DATA = {
       koordinat: "-6.2087, 106.8455 (32m)",
       keterangan: "Tepat Waktu",
       foto: ""
+    },
+    // Data Presensi Guru Oktober 2026 (Zulhana S.Ag - Format Dokumen LKB Kemenag Gowa)
+    {
+      id: "ATT_ZUL_01",
+      jadwal_id: "JAD_ZUL_1",
+      user_id: "U008",
+      nama: "Zulhana S.Ag",
+      nip: "196905122022212007",
+      mapel: "Akidah Akhlak",
+      kelas: "7",
+      hari: "Kamis",
+      tanggal: "2026-10-01",
+      jam_jadwal: "07:30 - 08:50",
+      jam_absen: "07:28:00",
+      status: "Hadir",
+      catatan: "Mengajar di kelas 7 akidah",
+      koordinat: "Kamera Device Presensi",
+      keterangan: "Tepat Waktu",
+      foto: SAMPLE_EVIDENT_PHOTO
+    },
+    {
+      id: "ATT_ZUL_02",
+      jadwal_id: "JAD_ZUL_2",
+      user_id: "U008",
+      nama: "Zulhana S.Ag",
+      nip: "196905122022212007",
+      mapel: "Akidah Akhlak",
+      kelas: "8",
+      hari: "Jumat",
+      tanggal: "2026-10-02",
+      jam_jadwal: "08:50 - 10:10",
+      jam_absen: "08:45:00",
+      status: "Hadir",
+      catatan: "Mengajar di kelas 8 akidah materi Asmaul Husna",
+      koordinat: "Kamera Device Presensi",
+      keterangan: "Tepat Waktu",
+      foto: SAMPLE_EVIDENT_PHOTO
+    },
+    {
+      id: "ATT_ZUL_03",
+      jadwal_id: "JAD_ZUL_1",
+      user_id: "U008",
+      nama: "Zulhana S.Ag",
+      nip: "196905122022212007",
+      mapel: "Akidah Akhlak",
+      kelas: "7",
+      hari: "Senin",
+      tanggal: "2026-10-05",
+      jam_jadwal: "07:30 - 08:50",
+      jam_absen: "07:29:15",
+      status: "Hadir",
+      catatan: "Mengajar di kelas 7 akidah pembinaan adab",
+      koordinat: "Kamera Device Presensi",
+      keterangan: "Tepat Waktu",
+      foto: SAMPLE_EVIDENT_PHOTO
+    },
+    {
+      id: "ATT_ZUL_04",
+      jadwal_id: "JAD_ZUL_3",
+      user_id: "U008",
+      nama: "Zulhana S.Ag",
+      nip: "196905122022212007",
+      mapel: "Akidah Akhlak",
+      kelas: "9",
+      hari: "Selasa",
+      tanggal: "2026-10-06",
+      jam_jadwal: "10:30 - 11:50",
+      jam_absen: "10:25:30",
+      status: "Hadir",
+      catatan: "Mengajar di kelas 9 akidah persiapan ujian tengah semester",
+      koordinat: "Kamera Device Presensi",
+      keterangan: "Tepat Waktu",
+      foto: SAMPLE_EVIDENT_PHOTO
+    },
+    // Data Presensi Pegawai Oktober 2026 (Rahmawati, S.E. - Tata Usaha)
+    {
+      id: "ATT_RAH_01",
+      jadwal_id: "MASUK",
+      tipe_absen: "masuk",
+      user_id: "U007",
+      nama: "Rahmawati, S.E.",
+      nip: "199406182022032004",
+      mapel: "Staf Tata Usaha",
+      kelas: "-",
+      hari: "Kamis",
+      tanggal: "2026-10-01",
+      jam_jadwal: "06:30 - 07:15",
+      jam_absen: "07:05:20",
+      status: "Hadir",
+      catatan: "Pelayanan administrasi persuratan dan pengarsipan berkas kepegawaian",
+      koordinat: "Kamera Device Presensi",
+      keterangan: "Tepat Waktu",
+      foto: SAMPLE_EVIDENT_PHOTO
+    },
+    {
+      id: "ATT_RAH_02",
+      jadwal_id: "MASUK",
+      tipe_absen: "masuk",
+      user_id: "U007",
+      nama: "Rahmawati, S.E.",
+      nip: "199406182022032004",
+      mapel: "Staf Tata Usaha",
+      kelas: "-",
+      hari: "Jumat",
+      tanggal: "2026-10-02",
+      jam_jadwal: "06:30 - 07:15",
+      jam_absen: "07:00:10",
+      status: "Hadir",
+      catatan: "Penyusunan rekapitulasi data kehadiran dan laporan kinerja madrasah",
+      koordinat: "Kamera Device Presensi",
+      keterangan: "Tepat Waktu",
+      foto: SAMPLE_EVIDENT_PHOTO
     }
   ],
   leaves: [
@@ -309,6 +446,19 @@ export const INITIAL_MOCK_DATA = {
       tgl_mulai: getTodayDateStr(),
       tgl_selesai: getTodayDateStr(),
       alasan: "Menghadiri MGMP Fisika Tingkat Provinsi di Balai Guru Penggerak",
+      status: "Disetujui",
+      created_at: new Date().toISOString()
+    },
+    {
+      id: "LV2002",
+      user_id: "U002",
+      nama: "Drs. Bambang Sudarsono, M.Pd",
+      nip: "198501152010011002",
+      mapel: "Matematika",
+      tipe: "Sakit",
+      tgl_mulai: getTodayDateStr(),
+      tgl_selesai: getTodayDateStr(),
+      alasan: "Istirahat pemulihan kesehatan sesuai anjuran dokter",
       status: "Disetujui",
       created_at: new Date().toISOString()
     }
@@ -344,15 +494,59 @@ export const INITIAL_MOCK_DATA = {
       tahun: "2026",
       judul: "LKB Bulan November 2026 - Bahasa Indonesia",
       file_name: "LKB_Siti_November_2026.pdf",
-      file_url: "https://drive.google.com",
+      file_url: "SISTEM_PRESENSI_OTOMATIS",
       file_drive_id: "",
-      file_size: "2.1 MB",
-      catatan: "Laporan kinerja mengajar dan modul ajar kurikulum merdeka",
+      file_size: "18 Kegiatan Terdata",
+      catatan: "Laporan capaian kinerja mengajar bulan November",
       status: "Menunggu Verifikasi",
       alasan_penolakan: "",
       diverifikasi_oleh: "",
       diverifikasi_pada: "",
       created_at: "2026-11-01 10:30"
+    },
+    {
+      id: "LKB_ZUL_OKT",
+      user_id: "U008",
+      nama: "Zulhana S.Ag",
+      nip: "196905122022212007",
+      mapel_jabatan: "Guru / Akidah Akhlak",
+      role: "guru",
+      bulan: "Oktober",
+      tahun: "2026",
+      judul: "Laporan Capaian Kinerja Bulanan ASN - Oktober 2026",
+      file_name: "LKB_Zulhana_Oktober_2026.pdf",
+      file_url: "SISTEM_PRESENSI_OTOMATIS",
+      file_drive_id: "",
+      file_size: "1 Kegiatan Terdata",
+      catatan: "Laporan capaian kinerja mengajar kelas 7 akidah akhlak",
+      status: "Disetujui",
+      alasan_penolakan: "",
+      diverifikasi_oleh: "H. Muhammad As'ad, S.Ag., M.Pd.I",
+      diverifikasi_pada: "2026-10-31 15:00",
+      tanggal_verifikasi: "2026-10-31",
+      created_at: "2026-10-30 11:20"
+    },
+    {
+      id: "LKB_RAHMA_OKT",
+      user_id: "U007",
+      nama: "Rahmawati, S.E.",
+      nip: "199406182022032004",
+      mapel_jabatan: "Staf Tata Usaha / Kepegawaian",
+      role: "pegawai",
+      bulan: "Oktober",
+      tahun: "2026",
+      judul: "Laporan Capaian Kinerja Bulanan ASN - Oktober 2026",
+      file_name: "LKB_Rahmawati_Oktober_2026.pdf",
+      file_url: "SISTEM_PRESENSI_OTOMATIS",
+      file_drive_id: "",
+      file_size: "Kegiatan Kedinasan",
+      catatan: "Laporan pelaksanaan tugas administrasi dan layanan kepegawaian",
+      status: "Disetujui",
+      alasan_penolakan: "",
+      diverifikasi_oleh: "H. Muhammad As'ad, S.Ag., M.Pd.I",
+      diverifikasi_pada: "2026-10-31 16:30",
+      tanggal_verifikasi: "2026-10-31",
+      created_at: "2026-10-30 14:00"
     }
   ]
 };
@@ -382,6 +576,63 @@ export const MockDB = {
         data.settings.google_script_url = INITIAL_MOCK_DATA.settings.google_script_url;
         this.save(data);
       }
+      // Pastikan user Zulhana S.Ag dan presensi Oktober ter-merge bila belum ada di cache browser
+      if (!data.users.some(u => u.id === "U008")) {
+        const u008 = INITIAL_MOCK_DATA.users.find(u => u.id === "U008");
+        if (u008) data.users.push(u008);
+        const octAtt = INITIAL_MOCK_DATA.attendance.filter(a => a.id && a.id.startsWith("ATT_ZUL_"));
+        if (!data.attendance) data.attendance = [];
+        data.attendance.push(...octAtt);
+      }
+      if (!data.lkb) data.lkb = [];
+      INITIAL_MOCK_DATA.lkb.forEach(initLkb => {
+        if (!data.lkb.some(l => l.id === initLkb.id)) {
+          data.lkb.push(initLkb);
+        }
+      });
+      if (!data.leaves) data.leaves = [];
+      INITIAL_MOCK_DATA.leaves.forEach(initLeave => {
+        if (!data.leaves.some(l => l.id === initLeave.id)) {
+          data.leaves.push(initLeave);
+        }
+      });
+      // Lengkapi field satker pada data users jika belum ada
+      if (Array.isArray(data.users)) {
+        data.users.forEach(u => {
+          if (!u.satker && !u.satuan_kerja) {
+            u.satker = "PENDIS";
+          }
+        });
+      }
+      // Upgrade foto evident presensi jika masih tersimpan format SVG lama atau kosong di cache
+      if (Array.isArray(data.attendance)) {
+        data.attendance.forEach(att => {
+          const f = att.foto;
+          const isValidPhoto = f && typeof f === "string" && f.trim() !== "" && !f.startsWith("data:image/svg+xml") && f.length > 50 && (f.startsWith("data:image/jpeg") || f.startsWith("data:image/png") || f.startsWith("http"));
+          if (!isValidPhoto) {
+            att.foto = SAMPLE_EVIDENT_PHOTO;
+          }
+        });
+      }
+      if (data.settings && !data.settings.satuan_kerja) {
+        data.settings.satuan_kerja = "PENDIS";
+      }
+      // Sinkronkan session auth user yang aktif di browser jika belum memiliki satker
+      if (typeof window !== "undefined") {
+        try {
+          const authKey = "ABSENSI_GURU_AUTH_USER_V2";
+          const authRaw = localStorage.getItem(authKey) || sessionStorage.getItem(authKey);
+          if (authRaw) {
+            const authUser = JSON.parse(authRaw);
+            if (authUser && (!authUser.satker || !authUser.satuan_kerja)) {
+              const matched = data.users.find(u => String(u.id) === String(authUser.id) || String(u.nip) === String(authUser.nip));
+              authUser.satker = matched?.satker || "PENDIS";
+              localStorage.setItem(authKey, JSON.stringify(authUser));
+            }
+          }
+        } catch (errAuth) {}
+      }
+      this.save(data);
       return data;
     } catch (e) {
       this.save(INITIAL_MOCK_DATA);

@@ -78,13 +78,21 @@
   --font-mono: 'JetBrains Mono', monospace;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body {
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+html,
+body {
   min-height: 100vh;
   background-color: var(--bg-main);
   color: var(--text-main);
@@ -99,13 +107,16 @@ html, body {
   width: 7px;
   height: 7px;
 }
+
 ::-webkit-scrollbar-track {
   background: #f1f5f9;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #c7d2fe;
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #818cf8;
 }
@@ -174,20 +185,43 @@ html, body {
 }
 
 @keyframes orbDrift1 {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  100% { transform: translate3d(60px, 40px, 0) scale(1.1); }
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  100% {
+    transform: translate3d(60px, 40px, 0) scale(1.1);
+  }
 }
+
 @keyframes orbDrift2 {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  100% { transform: translate3d(-50px, -40px, 0) scale(1.08); }
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  100% {
+    transform: translate3d(-50px, -40px, 0) scale(1.08);
+  }
 }
+
 @keyframes orbDrift3 {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  100% { transform: translate3d(-40px, 50px, 0) scale(0.95); }
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  100% {
+    transform: translate3d(-40px, 50px, 0) scale(0.95);
+  }
 }
+
 @keyframes orbDrift4 {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  100% { transform: translate3d(50px, -30px, 0) scale(1.05); }
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  100% {
+    transform: translate3d(50px, -30px, 0) scale(1.05);
+  }
 }
 
 /* Modern Clean Glass & Solid Panels */
@@ -349,9 +383,20 @@ html, body {
 }
 
 @keyframes pulseDot {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
-  70% { transform: scale(1.1); box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  }
+
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
+  }
+
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
 }
 
 /* Digital Clock Numbers */
@@ -378,8 +423,15 @@ html, body {
 }
 
 @keyframes laserSweep {
-  0% { transform: translate3d(0, 20px, 0); opacity: 0.85; }
-  100% { transform: translate3d(0, 320px, 0); opacity: 0.85; }
+  0% {
+    transform: translate3d(0, 20px, 0);
+    opacity: 0.85;
+  }
+
+  100% {
+    transform: translate3d(0, 320px, 0);
+    opacity: 0.85;
+  }
 }
 
 /* Radar Sonar Wave */
@@ -394,12 +446,24 @@ html, body {
   pointer-events: none;
 }
 
-.radar-ring:nth-child(2) { animation-delay: 1s; }
-.radar-ring:nth-child(3) { animation-delay: 2s; }
+.radar-ring:nth-child(2) {
+  animation-delay: 1s;
+}
+
+.radar-ring:nth-child(3) {
+  animation-delay: 2s;
+}
 
 @keyframes radarRipple {
-  0% { transform: scale(0.15); opacity: 1; }
-  100% { transform: scale(1.05); opacity: 0; }
+  0% {
+    transform: scale(0.15);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1.05);
+    opacity: 0;
+  }
 }
 
 /* Radar Sweep Line */
@@ -416,8 +480,13 @@ html, body {
 }
 
 @keyframes radarRotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Teacher Navigation (Desktop Base) */
@@ -431,6 +500,7 @@ html, body {
   border: 1px solid var(--border-light);
   border-radius: var(--radius-full);
   width: fit-content;
+  max-width: 100%;
   margin: 1.5rem auto;
   box-shadow: var(--shadow-sm);
   z-index: 10;
@@ -531,6 +601,7 @@ html, body {
     scrollbar-width: none !important;
     gap: 0.25rem !important;
   }
+
   .admin-bottom-nav::-webkit-scrollbar {
     display: none !important;
   }
@@ -882,7 +953,8 @@ html, body {
     display: none !important;
   }
 
-  body, html {
+  body,
+  html {
     background: #ffffff !important;
     color: #000000 !important;
     font-family: 'Times New Roman', Times, Georgia, serif !important;
@@ -919,10 +991,22 @@ html, body {
     break-inside: avoid !important;
   }
 
-  th, td {
-    border: 1px solid #cbd5e1 !important;
+  table:not(.no-border-table):not(.table-identitas-asn) th,
+  table:not(.no-border-table):not(.table-identitas-asn) td {
+    border: 1px solid #000000 !important;
     padding: 0.5rem 0.75rem !important;
     color: #000000 !important;
+  }
+
+  .table-identitas-asn,
+  .table-identitas-asn tr,
+  .table-identitas-asn td,
+  .no-border-table,
+  .no-border-table tr,
+  .no-border-table td {
+    border: none !important;
+    border-width: 0 !important;
+    border-style: none !important;
   }
 
   .badge-status {
@@ -931,4 +1015,3 @@ html, body {
     color: #000000 !important;
   }
 }
-

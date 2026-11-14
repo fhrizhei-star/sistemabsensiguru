@@ -1,26 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { UserCheck, History, FileText, FileUp } from "lucide-react";
-import { Auth } from "@/lib/auth";
+import { UserCheck, History, FileText, FileUp, CreditCard } from "lucide-react";
 
 export default function TeacherNav() {
   const pathname = usePathname();
-  const [isPegawai, setIsPegawai] = useState(false);
-
-  useEffect(() => {
-    const u = Auth.getCurrentUser();
-    if (u?.role === "pegawai") setIsPegawai(true);
-  }, []);
 
   const links = [
-    { href: "/user", label: "Presensi", fullLabel: isPegawai ? "Presensi Masuk & Pulang" : "Presensi Mengajar", icon: UserCheck, color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
-    { href: "/user/riwayat", label: "Riwayat", fullLabel: "Riwayat Presensi", icon: History, color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" },
-    { href: "/user/izin", label: "Izin / Cuti", fullLabel: "Pengajuan Cuti / Izin", icon: FileText, color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
-    { href: "/user/lkb", label: "LKB", fullLabel: isPegawai ? "Dokumen LKB Pegawai" : "Dokumen LKB Guru", icon: FileUp, color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" }
+    { href: "/user", label: "Presensi", fullLabel: "Presensi", icon: UserCheck, color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
+    { href: "/user/riwayat", label: "Riwayat", fullLabel: "Riwayat", icon: History, color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" },
+    { href: "/user/izin", label: "Izin / Cuti", fullLabel: "Izin / Cuti", icon: FileText, color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
+    { href: "/user/lkb", label: "LKB", fullLabel: "LKB Bulanan", icon: FileUp, color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
   ];
 
   return (

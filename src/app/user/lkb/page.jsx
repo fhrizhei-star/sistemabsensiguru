@@ -1,30 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import Navbar from "@/components/Navbar";
 import TeacherNav from "@/components/TeacherNav";
+import OfficialLkbIndividualDocument from "@/components/OfficialLkbIndividualDocument";
 import { Auth } from "@/lib/auth";
 import { Api } from "@/lib/api";
+import { exportLkbToPdf } from "@/lib/pdfExport";
 import {
-  FileUp,
   FileText,
   Calendar,
   CheckCircle2,
   Clock,
   AlertTriangle,
-  ExternalLink,
   RefreshCw,
-  Trash2,
-  Paperclip,
-  Check,
-  X,
+  Send,
+  Camera,
+  Filter,
+  ShieldCheck,
+  Lock,
+  Printer,
+  Download,
+  FileDown,
+  Loader2,
+  FileSpreadsheet,
   FileCheck,
-  AlertCircle,
-  Link as LinkIcon,
-  Send
+  Eye,
+  X
 } from "lucide-react";
 
 const MONTH_NAMES = [
@@ -39,20 +44,19 @@ export default function TeacherLkbPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
   const [lkbList, setLkbList] = useState([]);
+  const [userAttendance, setUserAttendance] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState(null);
 
-  // Form states
-  const now = new Date();
-  const [bulan, setBulan] = useState(MONTH_NAMES[now.getMonth()]);
-  const [tahun, setTahun] = useState(String(now.getFullYear()));
-  const [judul, setJudul] = useState("");
-  const [catatan, setCatatan] = useState("");
-  const [driveLink, setDriveLink] = useState("");
+  // Modal pratinjau jika pengguna ingin melihat lembar dokumen sebelum mencetak
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
-  // Revision state
-  const [revisionLkbId, setRevisionLkbId] = useState(null);
+  // Filter state untuk Laporan Kinerja Bulanan (Evident Foto)
+  const now = new Date();
+  const [kinerjaBulan, setKinerjaBulan] = useState(MONTH_NAMES[now.getMonth()] || "Oktober");
+  const [kinerjaTahun, setKinerjaTahun] = useState(String(now.getFullYear()));
 
   useEffect(() => {
     const user = Auth.getCurrentUser();
@@ -61,64 +65,100 @@ export default function TeacherLkbPage() {
       return;
     }
     setCurrentUser(user);
-    fetchLkb(user.id);
+    loadAllData(user.id);
   }, [router]);
 
-  const fetchLkb = async (userId) => {
+  const loadAllData = async (userId) => {
     setLoading(true);
+    try {
+      const [resLkb, resAtt, resSet, resUsers] = await Promise.all([
+        Api.request("GET", "getLkb", { user_id: userId }),
+        Api.request("GET", "getAttendance", { user_id: userId }),
+        Api.request("GET", "getSettings"),
+        Api.request("GET", "getUsers")
+      ]);
+
+      if (resUsers && resUsers.users) {
+        const found = resUsers.users.find(
+          (u) => String(u.id) === String(userId) || (u.nip && currentUser?.nip && String(u.nip) === String(currentUser.nip))
+        );
+        if (found) {
+          const merged = { ...currentUser, ...found };
+          setCurrentUser(merged);
+          Auth.setCurrentUser(merged, true);
+        }
+      }
+
+      if (resLkb && resLkb.lkb) {
+        setLkbList(resLkb.lkb);
+      }
+      if (resAtt && (resAtt.attendance || resAtt.list)) {
+        setUserAttendance(resAtt.attendance || resAtt.list || []);
+      }
+      if (resSet && resSet.settings) {
+        setSettings(resSet.settings);
+      }
+    } catch (err) {
+      console.error("Gagal mengambil data LKB & Presensi:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reloadLkbList = async (userId) => {
     try {
       const res = await Api.request("GET", "getLkb", { user_id: userId });
       if (res && res.lkb) {
         setLkbList(res.lkb);
       }
     } catch (err) {
-      console.error("Gagal mengambil data LKB:", err);
-    } finally {
-      setLoading(false);
+      console.error("Gagal refresh status LKB:", err);
     }
   };
 
-  const startRevision = (item) => {
-    setRevisionLkbId(item.id);
-    setBulan(item.bulan || MONTH_NAMES[now.getMonth()]);
-    setTahun(String(item.tahun || now.getFullYear()));
-    setJudul(item.judul || "");
-    setCatatan(item.catatan || "");
-    setDriveLink(item.file_url || "");
-    setNotice({
-      type: "info",
-      msg: `Anda sedang memperbaiki berkas: "${item.judul || 'LKB'}". Perbarui tautan link Google Drive Anda lalu klik Simpan Revisi.`
+  // Filter rekaman presensi per bulan & tahun yang dipilih
+  const monthlyAttendance = useMemo(() => {
+    const mIdx = MONTH_NAMES.indexOf(kinerjaBulan) + 1; // 1 - 12
+    const padMonth = String(mIdx).padStart(2, "0");
+    const yearStr = String(kinerjaTahun);
+
+    return (userAttendance || []).filter((rec) => {
+      if (!rec.tanggal) return false;
+      const t = String(rec.tanggal).trim();
+      if (t.startsWith(`${yearStr}-${padMonth}`)) return true;
+      const d = new Date(t);
+      if (!isNaN(d.getTime())) {
+        return d.getFullYear() === Number(yearStr) && (d.getMonth() + 1) === mIdx;
+      }
+      return false;
     });
-    window.scrollTo({ top: 120, behavior: "smooth" });
-  };
+  }, [userAttendance, kinerjaBulan, kinerjaTahun]);
 
-  const cancelRevision = () => {
-    setRevisionLkbId(null);
-    setJudul("");
-    setCatatan("");
-    setDriveLink("");
-    setNotice(null);
-  };
+  // Cari record pengajuan LKB untuk bulan & tahun yang sedang aktif
+  const currentLkbRecord = useMemo(() => {
+    return lkbList.find((item) => {
+      const uMatch = !currentUser ? true : (String(item.user_id) === String(currentUser.id) || (item.nip && currentUser.nip && String(item.nip) === String(currentUser.nip)));
+      const bMatch = (item.bulan || "").toLowerCase() === kinerjaBulan.toLowerCase();
+      const yMatch = String(item.tahun || "") === String(kinerjaTahun);
+      return uMatch && bMatch && yMatch;
+    });
+  }, [lkbList, currentUser, kinerjaBulan, kinerjaTahun]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setNotice(null);
+  const approvalStatus = currentLkbRecord?.status || "Belum Diajukan";
+  const isApproved = approvalStatus === "Disetujui";
+  const isPending = approvalStatus === "Menunggu Verifikasi" || approvalStatus === "Menunggu";
+  const isRejected = approvalStatus === "Ditolak";
 
-    const trimmedLink = driveLink.trim();
-    if (!trimmedLink) {
-      setNotice({ type: "error", msg: "Harap masukkan Link Google Drive LKB bulanan Anda!" });
-      return;
-    }
-
-    if (!trimmedLink.startsWith("http://") && !trimmedLink.startsWith("https://")) {
-      setNotice({
-        type: "error",
-        msg: "Format link tidak valid! Harap masukkan link lengkap diawali https:// (contoh: https://drive.google.com/...)"
-      });
+  // Handler pengajuan otomatis LKB bulan berjalan ke Admin
+  const handleAjukanLkb = async () => {
+    if (monthlyAttendance.length === 0) {
+      alert(`Belum ada data presensi berfoto pada bulan ${kinerjaBulan} ${kinerjaTahun}. Pastikan Anda telah melakukan presensi pada bulan ini.`);
       return;
     }
 
     setSubmitting(true);
+    setNotice(null);
+
     try {
       const isPegawai = currentUser.role === "pegawai";
       const payload = {
@@ -126,683 +166,944 @@ export default function TeacherLkbPage() {
         nama: currentUser.nama || currentUser.username,
         nip: currentUser.nip || "-",
         role: currentUser.role || (currentUser.mapel ? "guru" : "pegawai"),
+        satker: currentUser.satker || currentUser.satuan_kerja || settings?.satuan_kerja || settings?.satker || "PENDIS",
         mapel_jabatan: isPegawai
           ? (currentUser.jabatan || currentUser.mapel || "Staf Administrasi / Tata Usaha")
           : `${currentUser.jabatan || 'Guru'} / ${currentUser.mapel || 'Pengajar'}`,
-        bulan,
-        tahun,
-        judul: judul.trim() || `LKB Bulan ${bulan} ${tahun}`,
-        catatan: catatan.trim(),
-        file_name: `Link Google Drive LKB ${bulan} ${tahun}`,
-        file_url: trimmedLink,
-        file_size: "Link Google Drive",
-        file_base64: ""
+        bulan: kinerjaBulan,
+        tahun: kinerjaTahun,
+        judul: `Laporan Capaian Kinerja Bulanan ASN - ${kinerjaBulan} ${kinerjaTahun}`,
+        catatan: `Pengajuan LKB Otomatis Sistem (${monthlyAttendance.length} kegiatan presensi berfoto)`,
+        file_name: `LKB_${kinerjaBulan}_${kinerjaTahun}.pdf`,
+        file_url: "SISTEM_PRESENSI_OTOMATIS",
+        file_size: `${monthlyAttendance.length} Kegiatan Terdata`,
+        status: "Menunggu Verifikasi"
       };
 
-      if (revisionLkbId) {
-        payload.lkb_id = revisionLkbId;
+      if (currentLkbRecord?.id) {
+        payload.lkb_id = currentLkbRecord.id;
       }
 
       const res = await Api.request("POST", "submitLkb", {}, payload);
 
       if (res && res.success) {
         confetti({
-          particleCount: 70,
+          particleCount: 75,
           spread: 60,
           origin: { y: 0.6 }
         });
 
         setNotice({
           type: "success",
-          msg: revisionLkbId
-            ? "Revisi tautan link LKB berhasil disimpan! Menunggu verifikasi admin madrasah."
-            : "Tautan link Google Drive LKB berhasil dikirim! Menunggu verifikasi admin madrasah."
+          msg: `Laporan Kinerja Bulan ${kinerjaBulan} ${kinerjaTahun} berhasil diajukan ke Admin! Menunggu verifikasi & pengesahan agar dapat diexport.`
         });
 
-        // Reset form
-        setRevisionLkbId(null);
-        setJudul("");
-        setCatatan("");
-        setDriveLink("");
-
-        // Refresh list
-        fetchLkb(currentUser.id);
+        await reloadLkbList(currentUser.id);
       } else {
-        setNotice({ type: "error", msg: res?.message || "Gagal mengirim link LKB." });
+        setNotice({
+          type: "error",
+          msg: res?.message || "Gagal mengajukan LKB ke admin."
+        });
       }
     } catch (err) {
-      setNotice({ type: "error", msg: "Terjadi gangguan koneksi saat mengirim data link LKB." });
+      setNotice({
+        type: "error",
+        msg: "Terjadi kesalahan sistem saat mengirim pengajuan LKB."
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Apakah Anda yakin ingin membatalkan dan menghapus dokumen pengajuan LKB ini?")) {
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  // Export Berkas PDF Langsung
+  const handleExportPdfDocument = async () => {
+    if (!isApproved) {
+      alert("Dokumen LKB hanya dapat diexport setelah dikonfirmasi & disahkan oleh Admin.");
       return;
     }
-    const res = await Api.request("POST", "deleteLkb", {}, { id });
-    if (res && res.success) {
-      setNotice({ type: "success", msg: "Dokumen LKB berhasil dihapus." });
-      fetchLkb(currentUser.id);
+
+    try {
+      setIsExportingPdf(true);
+      await exportLkbToPdf({
+        elementId: "official-lkb-individual-print-area",
+        namaASN: currentUser?.nama || currentUser?.username,
+        satkerASN: currentUser?.satker || currentUser?.satuan_kerja || settings?.satuan_kerja || "PENDIS",
+        bulan: kinerjaBulan,
+        tahun: kinerjaTahun
+      });
+    } catch (err) {
+      console.error("Gagal export PDF:", err);
+      window.print();
+    } finally {
+      setIsExportingPdf(false);
     }
+  };
+
+  // Export Berkas Excel (.xls)
+  const handleDownloadExcel = () => {
+    if (!isApproved) {
+      alert("Dokumen LKB hanya dapat diexport setelah dikonfirmasi & disahkan oleh Admin.");
+      return;
+    }
+
+    const tableElement = document.getElementById("lkb-excel-table");
+    if (!tableElement) {
+      alert("Tabel LKB sedang disiapkan, silakan klik tombol sekali lagi.");
+      return;
+    }
+
+    const namaASN = currentUser?.nama || currentUser?.username || "ASN";
+    const htmlContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>LKB_${kinerjaBulan}_${kinerjaTahun}</x:Name>
+                <x:WorksheetOptions>
+                  <x:DisplayGridlines/>
+                </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+        <style>
+          table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
+          th, td { border: 1px solid #000000; padding: 6px 10px; text-align: left; vertical-align: middle; }
+          th { background-color: #f1f5f9; font-weight: bold; text-align: center; }
+          .center { text-align: center; }
+          .title { font-size: 14pt; font-weight: bold; text-align: center; }
+          .subtitle { font-size: 12pt; font-weight: bold; text-align: center; }
+        </style>
+      </head>
+      <body>
+        ${tableElement.innerHTML}
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(["\ufeff" + htmlContent], { type: "application/vnd.ms-excel;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `LKB_${namaASN.replace(/[^a-zA-Z0-9]/g, "_")}_${kinerjaBulan}_${kinerjaTahun}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   if (!currentUser) return null;
 
+  const isPegawai = currentUser.role === "pegawai";
+
   return (
     <>
-      <Navbar role="guru" />
+      <Navbar role={isPegawai ? "pegawai" : "guru"} />
       <main style={{ maxWidth: "1280px", margin: "0 auto", padding: "1.5rem", width: "100%" }}>
         <TeacherNav />
 
-        {/* Header */}
-        <div style={{ marginBottom: "1.5rem" }}>
-          <h1 style={{ fontSize: "1.55rem", fontWeight: 800, color: "var(--text-main)" }}>
-            Lembar Kinerja Bulanan (LKB)
+        {/* Header Title */}
+        <div style={{ marginBottom: "1.5rem" }} className="no-print">
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", background: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.76rem", fontWeight: 800, marginBottom: "0.5rem" }}>
+            <ShieldCheck size={14} color="#059669" /> SISTEM LKB RESMI KEMENAG GOWA
+          </div>
+          <h1 style={{ fontSize: "1.65rem", fontWeight: 900, color: "var(--text-main)", margin: "0 0 0.35rem 0" }}>
+            Laporan Capaian Kinerja Bulanan (LKB)
           </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
-            Unggah berkas Laporan Kinerja Bulanan {currentUser.role === "pegawai" ? "pegawai tata usaha" : "guru"} & pantau persetujuan langsung dari pimpinan
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", margin: 0 }}>
+            Ajukan dan export Laporan Capaian Kinerja Bulanan {isPegawai ? "pegawai tata usaha" : "guru"} berbasis presensi kamera perangkat.
           </p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1.5rem" }}>
-          {/* Form Upload LKB */}
-          <motion.div
-            initial={{ opacity: 0, x: -15 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="glass-panel"
-            style={{
-              padding: "1.75rem",
-              border: revisionLkbId ? "2px solid #a855f7" : "1.5px solid #ddd6fe",
-              background: revisionLkbId
-                ? "linear-gradient(135deg, #ffffff 0%, #faf5ff 100%)"
-                : "linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)"
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+        {/* Notification Toast */}
+        <AnimatePresence>
+          {notice && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="no-print"
+              style={{
+                background: notice.type === "success" ? "#ecfdf5" : notice.type === "error" ? "#fef2f2" : "#eff6ff",
+                border: `1.5px solid ${notice.type === "success" ? "#a7f3d0" : notice.type === "error" ? "#fecaca" : "#bfdbfe"}`,
+                borderRadius: "var(--radius-md)",
+                padding: "0.85rem 1.15rem",
+                color: notice.type === "success" ? "#065f46" : notice.type === "error" ? "#991b1b" : "#1e40af",
+                fontSize: "0.86rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "0.75rem",
+                marginBottom: "1.5rem",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                <div
-                  style={{
-                    width: "38px",
-                    height: "38px",
-                    borderRadius: "10px",
-                    background: "#ede9fe",
-                    border: "1px solid #ddd6fe",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}
-                >
-                  <FileUp size={20} color="#7c3aed" />
-                </div>
-                <div>
-                  <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)" }}>
-                    {revisionLkbId ? "Perbaiki / Revisi Link LKB" : "Input Link LKB / LKH Bulanan"}
-                  </h2>
-                  <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
-                    Kirimkan tautan Google Drive berkas laporan kinerja bulanan Anda untuk diverifikasi.
-                  </p>
-                </div>
+                {notice.type === "success" ? <CheckCircle2 size={18} color="#059669" /> : <AlertTriangle size={18} color="#dc2626" />}
+                <span>{notice.msg}</span>
               </div>
+              <button
+                type="button"
+                onClick={() => setNotice(null)}
+                style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}
+              >
+                &times;
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-              {revisionLkbId && (
-                <button
-                  type="button"
-                  onClick={cancelRevision}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.3rem",
-                    padding: "0.35rem 0.75rem",
-                    borderRadius: "var(--radius-full)",
-                    border: "1px solid #fecdd3",
-                    background: "#fff1f2",
-                    color: "#be123c",
-                    fontSize: "0.78rem",
-                    fontWeight: 700,
-                    cursor: "pointer"
-                  }}
-                >
-                  <X size={14} /> Batal Revisi
-                </button>
-              )}
+        {/* 1. Filter Periode Bulan & Tahun */}
+        <div
+          className="glass-panel no-print"
+          style={{
+            padding: "1.25rem 1.5rem",
+            borderRadius: "var(--radius-lg)",
+            background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)",
+            border: "1.5px solid #bbf7d0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "1rem",
+            marginBottom: "1.5rem"
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
+            <div
+              style={{
+                width: "44px",
+                height: "44px",
+                borderRadius: "12px",
+                background: "#dcfce7",
+                border: "1px solid #86efac",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#059669",
+                flexShrink: 0
+              }}
+            >
+              <Filter size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--text-main)" }}>
+                Pilih Periode Bulan & Tahun
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                Pilih bulan kinerja untuk meninjau status pengesahan dan mengexport LKB
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", flexWrap: "wrap" }}>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "0.72rem",
+                  fontWeight: 800,
+                  color: "var(--text-secondary)",
+                  marginBottom: "0.25rem",
+                  textTransform: "uppercase"
+                }}
+              >
+                Bulan
+              </label>
+              <select
+                value={kinerjaBulan}
+                onChange={(e) => setKinerjaBulan(e.target.value)}
+                className="neon-select"
+                style={{
+                  padding: "0.55rem 0.95rem",
+                  fontSize: "0.88rem",
+                  fontWeight: 700,
+                  minWidth: "140px",
+                  background: "#ffffff"
+                }}
+              >
+                {MONTH_NAMES.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Alert / Notice */}
-            <AnimatePresence>
-              {notice && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "0.72rem",
+                  fontWeight: 800,
+                  color: "var(--text-secondary)",
+                  marginBottom: "0.25rem",
+                  textTransform: "uppercase"
+                }}
+              >
+                Tahun
+              </label>
+              <select
+                value={kinerjaTahun}
+                onChange={(e) => setKinerjaTahun(e.target.value)}
+                className="neon-select"
+                style={{
+                  padding: "0.55rem 0.95rem",
+                  fontSize: "0.88rem",
+                  fontWeight: 700,
+                  minWidth: "100px",
+                  background: "#ffffff"
+                }}
+              >
+                {YEAR_OPTIONS.map((y) => (
+                  <option key={y} value={String(y)}>{y}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => loadAllData(currentUser.id)}
+              disabled={loading}
+              className="btn-neon-secondary"
+              style={{
+                fontSize: "0.82rem",
+                padding: "0.55rem 0.85rem",
+                marginTop: "1.25rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem"
+              }}
+              title="Perbarui Data"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              <span>Segarkan</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Dua Card Utama: Card Pengajuan & Card Unduh (Clean Layout) */}
+        <div className="no-print" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
+
+          {/* CARD 1: Status & Pengajuan LKB */}
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "16px",
+              border: `1.5px solid ${isApproved ? "#a7f3d0" : isPending ? "#fde68a" : isRejected ? "#fecaca" : "#e2e8f0"}`,
+              padding: "1.5rem",
+              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between"
+            }}
+          >
+            <div>
+              {/* Header Card 1 */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.1rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <div
+                    style={{
+                      width: "38px",
+                      height: "38px",
+                      borderRadius: "10px",
+                      background: isApproved ? "#ecfdf5" : isPending ? "#fffbeb" : isRejected ? "#fef2f2" : "#f1f5f9",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: isApproved ? "#059669" : isPending ? "#d97706" : isRejected ? "#dc2626" : "#64748b"
+                    }}
+                  >
+                    {isApproved ? <CheckCircle2 size={20} /> : isPending ? <Clock size={20} /> : isRejected ? <AlertTriangle size={20} /> : <FileText size={20} />}
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: "1rem", fontWeight: 800, margin: 0, color: "#1e293b" }}>
+                      Pengajuan LKB Bulanan
+                    </h3>
+                    <p style={{ fontSize: "0.78rem", color: "#64748b", margin: 0 }}>
+                      Periode: {kinerjaBulan} {kinerjaTahun}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Badge Status */}
+                <span
                   style={{
-                    background:
-                      notice.type === "success" ? "#ecfdf5" : notice.type === "info" ? "#eff6ff" : "#fff1f2",
-                    border: `1px solid ${
-                      notice.type === "success" ? "#a7f3d0" : notice.type === "info" ? "#bfdbfe" : "#fecdd3"
-                    }`,
-                    color:
-                      notice.type === "success" ? "#065f46" : notice.type === "info" ? "#1e40af" : "#be123c",
-                    padding: "0.75rem 1rem",
-                    borderRadius: "var(--radius-md)",
-                    fontSize: "0.85rem",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    marginBottom: "1.25rem",
-                    fontWeight: 600
+                    fontSize: "0.75rem",
+                    fontWeight: 800,
+                    padding: "0.3rem 0.75rem",
+                    borderRadius: "999px",
+                    background: isApproved ? "#ecfdf5" : isPending ? "#fffbeb" : isRejected ? "#fef2f2" : "#f1f5f9",
+                    color: isApproved ? "#065f46" : isPending ? "#92400e" : isRejected ? "#991b1b" : "#475569",
+                    border: `1px solid ${isApproved ? "#a7f3d0" : isPending ? "#fde68a" : isRejected ? "#fecaca" : "#cbd5e1"}`
                   }}
                 >
-                  {notice.type === "success" ? (
-                    <CheckCircle2 size={18} color="#059669" />
-                  ) : notice.type === "info" ? (
-                    <AlertCircle size={18} color="#2563eb" />
-                  ) : (
-                    <AlertTriangle size={18} color="#e11d48" />
-                  )}
-                  <span>{notice.msg}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-              {/* Periode Bulan & Tahun */}
-              <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "0.75rem" }}>
-                <div>
-                  <label
-                    style={{
-                      display: "block",
-                      fontSize: "0.85rem",
-                      fontWeight: 600,
-                      color: "var(--text-secondary)",
-                      marginBottom: "0.4rem"
-                    }}
-                  >
-                    Bulan Periode
-                  </label>
-                  <select
-                    value={bulan}
-                    onChange={(e) => setBulan(e.target.value)}
-                    className="neon-input"
-                    style={{ background: "#ffffff", cursor: "pointer" }}
-                  >
-                    {MONTH_NAMES.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    style={{
-                      display: "block",
-                      fontSize: "0.85rem",
-                      fontWeight: 600,
-                      color: "var(--text-secondary)",
-                      marginBottom: "0.4rem"
-                    }}
-                  >
-                    Tahun
-                  </label>
-                  <select
-                    value={tahun}
-                    onChange={(e) => setTahun(e.target.value)}
-                    className="neon-input"
-                    style={{ background: "#ffffff", cursor: "pointer" }}
-                  >
-                    {YEAR_OPTIONS.map((y) => (
-                      <option key={y} value={String(y)}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Judul Dokumen */}
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    color: "var(--text-secondary)",
-                    marginBottom: "0.4rem"
-                  }}
-                >
-                  Judul Dokumen (Opsional)
-                </label>
-                <input
-                  type="text"
-                  placeholder={`Contoh: LKB Bulan ${bulan} ${tahun} - ${currentUser.mapel || 'Guru'}`}
-                  value={judul}
-                  onChange={(e) => setJudul(e.target.value)}
-                  className="neon-input"
-                  style={{ background: "#ffffff" }}
-                />
-              </div>
-
-              {/* Input Link Google Drive */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.4rem" }}>
-                  <label
-                    style={{
-                      fontSize: "0.85rem",
-                      fontWeight: 600,
-                      color: "var(--text-secondary)"
-                    }}
-                  >
-                    Link Google Drive LKB / LKH Bulanan <span style={{ color: "#e11d48" }}>*</span>
-                  </label>
-                  {driveLink.trim().startsWith("http") && (
-                    <a
-                      href={driveLink.trim()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "0.25rem",
-                        color: "#4f46e5",
-                        fontSize: "0.78rem",
-                        fontWeight: 700,
-                        textDecoration: "none"
-                      }}
-                    >
-                      <ExternalLink size={12} /> Tes Buka Link
-                    </a>
-                  )}
-                </div>
-                <div style={{ position: "relative" }}>
-                  <input
-                    type="url"
-                    placeholder="https://drive.google.com/file/d/... atau tautan folder Google Drive Anda"
-                    value={driveLink}
-                    onChange={(e) => setDriveLink(e.target.value)}
-                    className="neon-input"
-                    style={{
-                      background: "#ffffff",
-                      paddingLeft: "2.4rem"
-                    }}
-                    required
-                  />
-                  <LinkIcon
-                    size={16}
-                    color="#6366f1"
-                    style={{
-                      position: "absolute",
-                      left: "0.85rem",
-                      top: "50%",
-                      transform: "translateY(-50%)"
-                    }}
-                  />
-                </div>
-                <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.35rem", display: "block" }}>
-                  💡 Pastikan izin akses link di Google Drive telah disetel: <strong>&ldquo;Siapa saja yang memiliki link dapat melihat&rdquo;</strong> (Viewer).
+                  {isApproved ? "Disahkan Admin" : isPending ? "Menunggu Verifikasi" : isRejected ? "Perlu Revisi" : "Belum Diajukan"}
                 </span>
               </div>
 
-              {/* Catatan / Keterangan */}
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    color: "var(--text-secondary)",
-                    marginBottom: "0.4rem"
-                  }}
-                >
-                  Catatan Tambahan untuk Admin (Opsional)
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Tambahkan keterangan atau ringkasan capaian kinerja bulan ini..."
-                  value={catatan}
-                  onChange={(e) => setCatatan(e.target.value)}
-                  className="neon-input"
-                  style={{ background: "#ffffff", resize: "vertical" }}
-                />
+              {/* Rincian Ringkas */}
+              <div
+                style={{
+                  background: "#f8fafc",
+                  borderRadius: "10px",
+                  padding: "0.85rem 1rem",
+                  marginBottom: "1rem",
+                  border: "1px solid #e2e8f0",
+                  fontSize: "0.82rem"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                  <span style={{ color: "#64748b" }}>Nama ASN:</span>
+                  <span style={{ fontWeight: 700, color: "#1e293b" }}>{currentUser.nama || currentUser.username}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                  <span style={{ color: "#64748b" }}>NIP:</span>
+                  <span style={{ fontWeight: 600, color: "#1e293b" }}>{currentUser.nip || "-"}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                  <span style={{ color: "#64748b" }}>Jabatan:</span>
+                  <span style={{ fontWeight: 600, color: "#1e293b" }}>
+                    {currentUser.jabatan || (isPegawai ? "Staf Tata Usaha" : (currentUser.mapel ? `Guru ${currentUser.mapel}` : "Guru"))}
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                  <span style={{ color: "#64748b" }}>Satuan Kerja:</span>
+                  <span style={{ fontWeight: 800, color: "#059669" }}>
+                    {currentUser.satker || currentUser.satuan_kerja || settings?.satuan_kerja || settings?.satker || "PENDIS"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                  <span style={{ color: "#64748b" }}>Kegiatan Presensi:</span>
+                  <span style={{ fontWeight: 800, color: monthlyAttendance.length > 0 ? "#059669" : "#dc2626" }}>
+                    {monthlyAttendance.length} Sesi Terdata
+                  </span>
+                </div>
+                {isApproved && currentLkbRecord?.diverifikasi_oleh && (
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "#64748b" }}>Disahkan Oleh:</span>
+                    <span style={{ fontWeight: 700, color: "#059669" }}>{currentLkbRecord.diverifikasi_oleh}</span>
+                  </div>
+                )}
               </div>
 
-              {/* Tombol Submit */}
+              {/* Status Note Box */}
+              {isRejected && (
+                <div
+                  style={{
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    borderRadius: "8px",
+                    padding: "0.75rem",
+                    marginBottom: "1rem",
+                    fontSize: "0.8rem",
+                    color: "#991b1b"
+                  }}
+                >
+                  <strong>Catatan Revisi dari Admin:</strong>
+                  <div style={{ marginTop: "0.2rem", fontStyle: "italic" }}>
+                    &ldquo;{currentLkbRecord?.alasan_penolakan || "Harap periksa kembali rekaman presensi Anda."}&rdquo;
+                  </div>
+                </div>
+              )}
+
+              {isPending && (
+                <div
+                  style={{
+                    background: "#fffbeb",
+                    border: "1px solid #fde68a",
+                    borderRadius: "8px",
+                    padding: "0.75rem",
+                    marginBottom: "1rem",
+                    fontSize: "0.8rem",
+                    color: "#92400e"
+                  }}
+                >
+                  Pengajuan LKB sedang ditinjau oleh Admin. Anda akan dapat mengexport dokumen setelah disahkan.
+                </div>
+              )}
+
+              {isApproved && (
+                <div
+                  style={{
+                    background: "#ecfdf5",
+                    border: "1px solid #a7f3d0",
+                    borderRadius: "8px",
+                    padding: "0.75rem",
+                    marginBottom: "1rem",
+                    fontSize: "0.8rem",
+                    color: "#065f46"
+                  }}
+                >
+                  Laporan Kinerja Bulanan periode ini telah resmi disahkan. Silakan gunakan <strong>Card Export Dokumen</strong> di samping.
+                </div>
+              )}
+            </div>
+
+            {/* Tombol Ajukan LKB */}
+            <div>
+              {(!isApproved && !isPending) ? (
+                <button
+                  type="button"
+                  onClick={handleAjukanLkb}
+                  disabled={submitting || monthlyAttendance.length === 0}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.5rem",
+                    background: monthlyAttendance.length === 0 ? "#cbd5e1" : "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "10px",
+                    padding: "0.75rem 1.25rem",
+                    fontSize: "0.9rem",
+                    fontWeight: 800,
+                    cursor: submitting || monthlyAttendance.length === 0 ? "not-allowed" : "pointer",
+                    boxShadow: monthlyAttendance.length === 0 ? "none" : "0 4px 12px rgba(5, 150, 105, 0.25)",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  <Send size={16} />
+                  <span>
+                    {submitting
+                      ? "Mengirim Pengajuan..."
+                      : isRejected
+                        ? `Ajukan Ulang LKB ${kinerjaBulan} ke Admin`
+                        : `Ajukan LKB ${kinerjaBulan} ${kinerjaTahun} ke Admin`}
+                  </span>
+                </button>
+              ) : isPending ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    fontSize: "0.82rem",
+                    fontWeight: 700,
+                    color: "#b45309",
+                    padding: "0.6rem",
+                    background: "#fef3c7",
+                    borderRadius: "8px"
+                  }}
+                >
+                  Menunggu Konfirmasi Admin...
+                </div>
+              ) : (
+                <div
+                  style={{
+                    textAlign: "center",
+                    fontSize: "0.82rem",
+                    fontWeight: 800,
+                    color: "#065f46",
+                    padding: "0.6rem",
+                    background: "#d1fae5",
+                    borderRadius: "8px"
+                  }}
+                >
+                  ✓ Pengajuan Telah Disetujui
+                </div>
+              )}
+
+              {monthlyAttendance.length === 0 && !isApproved && (
+                <div style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "0.4rem", textAlign: "center" }}>
+                  * Belum ada presensi kamera mengajar/kerja pada bulan ini
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* CARD 2: Export Dokumen LKB */}
+          <div
+            style={{
+              background: isApproved ? "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)" : "#ffffff",
+              borderRadius: "16px",
+              border: `1.5px solid ${isApproved ? "#86efac" : "#e2e8f0"}`,
+              padding: "1.5rem",
+              boxShadow: isApproved ? "0 4px 20px rgba(5, 150, 105, 0.08)" : "0 4px 20px rgba(0, 0, 0, 0.05)",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between"
+            }}
+          >
+            <div>
+              {/* Header Card 2 */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.1rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <div
+                    style={{
+                      width: "38px",
+                      height: "38px",
+                      borderRadius: "10px",
+                      background: isApproved ? "#dcfce7" : "#f1f5f9",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: isApproved ? "#059669" : "#94a3b8"
+                    }}
+                  >
+                    {isApproved ? <FileCheck size={20} /> : <Lock size={20} />}
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: "1rem", fontWeight: 800, margin: 0, color: "#1e293b" }}>
+                      Export Dokumen LKB
+                    </h3>
+                  </div>
+                </div>
+
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 800,
+                    padding: "0.3rem 0.75rem",
+                    borderRadius: "999px",
+                    background: isApproved ? "#ecfdf5" : "#f1f5f9",
+                    color: isApproved ? "#065f46" : "#64748b",
+                    border: `1px solid ${isApproved ? "#a7f3d0" : "#cbd5e1"}`
+                  }}
+                >
+                  {isApproved ? "Siap Export" : "Terkunci"}
+                </span>
+              </div>
+
+              {/* State Description */}
+              {!isApproved ? (
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    border: "1px dashed #cbd5e1",
+                    borderRadius: "12px",
+                    padding: "1.25rem 1rem",
+                    textAlign: "center",
+                    marginBottom: "1.25rem"
+                  }}
+                >
+                  <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: "#e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.75rem auto", color: "#64748b" }}>
+                    <Lock size={20} />
+                  </div>
+                  <div style={{ fontSize: "0.88rem", fontWeight: 800, color: "#334155", marginBottom: "0.25rem" }}>
+                    Dokumen Belum Dapat Diexport
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "#64748b", lineHeight: 1.4, maxWidth: "340px", margin: "0 auto" }}>
+                    Sesuai ketentuan, dokumen LKB baru dapat diexport (PDF / Excel) setelah diverifikasi dan disahkan oleh Admin.
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    background: "#ecfdf5",
+                    border: "1px solid #a7f3d0",
+                    borderRadius: "12px",
+                    padding: "1rem",
+                    marginBottom: "1.25rem",
+                    fontSize: "0.82rem",
+                    color: "#065f46"
+                  }}
+                >
+                  <div style={{ fontWeight: 800, marginBottom: "0.25rem" }}>
+                    Dokumen LKB Resmi Telah Disahkan!
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "#047857", lineHeight: 1.4 }}>
+                    Anda dapat mengexport langsung format resmi berfoto (PDF) atau mengexport lembar kerja format Excel (.xls).
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Tombol-Tombol Aksi Export */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+                {/* Tombol Export PDF Langsung */}
+                <button
+                  type="button"
+                  onClick={handleExportPdfDocument}
+                  disabled={!isApproved || isExportingPdf}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.45rem",
+                    background: isApproved ? "linear-gradient(135deg, #059669 0%, #10b981 100%)" : "#e2e8f0",
+                    color: isApproved ? "#ffffff" : "#94a3b8",
+                    border: "none",
+                    borderRadius: "10px",
+                    padding: "0.7rem 0.9rem",
+                    fontSize: "0.84rem",
+                    fontWeight: 800,
+                    cursor: isApproved && !isExportingPdf ? "pointer" : "not-allowed",
+                    boxShadow: isApproved ? "0 4px 12px rgba(5, 150, 105, 0.25)" : "none",
+                    transition: "all 0.2s ease",
+                    opacity: isExportingPdf ? 0.75 : 1
+                  }}
+                  title={!isApproved ? "Terkunci: Menunggu persetujuan Admin" : "Export Berkas PDF Resmi"}
+                >
+                  {isExportingPdf ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Mengexport...</span>
+                    </>
+                  ) : isApproved ? (
+                    <>
+                      <FileDown size={16} />
+                      <span>Export PDF</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={15} />
+                      <span>Export PDF</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Tombol Export Excel */}
+                <button
+                  type="button"
+                  onClick={handleDownloadExcel}
+                  disabled={!isApproved}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "0.45rem",
+                    background: isApproved ? "#ffffff" : "#f1f5f9",
+                    color: isApproved ? "#059669" : "#94a3b8",
+                    border: `1.5px solid ${isApproved ? "#059669" : "#cbd5e1"}`,
+                    borderRadius: "10px",
+                    padding: "0.7rem 0.9rem",
+                    fontSize: "0.84rem",
+                    fontWeight: 800,
+                    cursor: isApproved ? "pointer" : "not-allowed",
+                    boxShadow: isApproved ? "0 2px 8px rgba(5, 150, 105, 0.12)" : "none",
+                    transition: "all 0.2s ease"
+                  }}
+                  title={!isApproved ? "Terkunci: Menunggu persetujuan Admin" : "Export Dokumen Excel (.xls)"}
+                >
+                  {isApproved ? <FileSpreadsheet size={16} /> : <Lock size={15} />}
+                  <span>Export Excel</span>
+                </button>
+              </div>
+
+              {/* Tombol Pratinjau Bersih (Modal) */}
               <button
-                type="submit"
-                disabled={submitting}
-                className="neon-button"
+                type="button"
+                onClick={() => setShowPreviewModal(true)}
                 style={{
                   width: "100%",
-                  padding: "0.85rem",
-                  background: revisionLkbId
-                    ? "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)"
-                    : "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
-                  boxShadow: "0 4px 14px rgba(124, 58, 237, 0.35)",
-                  color: "#ffffff",
-                  fontSize: "0.95rem",
-                  fontWeight: 700,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "0.5rem",
-                  cursor: submitting ? "not-allowed" : "pointer"
+                  gap: "0.45rem",
+                  background: "transparent",
+                  color: "#475569",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  padding: "0.5rem 0.75rem",
+                  fontSize: "0.78rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease"
                 }}
               >
-                {submitting ? (
-                  <>
-                    <RefreshCw size={18} className="animate-spin" /> Mengirim ke Server...
-                  </>
-                ) : revisionLkbId ? (
-                  <>
-                    <FileCheck size={18} /> Simpan Revisi Link LKB
-                  </>
-                ) : (
-                  <>
-                    <Send size={18} /> Kirim Link LKB Bulanan
-                  </>
-                )}
-              </button>
-            </form>
-          </motion.div>
-
-          {/* Riwayat Dokumen LKB Guru */}
-          <motion.div
-            initial={{ opacity: 0, x: 15 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="glass-panel"
-            style={{
-              padding: "1.75rem",
-              background: "#ffffff",
-              display: "flex",
-              flexDirection: "column"
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                <div
-                  style={{
-                    width: "38px",
-                    height: "38px",
-                    borderRadius: "10px",
-                    background: "#ecfdf5",
-                    border: "1px solid #a7f3d0",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}
-                >
-                  <FileText size={20} color="#059669" />
-                </div>
-                <div>
-                  <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)" }}>
-                    Riwayat LKB Saya
-                  </h2>
-                  <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
-                    {lkbList.length} dokumen telah diajukan
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => fetchLkb(currentUser.id)}
-                style={{
-                  padding: "0.4rem 0.75rem",
-                  borderRadius: "var(--radius-md)",
-                  border: "1px solid var(--border-light)",
-                  background: "var(--bg-muted)",
-                  fontSize: "0.8rem",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.3rem",
-                  cursor: "pointer"
-                }}
-              >
-                <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Segarkan
+                <Eye size={14} />
+                <span>Lihat Pratinjau Dokumen ({monthlyAttendance.length} Kegiatan)</span>
               </button>
             </div>
+          </div>
+        </div>
 
-            {loading ? (
-              <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-secondary)" }}>
-                <RefreshCw size={24} className="animate-spin" style={{ margin: "0 auto 0.5rem" }} />
-                Memuat riwayat LKB...
-              </div>
-            ) : lkbList.length === 0 ? (
-              <div
+        {/* 3. MODAL POPUP PRATINJAU DOKUMEN (Hanya Tampil Saat Tombol Pratinjau Diklik) */}
+        <AnimatePresence>
+          {showPreviewModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="no-print"
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(15, 23, 42, 0.65)",
+                backdropFilter: "blur(4px)",
+                zIndex: 9999,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "1rem"
+              }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
                 style={{
-                  padding: "3rem 1.5rem",
-                  textAlign: "center",
-                  border: "1px dashed var(--border-light)",
-                  borderRadius: "var(--radius-lg)",
-                  background: "var(--bg-muted)",
-                  margin: "auto 0"
+                  background: "#f8fafc",
+                  borderRadius: "16px",
+                  width: "100%",
+                  maxWidth: "920px",
+                  maxHeight: "92vh",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                  border: "1px solid #e2e8f0"
                 }}
               >
-                <FileUp size={38} color="#a855f7" style={{ margin: "0 auto 0.75rem" }} />
-                <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.25rem" }}>
-                  Belum Ada Dokumen LKB
-                </h3>
-                <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-                  Gunakan formulir di samping untuk mengunggah dokumen Lembar Kinerja Bulanan Anda.
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem", overflowY: "auto", maxHeight: "560px" }}>
-                {lkbList.map((item) => {
-                  const isApproved = item.status === "Disetujui";
-                  const isRejected = item.status === "Ditolak";
-                  const isPending = !isApproved && !isRejected;
-
-                  const badgeBg = isApproved ? "#ecfdf5" : isRejected ? "#fff1f2" : "#fffbeb";
-                  const badgeBorder = isApproved ? "#a7f3d0" : isRejected ? "#fecdd3" : "#fde68a";
-                  const badgeColor = isApproved ? "#059669" : isRejected ? "#e11d48" : "#d97706";
-
-                  return (
-                    <div
-                      key={item.id}
-                      style={{
-                        padding: "1rem 1.15rem",
-                        borderRadius: "var(--radius-lg)",
-                        border: `1.5px solid ${badgeBorder}`,
-                        background: isApproved ? "#fafffd" : isRejected ? "#fffdfd" : "#fffdf8",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "0.6rem"
-                      }}
-                    >
-                      {/* Top Bar: Bulan/Tahun & Status */}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                          <span
-                            style={{
-                              background: "#f3e8ff",
-                              color: "#6d28d9",
-                              padding: "0.2rem 0.6rem",
-                              borderRadius: "var(--radius-full)",
-                              fontSize: "0.75rem",
-                              fontWeight: 700
-                            }}
-                          >
-                            {item.bulan} {item.tahun}
-                          </span>
-                          <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
-                            • {item.created_at ? String(item.created_at).slice(0, 16) : ""}
-                          </span>
-                        </div>
-
-                        {/* Status Badge */}
-                        <span
-                          style={{
-                            background: badgeBg,
-                            border: `1px solid ${badgeBorder}`,
-                            color: badgeColor,
-                            padding: "0.25rem 0.65rem",
-                            borderRadius: "var(--radius-full)",
-                            fontSize: "0.75rem",
-                            fontWeight: 700,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.3rem"
-                          }}
-                        >
-                          {isApproved && <Check size={13} />}
-                          {isPending && <Clock size={13} />}
-                          {isRejected && <AlertTriangle size={13} />}
-                          {item.status}
-                        </span>
-                      </div>
-
-                      {/* Judul & Catatan */}
-                      <div>
-                        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-main)" }}>
-                          {item.judul || `LKB ${item.bulan} ${item.tahun}`}
-                        </div>
-                        {item.catatan && (
-                          <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginTop: "0.2rem" }}>
-                            "{item.catatan}"
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Info File */}
-                      <div
+                {/* Modal Header */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "1rem 1.5rem",
+                    background: "#ffffff",
+                    borderBottom: "1px solid #e2e8f0"
+                  }}
+                >
+                  <div>
+                    <h3 style={{ fontSize: "1.05rem", fontWeight: 800, margin: 0, color: "#0f172a" }}>
+                      Pratinjau Dokumen LKB - {kinerjaBulan} {kinerjaTahun}
+                    </h3>
+                    <p style={{ fontSize: "0.78rem", color: "#64748b", margin: 0 }}>
+                      Dokumen Resmi Laporan Capaian Kinerja ASN Kemenag Gowa (Tanpa Stempel)
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                    {isApproved && (
+                      <button
+                        type="button"
+                        onClick={handleExportPdfDocument}
+                        disabled={isExportingPdf}
                         style={{
-                          display: "flex",
+                          display: "inline-flex",
                           alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "0.45rem 0.75rem",
-                          background: "#ffffff",
-                          borderRadius: "var(--radius-md)",
-                          border: "1px solid var(--border-light)",
-                          fontSize: "0.8rem"
+                          gap: "0.4rem",
+                          background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+                          color: "#ffffff",
+                          border: "none",
+                          borderRadius: "8px",
+                          padding: "0.5rem 0.9rem",
+                          fontSize: "0.8rem",
+                          fontWeight: 700,
+                          cursor: isExportingPdf ? "not-allowed" : "pointer",
+                          opacity: isExportingPdf ? 0.75 : 1
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", overflow: "hidden" }}>
-                          <Paperclip size={14} color="#6b7280" />
-                          <span
-                            style={{
-                              fontWeight: 600,
-                              color: "var(--text-main)",
-                              textOverflow: "ellipsis",
-                              overflow: "hidden",
-                              whiteSpace: "nowrap",
-                              maxWidth: "220px"
-                            }}
-                          >
-                            {item.file_name || "Dokumen_LKB.pdf"}
-                          </span>
-                          {item.file_size && item.file_size !== "-" && (
-                            <span style={{ color: "var(--text-secondary)", fontSize: "0.75rem" }}>
-                              ({item.file_size})
-                            </span>
-                          )}
-                        </div>
-
-                        {item.file_url && item.file_url !== "" ? (
-                          <a
-                            href={item.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.25rem",
-                              color: "#2563eb",
-                              fontWeight: 700,
-                              textDecoration: "none",
-                              fontSize: "0.78rem"
-                            }}
-                          >
-                            Buka Link Drive <ExternalLink size={12} />
-                          </a>
+                        {isExportingPdf ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            <span>Mengexport...</span>
+                          </>
                         ) : (
-                          <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>Tersimpan</span>
+                          <>
+                            <FileDown size={14} />
+                            <span>Export PDF</span>
+                          </>
                         )}
-                      </div>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowPreviewModal(false)}
+                      style={{
+                        background: "#f1f5f9",
+                        border: "none",
+                        borderRadius: "8px",
+                        width: "32px",
+                        height: "32px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#475569",
+                        cursor: "pointer"
+                      }}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
 
-                      {/* Catatan Penolakan Jika Ditolak */}
-                      {isRejected && (
-                        <div
-                          style={{
-                            padding: "0.65rem 0.85rem",
-                            borderRadius: "var(--radius-md)",
-                            background: "#fff1f2",
-                            border: "1px solid #fecdd3",
-                            fontSize: "0.82rem"
-                          }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "#be123c", fontWeight: 700, marginBottom: "0.2rem" }}>
-                            <AlertTriangle size={14} /> Catatan Perbaikan dari Admin:
-                          </div>
-                          <div style={{ color: "#9f1239", lineHeight: 1.4 }}>
-                            {item.alasan_penolakan || "Mohon periksa kembali kelengkapan lampiran dokumen LKB Anda."}
-                          </div>
-                          <div style={{ marginTop: "0.5rem" }}>
-                            <button
-                              type="button"
-                              onClick={() => startRevision(item)}
-                              style={{
-                                padding: "0.35rem 0.75rem",
-                                borderRadius: "var(--radius-md)",
-                                border: "1px solid #be123c",
-                                background: "#be123c",
-                                color: "#ffffff",
-                                fontSize: "0.75rem",
-                                fontWeight: 700,
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.3rem"
-                              }}
-                            >
-                              <FileUp size={12} /> Unggah Ulang / Perbaiki LKB Ini
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                {/* Modal Body: Scrollable Document View */}
+                <div style={{ padding: "1.5rem", overflowY: "auto", flex: 1 }}>
+                  <OfficialLkbIndividualDocument
+                    user={currentUser}
+                    bulan={kinerjaBulan}
+                    tahun={kinerjaTahun}
+                    attendanceRecords={monthlyAttendance}
+                    settings={settings}
+                    approvalStatus={approvalStatus}
+                    verifiedBy={currentLkbRecord?.diverifikasi_oleh || ""}
+                    verifiedAt={currentLkbRecord?.tanggal_verifikasi || ""}
+                    rejectionNote={currentLkbRecord?.alasan_penolakan || ""}
+                    isViewerAdmin={false}
+                    showActionBar={false}
+                  />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-                      {/* Info Persetujuan Jika Disetujui */}
-                      {isApproved && item.diverifikasi_oleh && (
-                        <div style={{ fontSize: "0.75rem", color: "#065f46", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                          <CheckCircle2 size={13} color="#059669" />
-                          <span>Disetujui oleh {item.diverifikasi_oleh} {item.diverifikasi_pada ? `(${item.diverifikasi_pada})` : ""}</span>
-                        </div>
-                      )}
-
-                      {/* Opsi hapus jika masih menunggu verifikasi */}
-                      {isPending && (
-                        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(item.id)}
-                            style={{
-                              background: "transparent",
-                              border: "none",
-                              color: "#ef4444",
-                              fontSize: "0.75rem",
-                              fontWeight: 600,
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.25rem"
-                            }}
-                          >
-                            <Trash2 size={13} /> Batalkan Pengajuan
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </motion.div>
+        {/* 4. DOKUMEN CETAK & EXCEL TERSEMBUNYI (Hidden on screen, Active on print) */}
+        <div className="lkb-print-container">
+          <OfficialLkbIndividualDocument
+            user={currentUser}
+            bulan={kinerjaBulan}
+            tahun={kinerjaTahun}
+            attendanceRecords={monthlyAttendance}
+            settings={settings}
+            approvalStatus={approvalStatus}
+            verifiedBy={currentLkbRecord?.diverifikasi_oleh || ""}
+            verifiedAt={currentLkbRecord?.tanggal_verifikasi || ""}
+            rejectionNote={currentLkbRecord?.alasan_penolakan || ""}
+            isViewerAdmin={false}
+            showActionBar={false}
+          />
         </div>
       </main>
+
+      <style jsx global>{`
+        @media screen {
+          .lkb-print-container {
+            position: absolute !important;
+            left: -9999px !important;
+            top: 0 !important;
+            width: 820px !important;
+            background: #ffffff !important;
+            pointer-events: none !important;
+            opacity: 0.01 !important;
+          }
+        }
+        @media print {
+          body {
+            background: #ffffff !important;
+            color: #000000 !important;
+          }
+          header, nav, .teacher-bottom-nav, .no-print, .admin-sidebar, .admin-bottom-nav {
+            display: none !important;
+          }
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+          }
+          .lkb-print-container {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          #official-lkb-individual-print-area {
+            box-shadow: none !important;
+            padding: 10px 15px !important;
+            max-width: 100% !important;
+            border: none !important;
+          }
+        }
+      `}</style>
     </>
   );
 }
-

@@ -27,7 +27,7 @@ export default function Navbar({ role = "guru" }) {
       if (res?.settings?.nama_sekolah) {
         setSchoolName(res.settings.nama_sekolah);
       }
-    }).catch(() => {});
+    }).catch(() => { });
 
     const updateClock = () => {
       const now = new Date();
@@ -74,7 +74,7 @@ export default function Navbar({ role = "guru" }) {
       >
         <div
           style={{
-            maxWidth: "1400px",
+            maxWidth: role === "admin" ? "1400px" : "1280px",
             margin: "0 auto",
             padding: "0.85rem 1.5rem",
             display: "flex",
@@ -121,19 +121,18 @@ export default function Navbar({ role = "guru" }) {
                 <span
                   style={{
                     fontFamily: "var(--font-display)",
-                    fontWeight: 800,
-                    fontSize: "1.15rem",
+                    fontWeight: 900,
+                    fontSize: "1.25rem",
                     color: "var(--text-main)",
-                    letterSpacing: "-0.01em"
+                    letterSpacing: "0.2em"
                   }}
                 >
-                  PRESENSI GURU
+                  SIDIAN
                 </span>
-                <span className="pulse-dot" title="Sistem Aktif" />
               </div>
               <p
                 style={{
-                  fontSize: "0.76rem",
+                  fontSize: "0.55rem",
                   fontWeight: 700,
                   color: "#059669",
                   letterSpacing: "0.03em",
@@ -175,69 +174,69 @@ export default function Navbar({ role = "guru" }) {
           {/* User Profile & Actions */}
           <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
             {currentUser && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.6rem",
-              background: "#ffffff",
-              border: "1.5px solid var(--border-light)",
-              borderRadius: "var(--radius-full)",
-              padding: "0.2rem 0.75rem 0.2rem 0.2rem",
-              boxShadow: "var(--shadow-sm)"
-            }}
-          >
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "50%",
-                overflow: "hidden",
-                border: "2px solid var(--primary)",
-                background: "var(--primary-gradient)",
-                color: "#ffffff",
-                fontWeight: 800,
-                fontSize: "1rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 3px 8px rgba(5, 150, 105, 0.25)",
-                flexShrink: 0
-              }}
-            >
-              <img
-                src={getAvatarUrl(currentUser.foto_url, currentUser.nama || currentUser.username)}
-                alt={currentUser.nama || "User"}
-                referrerPolicy="no-referrer"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                onError={(e) => {
-                  e.target.src = getAvatarUrl("", currentUser.nama || currentUser.username);
-                }}
-              />
-            </div>
-            <div style={{ textAlign: "left", lineHeight: 1.2 }} className="hidden-mobile">
-              <p
+              <div
                 style={{
-                  fontSize: "0.84rem",
-                  fontWeight: 800,
-                  color: "var(--text-main)",
-                  maxWidth: "160px",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis"
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                  background: "#ffffff",
+                  border: "1.5px solid var(--border-light)",
+                  borderRadius: "var(--radius-full)",
+                  padding: "0.2rem 0.75rem 0.2rem 0.2rem",
+                  boxShadow: "var(--shadow-sm)"
                 }}
               >
-                {currentUser.nama || currentUser.username}
-              </p>
-              <p style={{ fontSize: "0.72rem", color: "var(--primary)", fontWeight: 700 }}>
-                {currentUser.role === "admin"
-                  ? "Admin Tata Usaha"
-                  : currentUser.role === "pegawai"
-                  ? currentUser.jabatan || "Pegawai"
-                  : currentUser.mapel || "Guru"}
-              </p>
-            </div>
-          </div>
+                <div
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "50%",
+                    overflow: "hidden",
+                    border: "2px solid var(--primary)",
+                    background: "var(--primary-gradient)",
+                    color: "#ffffff",
+                    fontWeight: 800,
+                    fontSize: "1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 3px 8px rgba(5, 150, 105, 0.25)",
+                    flexShrink: 0
+                  }}
+                >
+                  <img
+                    src={getAvatarUrl(currentUser.foto_url, currentUser.nama || currentUser.username)}
+                    alt={currentUser.nama || "User"}
+                    referrerPolicy="no-referrer"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    onError={(e) => {
+                      e.target.src = getAvatarUrl("", currentUser.nama || currentUser.username);
+                    }}
+                  />
+                </div>
+                <div style={{ textAlign: "left", lineHeight: 1.2 }} className="hidden-mobile">
+                  <p
+                    style={{
+                      fontSize: "0.84rem",
+                      fontWeight: 800,
+                      color: "var(--text-main)",
+                      maxWidth: "160px",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    }}
+                  >
+                    {currentUser.nama || currentUser.username}
+                  </p>
+                  <p style={{ fontSize: "0.72rem", color: "var(--primary)", fontWeight: 700 }}>
+                    {currentUser.role === "admin"
+                      ? "Admin Tata Usaha"
+                      : currentUser.role === "pegawai"
+                        ? currentUser.jabatan || "Pegawai"
+                        : currentUser.mapel || "Guru"}
+                  </p>
+                </div>
+              </div>
             )}
 
             {currentUser && (

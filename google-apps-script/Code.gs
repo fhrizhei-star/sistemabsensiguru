@@ -25,6 +25,50 @@ const SHEET_LKB = "LKB_GURU";
 
 function onOpen() {
   initDatabase();
+  try {
+    const ui = SpreadsheetApp.getUi();
+    ui.createMenu("📊 Menu Madrasah")
+      .addItem("🗂️ Arsipkan & Buat Rekap Semester", "menuArsipkanDanRekapSemester")
+      .addSeparator()
+      .addItem("🛡️ Enkripsi Semua Password (SHA-256)", "menuEnkripsiPassword")
+      .addItem("🔒 Kunci & Proteksi Sheet Database", "menuProteksiSheet")
+      .addToUi();
+  } catch (e) {
+    Logger.log("onOpen UI skipped: " + e.toString());
+  }
+}
+
+/**
+ * Helper Enkripsi Keamanan Password Menggunakan SHA-256
+ */
+function hashPassword(passStr) {
+  if (!passStr) return "";
+  const s = String(passStr).trim();
+  if (/^[a-f0-9]{64}$/i.test(s)) {
+    return s.toLowerCase();
+  }
+  const rawBytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, s, Utilities.Charset.UTF_8);
+  let hash = "";
+  for (let i = 0; i < rawBytes.length; i++) {
+    let byteVal = rawBytes[i];
+    if (byteVal < 0) byteVal += 256;
+    let byteHex = byteVal.toString(16);
+    if (byteHex.length === 1) byteHex = "0" + byteHex;
+    hash += byteHex;
+  }
+  return hash.toLowerCase();
+}
+
+/**
+ * Sanitasi Input untuk Mencegah Formula Injection di Google Sheets (=, +, -, @)
+ */
+function sanitizeSheetCell(val) {
+  if (val === null || val === undefined) return "";
+  const s = String(val).trim();
+  if (/^[=\+\-@]/.test(s)) {
+    return "'" + s;
+  }
+  return s;
 }
 
 function initDatabase() {
@@ -79,6 +123,9 @@ function initDatabase() {
       sheetAtt.getRange(1, 1, 1, 15).setValues([[
         "id", "jadwal_id", "user_id", "nama", "nip", "mapel", "kelas", "hari", "tanggal", "jam_jadwal", "jam_absen", "status", "koordinat", "keterangan", "created_at"
       ]]).setFontWeight("bold").setBackground("#059669").setFontColor("#ffffff");
+    }
+    if (headerStrs.indexOf("foto") === -1) {
+      sheetAtt.getRange(1, 16).setValue("foto").setFontWeight("bold").setBackground("#059669").setFontColor("#ffffff");
     }
   }
 
@@ -322,9 +369,11 @@ function formatGasTime(val) {
   }
   const s = String(val).trim();
   if (/^\d{2}:\d{2}$/.test(s)) return s;
-  const match = s.match(/(\d{1,2})[:.](\d{2})/);
+  const match = s.match(/(?:^|\s|T)(\d{1,2})[:.](\d{2})(?::\d{2})?/);
   if (match) {
-    return (match[1].length === 1 ? "0" + match[1] : match[1]) + ":" + match[2];
+    const h = match[1].length === 1 ? "0" + match[1] : match[1];
+    const m = match[2];
+    return h + ":" + m;
   }
   return s;
 }
@@ -410,14 +459,26 @@ function loginHandler(username, password) {
   }
 
   const rows = sheet.getDataRange().getValues();
+  const inputUser = String(username).replace(/^'/, "").trim().toLowerCase();
+  const inputPass = String(password).trim();
+  const hashedInput = hashPassword(inputPass);
+
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     const uName = String(row[1]).replace(/^'/, "").trim();
     const uNip = String(row[5]).replace(/^'/, "").trim();
     const uPass = String(row[2]).trim();
-    const inputUser = String(username).replace(/^'/, "").trim().toLowerCase();
 
-    if ((uName.toLowerCase() === inputUser || uNip.toLowerCase() === inputUser) && uPass === String(password).trim()) {
+    const isPassMatch = (uPass.toLowerCase() === hashedInput) || (uPass === inputPass);
+
+    if ((uName.toLowerCase() === inputUser || uNip.toLowerCase() === inputUser) && isPassMatch) {
+      // Auto-migrasi ke hash SHA-256 jika password di sheet masih plaintext
+      if (uPass === inputPass && uPass.toLowerCase() !== hashedInput) {
+        try {
+          sheet.getRange(i + 1, 3).setValue(hashedInput);
+        } catch (eAutoHash) {}
+      }
+
       return {
         success: true,
         user: {
@@ -631,23 +692,33 @@ function recordClassAttendanceHandler(data) {
       }
     }
 
+    let fotoUrl = "";
+    if (data.foto) {
+      if (String(data.foto).indexOf("http") === 0) {
+        fotoUrl = String(data.foto);
+      } else {
+        fotoUrl = uploadBase64ToDrive(data.foto, "evident_" + (data.nip || data.user_id || "asn") + "_" + todayStr, "EVIDENT_PRESENSI_GURU");
+      }
+    }
+
     const newId = "ATT" + new Date().getTime();
     sheet.appendRow([
       newId,
       data.jadwal_id,
       data.user_id,
-      data.nama,
-      data.nip || "-",
-      data.mapel || "-",
-      data.kelas || "-",
-      data.hari || "-",
+      sanitizeSheetCell(data.nama),
+      data.nip ? "'" + String(data.nip).replace(/^'/, "") : "-",
+      sanitizeSheetCell(data.mapel || "-"),
+      sanitizeSheetCell(data.kelas || "-"),
+      sanitizeSheetCell(data.hari || "-"),
       "'" + todayStr,
-      data.jam_jadwal || "-",
-      timeNowStr,
+      sanitizeSheetCell(data.jam_jadwal || "-"),
+      "'" + formatGasTime(timeNowStr),
       finalStatus,
-      data.koordinat || "Area Sekolah",
-      finalKeterangan,
-      new Date()
+      sanitizeSheetCell(data.koordinat || "Area Sekolah"),
+      sanitizeSheetCell(finalKeterangan),
+      new Date(),
+      fotoUrl || data.foto || ""
     ]);
 
     // Kirim notifikasi realtime Telegram saat guru absen (jika diaktifkan)
@@ -816,10 +887,11 @@ function getUserAttendanceHandler(userId) {
         hari: String(rows[i][7]),
         tanggal: rowDate,
         jam_jadwal: String(rows[i][9]),
-        jam_absen: String(rows[i][10]),
+        jam_absen: formatGasTime(rows[i][10]),
         status: String(rows[i][11]),
         koordinat: String(rows[i][12]),
-        keterangan: String(rows[i][13])
+        keterangan: String(rows[i][13]),
+        foto: rows[i].length > 15 ? String(rows[i][15] || "") : ""
       });
     }
   }
@@ -865,10 +937,11 @@ function getAllAttendanceHandler(tanggal, mapel, kelas, guru_id) {
       hari: String(rows[i][7]),
       tanggal: rowDate,
       jam_jadwal: String(rows[i][9]),
-      jam_absen: String(rows[i][10]),
+      jam_absen: formatGasTime(rows[i][10]),
       status: String(rows[i][11]),
       koordinat: String(rows[i][12]),
-      keterangan: String(rows[i][13])
+      keterangan: String(rows[i][13]),
+      foto: rows[i].length > 15 ? String(rows[i][15] || "") : ""
     });
   }
 
@@ -991,13 +1064,13 @@ function submitLeaveHandler(data) {
     sheet.appendRow([
       newId,
       data.user_id,
-      data.nama,
-      data.nip || "-",
-      data.mapel || "-",
-      data.tipe,
-      data.tgl_mulai,
-      data.tgl_selesai,
-      data.alasan,
+      sanitizeSheetCell(data.nama),
+      data.nip ? "'" + String(data.nip).replace(/^'/, "") : "-",
+      sanitizeSheetCell(data.mapel || "-"),
+      sanitizeSheetCell(data.tipe || "Izin"),
+      sanitizeSheetCell(data.tgl_mulai),
+      sanitizeSheetCell(data.tgl_selesai),
+      sanitizeSheetCell(data.alasan || "-"),
       "Menunggu",
       new Date()
     ]);
@@ -1170,11 +1243,12 @@ function submitLkbHandler(data) {
       }
     }
 
-    // Jika mode revisi LKB yang sudah ada (data.lkb_id)
-    if (data.lkb_id) {
+    // Jika mode revisi atau update LKB yang sudah ada (data.lkb_id atau data.id)
+    const targetLkbId = data.lkb_id || data.id;
+    if (targetLkbId) {
       const rows = sheet.getDataRange().getValues();
       for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][0]) === String(data.lkb_id)) {
+        if (String(rows[i][0]) === String(targetLkbId)) {
           if (fileUrl) {
             sheet.getRange(i + 1, 9).setValue(fileName);
             sheet.getRange(i + 1, 10).setValue(fileUrl);
@@ -1186,39 +1260,46 @@ function submitLkbHandler(data) {
           if (data.tahun) sheet.getRange(i + 1, 7).setValue(data.tahun);
           if (data.catatan !== undefined) sheet.getRange(i + 1, 13).setValue(data.catatan);
           
-          sheet.getRange(i + 1, 14).setValue("Menunggu Verifikasi");
-          sheet.getRange(i + 1, 15).setValue("");
+          const newStatus = data.status || "Menunggu Verifikasi";
+          sheet.getRange(i + 1, 14).setValue(newStatus);
+          sheet.getRange(i + 1, 15).setValue(data.alasan_penolakan || "");
+          sheet.getRange(i + 1, 16).setValue(data.diverifikasi_oleh || (newStatus === "Disetujui" ? "Admin" : ""));
+          sheet.getRange(i + 1, 17).setValue(newStatus === "Disetujui" ? new Date() : "");
           sheet.getRange(i + 1, 18).setValue(new Date());
 
           return {
             success: true,
-            message: "Revisi dokumen LKB berhasil diunggah dan menunggu verifikasi admin",
-            id: data.lkb_id,
+            message: newStatus === "Disetujui" ? "Dokumen LKB berhasil disahkan admin" : "Revisi dokumen LKB berhasil diperbarui",
+            id: targetLkbId,
             file_url: fileUrl
           };
         }
       }
     }
 
+    const initialStatus = data.status || "Menunggu Verifikasi";
+    const initialVerifikator = data.diverifikasi_oleh || (initialStatus === "Disetujui" ? "Admin" : "");
+    const initialTglVerif = initialStatus === "Disetujui" ? new Date() : "";
+
     const newId = "LKB" + new Date().getTime();
     sheet.appendRow([
       newId,
       data.user_id,
-      data.nama,
-      data.nip || "-",
-      data.mapel_jabatan || data.mapel || "-",
+      sanitizeSheetCell(data.nama),
+      data.nip ? "'" + String(data.nip).replace(/^'/, "") : "-",
+      sanitizeSheetCell(data.mapel_jabatan || data.mapel || "-"),
       data.bulan,
       data.tahun,
-      data.judul || ("LKB " + data.bulan + " " + data.tahun),
+      sanitizeSheetCell(data.judul || ("LKB " + data.bulan + " " + data.tahun)),
       fileName,
       fileUrl,
       fileId,
       fileSize,
-      data.catatan || "",
-      "Menunggu Verifikasi",
-      "", // alasan penolakan
-      "", // diverifikasi oleh
-      "", // diverifikasi pada
+      sanitizeSheetCell(data.catatan || ""),
+      initialStatus,
+      sanitizeSheetCell(data.alasan_penolakan || ""), // alasan penolakan
+      initialVerifikator, // diverifikasi oleh
+      initialTglVerif, // diverifikasi pada
       new Date()
     ]);
 
@@ -1388,7 +1469,9 @@ function getUsersHandler(role) {
       email: String(rows[i][8]),
       no_hp: String(rows[i][9]),
       status: String(rows[i][10]),
-      foto_url: String(rows[i][12] || "")
+      foto_url: String(rows[i][12] || ""),
+      satker: String(rows[i][13] || "PENDIS"),
+      satuan_kerja: String(rows[i][13] || "PENDIS")
     });
   }
 
@@ -1399,7 +1482,7 @@ function getUsersHandler(role) {
  * Helper untuk mengunggah Base64 Image ke Google Drive
  * Menyimpan file ke folder "FOTO_GURU_ABSENSI" dan mengembalikan direct URL Google CDN
  */
-function uploadBase64ToDrive(base64Data, fileNamePrefix) {
+function uploadBase64ToDrive(base64Data, fileNamePrefix, customFolderName) {
   try {
     if (!base64Data || typeof base64Data !== "string") return "";
 
@@ -1423,7 +1506,7 @@ function uploadBase64ToDrive(base64Data, fileNamePrefix) {
     const blob = Utilities.newBlob(bytes, contentType, cleanName);
 
     // Dapatkan atau buat folder di Google Drive
-    const FOLDER_NAME = "FOTO_GURU_ABSENSI";
+    const FOLDER_NAME = customFolderName || "FOTO_GURU_ABSENSI";
     let folder;
     const folderIter = DriveApp.getFoldersByName(FOLDER_NAME);
     if (folderIter.hasNext()) {
@@ -1476,7 +1559,7 @@ function saveUserHandler(raw) {
     for (let i = 1; i < rows.length; i++) {
       if (String(rows[i][0]) === String(data.id)) {
         if (data.username) sheet.getRange(i + 1, 2).setValue("'" + String(data.username).replace(/^'/, ""));
-        if (data.password) sheet.getRange(i + 1, 3).setValue(String(data.password));
+        if (data.password) sheet.getRange(i + 1, 3).setValue(hashPassword(data.password));
         if (data.nama) sheet.getRange(i + 1, 4).setValue(data.nama);
         if (data.role) sheet.getRange(i + 1, 5).setValue(data.role);
         if (data.nip) sheet.getRange(i + 1, 6).setValue("'" + String(data.nip).replace(/^'/, ""));
@@ -1488,6 +1571,9 @@ function saveUserHandler(raw) {
         if (finalFotoUrl) {
           sheet.getRange(i + 1, 13).setValue(finalFotoUrl);
         }
+        if (data.satker || data.satuan_kerja) {
+          sheet.getRange(i + 1, 14).setValue(data.satker || data.satuan_kerja);
+        }
         return { success: true, message: "Data guru berhasil diperbarui", foto_url: finalFotoUrl };
       }
     }
@@ -1498,17 +1584,18 @@ function saveUserHandler(raw) {
     sheet.appendRow([
       newId,
       "'" + nipVal,
-      data.password || "guru123",
-      data.nama,
+      hashPassword(data.password || "guru123"),
+      sanitizeSheetCell(data.nama),
       data.role || "guru",
       "'" + nipVal,
-      data.jabatan || "Guru Pengajar",
-      data.mapel || "-",
-      data.email || "-",
+      sanitizeSheetCell(data.jabatan || "Guru Pengajar"),
+      sanitizeSheetCell(data.mapel || "-"),
+      sanitizeSheetCell(data.email || "-"),
       "'" + String(data.no_hp || "-").replace(/^'/, ""),
       data.status || "aktif",
       new Date(),
-      finalFotoUrl || ""
+      finalFotoUrl || "",
+      sanitizeSheetCell(data.satker || data.satuan_kerja || "PENDIS")
     ]);
     return { success: true, message: "Guru baru berhasil didaftarkan", id: newId, foto_url: finalFotoUrl };
   }
@@ -1544,7 +1631,7 @@ function changePasswordHandler(data) {
   const rows = sheet.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][0]) === String(userId)) {
-      sheet.getRange(i + 1, 3).setValue(newPass);
+      sheet.getRange(i + 1, 3).setValue(hashPassword(newPass));
       return { success: true, message: "Password berhasil diperbarui" };
     }
   }
@@ -1596,7 +1683,7 @@ function resetPasswordHandler(data) {
         return { success: false, message: "Kata sandi baru minimal terdiri dari 4 karakter!" };
       }
 
-      sheet.getRange(i + 1, 3).setValue(newPass);
+      sheet.getRange(i + 1, 3).setValue(hashPassword(newPass));
       return {
         success: true,
         message: "Kata sandi berhasil diperbarui! Silakan login dengan kata sandi baru Anda."
@@ -1876,4 +1963,419 @@ function removeTelegramTrigger() {
     }
   }
   return { success: true, message: count + " trigger pengingat berhasil dinonaktifkan." };
+}
+
+// ====================================================================
+// MODUL MENU MADRASAH: ARSIP SEMESTER, PROTEKSI SHEET & ENKRIPSI
+// ====================================================================
+
+/**
+ * 🗂️ Arsipkan Data Presensi Semester & Buat Lembar Rekapitulasi Otomatis
+ * Memindahkan data dari sheet ABSENSI_GURU ke sheet baru ARSIP_...
+ * dan membuat tabel statistik ringkas di sheet REKAP_..., kemudian
+ * mengosongkan ABSENSI_GURU sehingga database tetap cepat (<300ms).
+ */
+function menuArsipkanDanRekapSemester() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let ui;
+  try {
+    ui = SpreadsheetApp.getUi();
+  } catch (e) {
+    Logger.log("UI context tidak tersedia");
+    return;
+  }
+
+  const sheetAtt = ss.getSheetByName(SHEET_ATTENDANCE);
+  if (!sheetAtt) {
+    ui.alert("Peringatan", "Sheet '" + SHEET_ATTENDANCE + "' tidak ditemukan di spreadsheet ini!", ui.ButtonSet.OK);
+    return;
+  }
+
+  const lastRow = sheetAtt.getLastRow();
+  if (lastRow <= 1) {
+    ui.alert(
+      "Data Presensi Kosong",
+      "Tidak ada rekaman presensi aktif di sheet '" + SHEET_ATTENDANCE + "' untuk diarsipkan.",
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  const promptRes = ui.prompt(
+    "Arsip & Rekapitulasi Semester",
+    "Masukkan nama/label semester yang ingin diarsipkan:\n(Contoh: Semester Ganjil 2026/2027 atau Semester 1 2026)",
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (promptRes.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  const rawSemLabel = promptRes.getResponseText().trim();
+  const semLabel = rawSemLabel || ("Semester_" + Utilities.formatDate(new Date(), "GMT+8", "yyyy_MM"));
+  const cleanSemName = semLabel.replace(/[\/\\?*:[\]]/g, "_").trim();
+
+  const totalRecords = lastRow - 1;
+  const confirm = ui.alert(
+    "Konfirmasi Pengarsipan Semester",
+    "Ditemukan " + totalRecords + " baris data presensi di sheet '" + SHEET_ATTENDANCE + "'.\n\n" +
+    "Sistem akan melakukan 3 tindakan otomatis:\n" +
+    "1. Membuat sheet arsip: 'ARSIP_" + cleanSemName + "' (menyimpan seluruh rekaman detail).\n" +
+    "2. Membuat sheet rekap: 'REKAP_" + cleanSemName + "' (menghitung total sesi, tepat waktu, terlambat, izin & persentase tiap guru).\n" +
+    "3. Mengosongkan data aktif di sheet '" + SHEET_ATTENDANCE + "' agar sistem tetap enteng dan cepat.\n\n" +
+    "Lanjutkan pengarsipan?",
+    ui.ButtonSet.YES_NO
+  );
+
+  if (confirm !== ui.Button.YES) {
+    return;
+  }
+
+  // 1. Salin seluruh data ke Sheet Arsip Baru
+  let arsipSheetName = "ARSIP_" + cleanSemName;
+  if (ss.getSheetByName(arsipSheetName)) {
+    arsipSheetName += "_" + Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd_HHmmss");
+  }
+
+  const sheetArsip = ss.insertSheet(arsipSheetName);
+  const sourceRange = sheetAtt.getDataRange();
+  sourceRange.copyTo(sheetArsip.getRange(1, 1));
+
+  // Format header sheet arsip
+  if (sheetArsip.getLastColumn() > 0) {
+    sheetArsip.getRange(1, 1, 1, sheetArsip.getLastColumn())
+      .setBackground("#1e293b")
+      .setFontColor("#ffffff")
+      .setFontWeight("bold");
+    sheetArsip.setFrozenRows(1);
+  }
+
+  // 2. Olah Data Rekapitulasi Per Guru
+  const attData = sourceRange.getValues();
+  const teacherMap = {};
+  const teacherList = [];
+
+  // Ambil daftar guru dari sheet GURU_STAF
+  const sheetUsers = ss.getSheetByName(SHEET_USERS);
+  if (sheetUsers) {
+    const uRows = sheetUsers.getDataRange().getValues();
+    for (let u = 1; u < uRows.length; u++) {
+      const uId = String(uRows[u][0]);
+      const uNama = String(uRows[u][3] || "-");
+      const uNip = String(uRows[u][5] || "-").replace(/^'/, "");
+      const uJabatan = String(uRows[u][6] || "-");
+      const uMapel = String(uRows[u][7] || "-");
+      const uRole = String(uRows[u][4] || "guru");
+
+      if (uRole !== "admin") {
+        const item = {
+          id: uId,
+          nama: uNama,
+          nip: uNip,
+          jabatan: uJabatan,
+          mapel: uMapel,
+          totalSesi: 0,
+          tepatWaktu: 0,
+          terlambat: 0,
+          izin: 0,
+          sakit: 0,
+          totalHadir: 0
+        };
+        teacherMap[uId] = item;
+        if (uNip && uNip !== "-") teacherMap[uNip] = item;
+        teacherList.push(item);
+      }
+    }
+  }
+
+  // Iterasi data presensi
+  for (let r = 1; r < attData.length; r++) {
+    const row = attData[r];
+    const uId = String(row[2]);
+    const uNip = String(row[4] || "").replace(/^'/, "");
+    const uNama = String(row[3] || "Guru");
+    const uMapel = String(row[5] || "-");
+
+    let teacher = teacherMap[uId] || (uNip ? teacherMap[uNip] : null);
+    if (!teacher) {
+      teacher = {
+        id: uId,
+        nama: uNama,
+        nip: uNip || "-",
+        jabatan: "Guru Pengajar",
+        mapel: uMapel,
+        totalSesi: 0,
+        tepatWaktu: 0,
+        terlambat: 0,
+        izin: 0,
+        sakit: 0,
+        totalHadir: 0
+      };
+      teacherMap[uId] = teacher;
+      teacherList.push(teacher);
+    }
+
+    teacher.totalSesi++;
+    const st = String(row[11] || "").toLowerCase();
+    const ket = String(row[13] || "").toLowerCase();
+
+    if (st.includes("terlambat") || ket.includes("terlambat")) {
+      teacher.terlambat++;
+      teacher.totalHadir++;
+    } else if (st.includes("izin") || ket.includes("izin")) {
+      teacher.izin++;
+    } else if (st.includes("sakit") || ket.includes("sakit")) {
+      teacher.sakit++;
+    } else {
+      teacher.tepatWaktu++;
+      teacher.totalHadir++;
+    }
+  }
+
+  // Urutkan guru berdasarkan nama
+  teacherList.sort(function(a, b) {
+    return a.nama.localeCompare(b.nama);
+  });
+
+  // 3. Buat Sheet Rekapitulasi
+  let rekapSheetName = "REKAP_" + cleanSemName;
+  if (ss.getSheetByName(rekapSheetName)) {
+    rekapSheetName += "_" + Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd_HHmmss");
+  }
+
+  const sheetRekap = ss.insertSheet(rekapSheetName);
+
+  // Judul & Header Laporan
+  sheetRekap.getRange("A1:J1").merge()
+    .setValue("LAPORAN REKAPITULASI PRESENSI GURU & PEGAWAI")
+    .setFontWeight("bold")
+    .setFontSize(14)
+    .setHorizontalAlignment("center")
+    .setBackground("#064e3b")
+    .setFontColor("#ffffff");
+
+  sheetRekap.getRange("A2:J2").merge()
+    .setValue("PERIODE / SEMESTER: " + semLabel.toUpperCase())
+    .setFontWeight("bold")
+    .setFontSize(11)
+    .setHorizontalAlignment("center")
+    .setBackground("#065f46")
+    .setFontColor("#ffffff");
+
+  sheetRekap.getRange("A3:J3").merge()
+    .setValue("Dibuat otomatis pada: " + Utilities.formatDate(new Date(), "GMT+8", "dd MMMM yyyy HH:mm") + " WITA")
+    .setFontStyle("italic")
+    .setFontSize(9)
+    .setHorizontalAlignment("center")
+    .setBackground("#ecfdf5")
+    .setFontColor("#047857");
+
+  // Baris Header Tabel
+  const headers = [
+    "No", "NIP", "Nama Guru / Pegawai", "Jabatan / Tugas", "Mata Pelajaran",
+    "Total Sesi", "Tepat Waktu", "Terlambat", "Izin / Sakit", "Persentase Kehadiran"
+  ];
+  const headerRow = 5;
+  sheetRekap.getRange(headerRow, 1, 1, headers.length)
+    .setValues([headers])
+    .setFontWeight("bold")
+    .setBackground("#047857")
+    .setFontColor("#ffffff")
+    .setHorizontalAlignment("center");
+
+  // Isi Data Rekap
+  const rekapRows = [];
+  let sumSesi = 0;
+  let sumTepat = 0;
+  let sumTerlambat = 0;
+  let sumIzin = 0;
+
+  for (let k = 0; k < teacherList.length; k++) {
+    const t = teacherList[k];
+    const pct = t.totalSesi > 0 ? Math.round((t.totalHadir / t.totalSesi) * 100) : 0;
+    sumSesi += t.totalSesi;
+    sumTepat += t.tepatWaktu;
+    sumTerlambat += t.terlambat;
+    sumIzin += (t.izin + t.sakit);
+
+    rekapRows.push([
+      k + 1,
+      "'" + t.nip,
+      t.nama,
+      t.jabatan,
+      t.mapel,
+      t.totalSesi,
+      t.tepatWaktu,
+      t.terlambat,
+      t.izin + t.sakit,
+      pct + "%"
+    ]);
+  }
+
+  if (rekapRows.length > 0) {
+    sheetRekap.getRange(headerRow + 1, 1, rekapRows.length, headers.length).setValues(rekapRows);
+
+    // Styling baris data bergantian (zebra striping)
+    for (let r = 0; r < rekapRows.length; r++) {
+      const bg = r % 2 === 0 ? "#ffffff" : "#f8fafc";
+      sheetRekap.getRange(headerRow + 1 + r, 1, 1, headers.length).setBackground(bg);
+      sheetRekap.getRange(headerRow + 1 + r, 1).setHorizontalAlignment("center"); // No
+      sheetRekap.getRange(headerRow + 1 + r, 6, 1, 5).setHorizontalAlignment("center"); // Angka-angka
+    }
+  }
+
+  // Baris Total di paling bawah
+  const totalRowIdx = headerRow + 1 + rekapRows.length;
+  const avgPct = sumSesi > 0 ? Math.round(((sumTepat + sumTerlambat) / sumSesi) * 100) : 0;
+  sheetRekap.getRange(totalRowIdx, 1, 1, 5).merge()
+    .setValue("TOTAL KESELURUHAN")
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center")
+    .setBackground("#d1fae5")
+    .setFontColor("#064e3b");
+
+  sheetRekap.getRange(totalRowIdx, 6, 1, 5)
+    .setValues([[sumSesi, sumTepat, sumTerlambat, sumIzin, avgPct + "%"]])
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center")
+    .setBackground("#d1fae5")
+    .setFontColor("#064e3b");
+
+  // Border & Freeze
+  sheetRekap.getRange(headerRow, 1, rekapRows.length + 2, headers.length)
+    .setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
+  sheetRekap.setFrozenRows(headerRow);
+
+  // Auto resize kolom
+  for (let c = 1; c <= headers.length; c++) {
+    sheetRekap.autoResizeColumn(c);
+  }
+
+  // 4. Kosongkan Data Aktif di Sheet ABSENSI_GURU (Menyisakan Header Baris 1)
+  if (sheetAtt.getLastRow() > 1) {
+    sheetAtt.deleteRows(2, sheetAtt.getLastRow() - 1);
+  }
+
+  // 5. Notifikasi Selesai
+  ui.alert(
+    "Pengarsipan Semester Sukses! 🎉",
+    "Rekapan semester dan pembersihan database berhasil dilakukan:\n\n" +
+    "📁 1. Sheet Arsip: '" + arsipSheetName + "' (" + totalRecords + " baris data tersimpan rapi)\n" +
+    "📊 2. Sheet Rekap: '" + rekapSheetName + "' (Tabel persentase kehadiran " + teacherList.length + " guru)\n" +
+    "⚡ 3. Sheet 'ABSENSI_GURU' telah bersih dan siap untuk semester baru.\n\n" +
+    "Kinerja sistem absensi kini kembali optimal dan sangat cepat!",
+    ui.ButtonSet.OK
+  );
+}
+
+/**
+ * 🔒 Kunci & Pasang Proteksi Peringatan pada Sheet Penting
+ * Mencegah admin/operator tanpa sengaja mengubah judul kolom atau merusak pengaturan.
+ */
+function menuProteksiSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let ui;
+  try {
+    ui = SpreadsheetApp.getUi();
+  } catch (e) {
+    return;
+  }
+
+  const confirm = ui.alert(
+    "Pasang Proteksi Database",
+    "Fitur ini akan mengaktifkan 'Warning Protection' (Peringatan saat diedit) pada:\n" +
+    "1. Sheet PENGATURAN (mencegah rusaknya konfigurasi token/sistem)\n" +
+    "2. Baris Judul Kolom (Header) di seluruh sheet utama database\n\n" +
+    "Lanjutkan proteksi database?",
+    ui.ButtonSet.YES_NO
+  );
+
+  if (confirm !== ui.Button.YES) return;
+
+  let count = 0;
+
+  // 1. Proteksi Sheet PENGATURAN
+  const sheetSet = ss.getSheetByName(SHEET_SETTINGS);
+  if (sheetSet) {
+    const p = sheetSet.protect().setDescription("Proteksi Pengaturan Sistem Absensi");
+    p.setWarningOnly(true);
+    count++;
+  }
+
+  // 2. Proteksi Baris Header (Baris 1)
+  const sheetsToProtect = [SHEET_USERS, SHEET_SCHEDULES, SHEET_ATTENDANCE, SHEET_LEAVES, SHEET_LKB];
+  for (let s = 0; s < sheetsToProtect.length; s++) {
+    const sh = ss.getSheetByName(sheetsToProtect[s]);
+    if (sh && sh.getLastColumn() > 0) {
+      const headerRange = sh.getRange(1, 1, 1, sh.getLastColumn());
+      const p = headerRange.protect().setDescription("Proteksi Header " + sheetsToProtect[s]);
+      p.setWarningOnly(true);
+      count++;
+    }
+  }
+
+  ui.alert(
+    "Proteksi Berhasil Diterapkan! 🛡️",
+    "Sebanyak " + count + " area database telah dilindungi peringatan.\n" +
+    "Jika ada yang tidak sengaja mengubah judul kolom atau konfigurasi, Google Sheets akan menampilkan peringatan konfirmasi terlebih dahulu.",
+    ui.ButtonSet.OK
+  );
+}
+
+/**
+ * 🛡️ Enkripsi Semua Password Akun Guru & Staf dengan SHA-256
+ * Mengubah password teks biasa di sheet GURU_STAF menjadi hash SHA-256 (64 karakter hex)
+ * sehingga aman dari intipan siapapun yang membuka sheet.
+ */
+function menuEnkripsiPassword() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let ui;
+  try {
+    ui = SpreadsheetApp.getUi();
+  } catch (e) {
+    return;
+  }
+
+  const sheet = ss.getSheetByName(SHEET_USERS);
+  if (!sheet) {
+    ui.alert("Sheet '" + SHEET_USERS + "' tidak ditemukan!");
+    return;
+  }
+
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) {
+    ui.alert("Tidak ada data akun guru/staf di sheet '" + SHEET_USERS + "'.");
+    return;
+  }
+
+  const confirm = ui.alert(
+    "Enkripsi Password Guru (SHA-256)",
+    "Fitur ini akan memeriksa seluruh akun di sheet '" + SHEET_USERS + "' dan mengenkripsi semua password yang masih berupa teks biasa (plaintext) menjadi kode acak SHA-256 (64 karakter).\n\n" +
+    "Keuntungan:\n" +
+    "• Password guru tidak bisa dibaca langsung oleh siapapun yang melihat spreadsheet.\n" +
+    "• Login guru dan admin di web absensi tetap berjalan normal tanpa gangguan.\n\n" +
+    "Jalankan proses enkripsi sekarang?",
+    ui.ButtonSet.YES_NO
+  );
+
+  if (confirm !== ui.Button.YES) return;
+
+  let encryptedCount = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const rawPass = String(rows[i][2] || "").trim();
+    if (rawPass && !/^[a-f0-9]{64}$/i.test(rawPass)) {
+      const hashed = hashPassword(rawPass);
+      sheet.getRange(i + 1, 3).setValue(hashed);
+      encryptedCount++;
+    }
+  }
+
+  ui.alert(
+    "Enkripsi Selesai! 🛡️",
+    "Sebanyak " + encryptedCount + " password akun telah berhasil dienkripsi ke standar SHA-256.\n" +
+    (encryptedCount === 0
+      ? "Semua akun sebelumnya sudah terenkripsi dengan aman."
+      : "Kini database akun di Google Sheets jauh lebih aman dan terjaga kerahasiaannya!"),
+    ui.ButtonSet.OK
+  );
 }
