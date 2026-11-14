@@ -567,6 +567,25 @@ export const Api = {
       }
 
       case "recordAttendance": {
+        const nowObj = new Date();
+        const dayOfWeek = nowObj.getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          return {
+            success: false,
+            message: "Presensi tidak dapat dilakukan pada hari libur madrasah (Sabtu & Minggu)!"
+          };
+        }
+
+        const isPegawai = body.tipe_absen === "masuk" || body.tipe_absen === "pulang" || body.jadwal_id === "MASUK" || body.jadwal_id === "PULANG";
+        const isRapat = body.tipe_absen === "rapat" || body.jadwal_id === "RAPAT" || body.is_rapat === true;
+
+        if (!isPegawai && !isRapat && (!body.jadwal_id || body.jadwal_id === "Harian")) {
+          return {
+            success: false,
+            message: "Presensi guru harus berdasarkan sesi jadwal kelas yang sah atau penugasan aktif!"
+          };
+        }
+
         if (body.tipe_absen === "masuk" || body.jadwal_id === "MASUK") {
           const duplicate = (db.attendance || []).some(
             (a) => (a.tipe_absen === "masuk" || a.jadwal_id === "MASUK") && String(a.user_id) === String(body.user_id) && a.tanggal === today

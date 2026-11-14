@@ -57,56 +57,41 @@ function formatMinutesToTime(totalMinutes) {
 }
 
 function evaluateAttendanceTiming(schedule, settings, dateObj = new Date()) {
+  const day = dateObj.getDay();
+  // Validasi Hari Libur Akhir Pekan (Sabtu & Minggu)
+  if (day === 0 || day === 6) {
+    const dayName = day === 6 ? "Sabtu" : "Minggu";
+    return {
+      allowed: false,
+      phase: "weekend",
+      recordStatus: "Libur",
+      badgeText: `⛔ Libur (${dayName})`,
+      badgeColor: "#64748b",
+      badgeBg: "#f1f5f9",
+      badgeBorder: "#cbd5e1",
+      message: `Hari ini adalah hari ${dayName} (Akhir Pekan / Libur Sekolah). Kegiatan belajar mengajar libur dan presensi kelas ditutup.`,
+      keterangan: "Hari Libur"
+    };
+  }
+
+  // Jika guru tidak memilih / tidak memiliki jadwal mengajar aktif
+  if (!schedule) {
+    return {
+      allowed: false,
+      phase: "no_schedule",
+      recordStatus: "Tanpa Jadwal",
+      badgeText: "⛔ Tidak Ada Jadwal",
+      badgeColor: "#64748b",
+      badgeBg: "#f1f5f9",
+      badgeBorder: "#cbd5e1",
+      message: "Tidak ada sesi jadwal mengajar aktif untuk Anda hari ini. Presensi hanya dibuka untuk sesi jadwal yang terdaftar.",
+      keterangan: "Tanpa Jadwal"
+    };
+  }
+
   const nowMin = dateObj.getHours() * 60 + dateObj.getMinutes();
   const toleransi = Number(settings?.toleransi_menit ?? 15);
   const currentTimeStr = dateObj.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-
-  if (!schedule) {
-    // Mode Presensi Harian Umum
-    const masukMulai = formatTimeString(settings?.jam_masuk_mulai) || "06:30";
-    const masukBatas = formatTimeString(settings?.jam_masuk_batas) || "07:15";
-    const startMin = parseTimeToMinutes(masukMulai) ?? (6 * 60 + 30);
-    const limitMin = parseTimeToMinutes(masukBatas) ?? (7 * 60 + 15);
-
-    if (nowMin < startMin) {
-      return {
-        allowed: false,
-        phase: "too_early",
-        recordStatus: "Hadir",
-        badgeText: `⏳ Dibuka ${masukMulai}`,
-        badgeColor: "#b45309",
-        badgeBg: "#fffbeb",
-        badgeBorder: "#fde68a",
-        message: `Presensi harian belum dibuka. Presensi dibuka tepat pukul ${masukMulai} (waktu saat ini ${currentTimeStr}).`,
-        keterangan: "Tepat Waktu"
-      };
-    }
-    if (nowMin <= limitMin + toleransi) {
-      return {
-        allowed: true,
-        phase: "on_time",
-        recordStatus: "Hadir",
-        badgeText: "🟢 Tepat Waktu",
-        badgeColor: "#065f46",
-        badgeBg: "#ecfdf5",
-        badgeBorder: "#a7f3d0",
-        message: `Presensi harian tepat waktu (batas toleransi s/d ${formatMinutesToTime(limitMin + toleransi)}).`,
-        keterangan: "Tepat Waktu"
-      };
-    }
-    const diff = nowMin - limitMin;
-    return {
-      allowed: true,
-      phase: "late",
-      recordStatus: "Terlambat",
-      badgeText: `🟠 Terlambat (${diff} mnt)`,
-      badgeColor: "#c2410c",
-      badgeBg: "#fff7ed",
-      badgeBorder: "#fed7aa",
-      message: `Peringatan: Melewati jam batas masuk ${masukBatas}. Kehadiran tercatat TERLAMBAT ${diff} menit.`,
-      keterangan: `Terlambat ${diff} menit`
-    };
-  }
 
   // Mode Sesi Kelas Berdasarkan Jadwal Pelajaran
   const startMin = parseTimeToMinutes(schedule.jam_mulai);
@@ -207,6 +192,23 @@ function evaluateAttendanceTiming(schedule, settings, dateObj = new Date()) {
 
 // --- Helper Evaluasi Waktu Presensi Masuk & Pulang Pegawai ---
 function evaluatePegawaiTiming(mode, settings, dateObj = new Date()) {
+  const day = dateObj.getDay();
+  // Validasi Hari Libur Akhir Pekan (Sabtu & Minggu)
+  if (day === 0 || day === 6) {
+    const dayName = day === 6 ? "Sabtu" : "Minggu";
+    return {
+      allowed: false,
+      phase: "weekend",
+      recordStatus: "Libur",
+      badgeText: `⛔ Libur (${dayName})`,
+      badgeColor: "#64748b",
+      badgeBg: "#f1f5f9",
+      badgeBorder: "#cbd5e1",
+      message: `Hari ini adalah hari ${dayName} (Akhir Pekan). Kantor madrasah tutup dan presensi pegawai dinonaktifkan.`,
+      keterangan: "Hari Libur"
+    };
+  }
+
   const nowMin = dateObj.getHours() * 60 + dateObj.getMinutes();
   const toleransi = Number(settings?.toleransi_menit ?? 15);
   const currentTimeStr = dateObj.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
@@ -497,27 +499,52 @@ export default function TeacherDashboard() {
     );
   };
 
+  const isWeekend = nowDate.getDay() === 0 || nowDate.getDay() === 6;
   const isSubstitute = !isPegawai && scheduleMode === "inval" && selectedSchedule;
   const isRapat = !isPegawai && scheduleMode === "rapat";
   const activeSchedule = attendanceType === "jadwal" && !isRapat ? selectedSchedule : null;
-  const timingEval = isPegawai
-    ? evaluatePegawaiTiming(pegawaiMode, settings, nowDate)
-    : isRapat
-      ? {
-        allowed: true,
-        phase: "on_time",
-        recordStatus: "Hadir",
-        badgeText: "🟢 Presensi Tugas Kedinasan",
-        badgeColor: "#059669",
-        badgeBg: "#ecfdf5",
-        badgeBorder: "#a7f3d0",
-        message: "Presensi rapat dewan guru / tugas dinas bersama dibuka. Jam kelas dialihkan dan tercatat di LKB.",
-        keterangan: "Tugas Kedinasan / Rapat Resmi"
-      }
-      : evaluateAttendanceTiming(activeSchedule, settings, nowDate);
+  const timingEval = isWeekend
+    ? {
+      allowed: false,
+      phase: "weekend",
+      recordStatus: "Libur",
+      badgeText: `⛔ Libur (${getTodayDayName()})`,
+      badgeColor: "#64748b",
+      badgeBg: "#f1f5f9",
+      badgeBorder: "#cbd5e1",
+      message: `Hari ini adalah hari ${getTodayDayName()} (Akhir Pekan / Libur Sekolah). Kegiatan belajar mengajar libur dan presensi ditutup.`,
+      keterangan: "Hari Libur"
+    }
+    : isPegawai
+      ? evaluatePegawaiTiming(pegawaiMode, settings, nowDate)
+      : isRapat
+        ? {
+          allowed: true,
+          phase: "on_time",
+          recordStatus: "Hadir",
+          badgeText: "🟢 Presensi Tugas Kedinasan",
+          badgeColor: "#059669",
+          badgeBg: "#ecfdf5",
+          badgeBorder: "#a7f3d0",
+          message: "Presensi rapat dewan guru / tugas dinas bersama dibuka. Jam kelas dialihkan dan tercatat di LKB.",
+          keterangan: "Tugas Kedinasan / Rapat Resmi"
+        }
+        : evaluateAttendanceTiming(activeSchedule, settings, nowDate);
 
   const handleAttendanceSubmit = async () => {
     setErrorNotice(null);
+
+    // 0. Validasi hari libur akhir pekan
+    if (isWeekend) {
+      setErrorNotice(`Presensi tidak dapat dilakukan pada hari libur akhir pekan (${getTodayDayName()})!`);
+      return;
+    }
+
+    // 0b. Validasi guru wajib memiliki sesi jadwal (bukan rapat & bukan pegawai)
+    if (!isPegawai && !isRapat && !selectedSchedule) {
+      setErrorNotice("Anda tidak memiliki sesi jadwal mengajar aktif untuk dipresensi hari ini!");
+      return;
+    }
 
     // 1. Validasi presensi ganda untuk pegawai
     if (isPegawai) {
@@ -1323,7 +1350,27 @@ export default function TeacherDashboard() {
               {/* Konten Tab 1: Jadwal Mandiri */}
               {scheduleMode === "mandiri" && (
                 <>
-                  {schedules.length === 0 ? (
+                  {isWeekend ? (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "2.5rem 1.25rem",
+                        background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                        borderRadius: "var(--radius-md)",
+                        border: "1.5px dashed #cbd5e1"
+                      }}
+                    >
+                      <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#fee2e2", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.75rem" }}>
+                        <Clock size={24} />
+                      </div>
+                      <h4 style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--text-main)", marginBottom: "0.3rem" }}>
+                        Hari Libur Akhir Pekan ({getTodayDayName()})
+                      </h4>
+                      <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", maxWidth: "340px", margin: "0 auto", lineHeight: 1.5 }}>
+                        Madrasah menerapkan 5 hari sekolah (Senin s/d Jumat). Pada hari Sabtu dan Minggu jadwal mengajar dan presensi diliburkan.
+                      </p>
+                    </div>
+                  ) : schedules.length === 0 ? (
                     <div
                       style={{
                         textAlign: "center",
@@ -1903,300 +1950,377 @@ export default function TeacherDashboard() {
               )}
             </AnimatePresence>
 
-            {/* Kamera Device Langsung untuk Presensi */}
-            <CameraCapture
-              capturedPhoto={capturedPhoto}
-              onCapture={(photoData) => setCapturedPhoto(photoData)}
-              onPhotoCaptured={(photoData) => setCapturedPhoto(photoData)}
-              onRetake={() => setCapturedPhoto(null)}
-              user={currentUser}
-              userName={currentUser?.nama || currentUser?.username}
-            />
-
-            {/* Banner Mode Guru Pengganti */}
-            {!isPegawai && scheduleMode === "inval" && selectedSchedule && (
+            {/* Panel Konten Presensi: Ditutup jika Akhir Pekan atau Guru Tanpa Jadwal */}
+            {isWeekend ? (
               <div
                 style={{
-                  background: "linear-gradient(135deg, #e0f2fe 0%, #ede9fe 100%)",
-                  border: "1.5px solid #7dd3fc",
+                  textAlign: "center",
+                  padding: "2.75rem 1.5rem",
+                  background: "#f8fafc",
                   borderRadius: "var(--radius-md)",
-                  padding: "0.85rem 1rem",
+                  border: "1.5px dashed #cbd5e1",
                   display: "flex",
                   flexDirection: "column",
-                  gap: "0.4rem"
+                  alignItems: "center",
+                  gap: "0.85rem",
+                  marginTop: "0.5rem"
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.4rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontWeight: 800, fontSize: "0.88rem", color: "#0369a1" }}>
-                    <Users size={16} color="#0284c7" />
-                    <span>Mode: Guru Pengganti (Gantikan Guru)</span>
-                  </div>
-                  <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "0.15rem 0.5rem", borderRadius: "6px", background: "#ffffff", color: "#0284c7", border: "1px solid #bae6fd" }}>
-                    Kelas {selectedSchedule.kelas}
-                  </span>
-                </div>
-                <div style={{ fontSize: "0.84rem", color: "var(--text-main)", lineHeight: 1.4 }}>
-                  Menggantikan Rekan: <strong>{selectedSchedule.nama_guru}</strong> ({selectedSchedule.mapel})
-                </div>
-                {(() => {
-                  const leaveInfo = getLeaveInfoForSchedule(selectedSchedule);
-                  if (leaveInfo) {
-                    return (
-                      <div style={{ fontSize: "0.78rem", color: "#b91c1c", background: "#fef2f2", padding: "0.3rem 0.55rem", borderRadius: "6px", border: "1px solid #fca5a5", display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                        <AlertTriangle size={13} style={{ flexShrink: 0 }} />
-                        <span>Keterangan Izin Guru Asli: {leaveInfo.tipe} {leaveInfo.keterangan ? `(${leaveInfo.keterangan})` : ""}</span>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-            )}
-
-            {/* Status Validasi Presensi Geofencing & Jam Sesi */}
-            <div
-              style={{
-                background: "linear-gradient(135deg, #eef2ff 0%, #ecfeff 100%)",
-                border: "1.5px solid #c7d2fe",
-                borderRadius: "var(--radius-md)",
-                padding: "1rem 1.15rem",
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.6rem",
-                boxShadow: "0 2px 10px rgba(99, 102, 241, 0.06)",
-                overflow: "hidden"
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.45rem" }}>
-                <span style={{ fontSize: "0.78rem", fontWeight: 800, color: isPegawai ? "#0284c7" : scheduleMode === "rapat" ? "#7c3aed" : "#4f46e5", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  {isPegawai
-                    ? `Status Presensi ${pegawaiMode === "masuk" ? "Masuk" : "Pulang"}`
-                    : scheduleMode === "rapat"
-                      ? "Status Presensi Rapat Dinas"
-                      : scheduleMode === "inval"
-                        ? "Status Sesi Guru Pengganti"
-                        : "Status Sesi & Validasi Waktu"}
-                </span>
-                <span
+                <div
                   style={{
-                    fontSize: "0.72rem",
-                    fontWeight: 700,
-                    padding: "0.2rem 0.55rem",
-                    borderRadius: "6px",
-                    background: timingEval.badgeBg,
-                    color: timingEval.badgeColor,
-                    border: `1px solid ${timingEval.badgeBorder || timingEval.badgeColor}`,
-                    whiteSpace: "nowrap",
-                    flexShrink: 0
-                  }}
-                >
-                  {timingEval.badgeText}
-                </span>
-              </div>
-
-              <div style={{ fontSize: "0.92rem", color: "var(--text-main)", fontWeight: 800, wordBreak: "break-word" }}>
-                {isPegawai
-                  ? `Presensi ${pegawaiMode === "masuk" ? "Masuk Kantor" : "Kepulangan Kantor"} (${pegawaiMode === "masuk" ? `${formatTimeString(settings?.jam_masuk_mulai) || "06:30"} - ${formatTimeString(settings?.jam_masuk_batas) || "07:15"}` : `Mulai ${formatTimeString(settings?.jam_pulang_mulai) || "15:00"}`})`
-                  : scheduleMode === "rapat"
-                    ? `🏛️ ${selectedRapatAgenda === "Lainnya" ? (customRapatAgenda || "Rapat Kedinasan") : selectedRapatAgenda}`
-                    : scheduleMode === "inval" && selectedSchedule
-                      ? `[Guru Pengganti] Kelas ${selectedSchedule.kelas} • ${selectedSchedule.mapel} (Gantikan: ${selectedSchedule.nama_guru})`
-                      : selectedSchedule
-                        ? `${selectedSchedule.kelas} • ${selectedSchedule.mapel} (${selectedSchedule.jam_mulai} - ${selectedSchedule.jam_selesai})`
-                        : "Presensi Kehadiran Harian Sekolah"}
-              </div>
-
-              {/* Banner Aturan Waktu Sesi */}
-              <div
-                style={{
-                  background: timingEval.badgeBg,
-                  border: `1px solid ${timingEval.badgeBorder || timingEval.badgeColor}`,
-                  borderRadius: "8px",
-                  padding: "0.65rem 0.85rem",
-                  fontSize: "0.8rem",
-                  color: timingEval.badgeColor,
-                  lineHeight: 1.35,
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "0.5rem"
-                }}
-              >
-                <Clock size={16} style={{ flexShrink: 0, marginTop: "2px" }} />
-                <span>{timingEval.message}</span>
-              </div>
-            </div>
-
-            {/* Catatan Tugas Harian (Pegawai) atau Jurnal (Guru) */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  color: "var(--text-secondary)",
-                  marginBottom: "0.4rem"
-                }}
-              >
-                {isPegawai
-                  ? "Catatan Aktivitas / Tugas Harian (Opsional)"
-                  : scheduleMode === "rapat"
-                    ? "Catatan Tambahan Agenda Rapat (Opsional)"
-                    : scheduleMode === "inval"
-                      ? "Catatan Aktivitas Guru Pengganti"
-                      : "Catatan / Materi Pembelajaran (Opsional)"}
-              </label>
-              <input
-                type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={
-                  isPegawai
-                    ? "Contoh: Mengarsipkan surat masuk & layanan legalisir..."
-                    : scheduleMode === "rapat"
-                      ? "Contoh: Mengikuti sesi rapat dan pembahasan evaluasi..."
-                      : scheduleMode === "inval"
-                        ? "Contoh: Menggantikan materi Bab 4 dan mendampingi diskusi kelompok..."
-                        : "Contoh: Pembahasan Bab 3 Persamaan Linear..."
-                }
-                className="neon-input"
-              />
-            </div>
-
-            {/* Submit Button */}
-            {(() => {
-              const invalAttRecord = (!isPegawai && scheduleMode === "inval" && selectedSchedule)
-                ? getAttendanceForSchedule(selectedSchedule)
-                : null;
-              const isAlreadyRecordedByMe = invalAttRecord && (
-                String(invalAttRecord.user_id) === String(currentUser?.id) ||
-                (currentUser?.nip && String(invalAttRecord.nip) === String(currentUser?.nip))
-              );
-
-              const isScheduleAlreadyRecorded = !isPegawai && selectedSchedule && todayRecords.some(r =>
-                String(r.jadwal_id) === String(selectedSchedule.id) ||
-                (r.kelas === selectedSchedule.kelas && r.mapel === selectedSchedule.mapel && (r.jam_jadwal?.includes(selectedSchedule.jam_mulai) || !r.jam_jadwal))
-              );
-
-              const hasRapatToday = todayRecords.some(r => r.tipe_absen === "rapat" || r.jadwal_id === "RAPAT" || r.is_rapat);
-
-              const isAlreadyRecorded = isPegawai
-                ? ((pegawaiMode === "masuk" && hasCheckIn) || (pegawaiMode === "pulang" && hasCheckOut))
-                : scheduleMode === "rapat"
-                  ? hasRapatToday
-                  : scheduleMode === "inval"
-                    ? Boolean(invalAttRecord)
-                    : (attendanceType === "jadwal" && isScheduleAlreadyRecorded);
-
-              const isDisabled = loading || !timingEval.allowed || isAlreadyRecorded || !capturedPhoto;
-
-              return (
-                <motion.button
-                  whileHover={!isDisabled ? { scale: 1.02 } : {}}
-                  whileTap={!isDisabled ? { scale: 0.98 } : {}}
-                  type="button"
-                  onClick={handleAttendanceSubmit}
-                  disabled={isDisabled}
-                  style={{
-                    width: "100%",
-                    padding: "0.95rem",
-                    fontSize: "0.92rem",
-                    fontWeight: 800,
-                    marginTop: "0.5rem",
-                    borderRadius: "var(--radius-md)",
-                    border: "none",
-                    cursor: isDisabled ? "not-allowed" : "pointer",
+                    width: "56px",
+                    height: "56px",
+                    borderRadius: "16px",
+                    background: "#fee2e2",
+                    color: "#dc2626",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    gap: "0.5rem",
-                    transition: "all 0.2s ease",
-                    background: isAlreadyRecorded
-                      ? "#f1f5f9"
-                      : !timingEval.allowed
-                        ? timingEval.badgeBg
-                        : !capturedPhoto
-                          ? "#fef3c7"
-                          : scheduleMode === "rapat"
-                            ? "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)"
-                            : timingEval.phase === "late"
-                              ? "linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%)"
-                              : isPegawai && pegawaiMode === "pulang"
-                                ? "linear-gradient(135deg, #2563eb 0%, #0284c7 100%)"
-                                : scheduleMode === "inval"
-                                  ? "linear-gradient(135deg, #0284c7 0%, #2563eb 100%)"
-                                  : "linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)",
-                    color: isAlreadyRecorded
-                      ? "#64748b"
-                      : !timingEval.allowed
-                        ? timingEval.badgeColor
-                        : !capturedPhoto
-                          ? "#92400e"
-                          : "#ffffff",
-                    boxShadow: !isDisabled
-                      ? scheduleMode === "rapat"
-                        ? "0 4px 16px rgba(124, 58, 237, 0.35)"
-                        : timingEval.phase === "late"
-                          ? "0 4px 16px rgba(234, 88, 12, 0.35)"
-                          : scheduleMode === "inval"
-                            ? "0 4px 16px rgba(2, 132, 199, 0.35)"
-                            : "0 4px 16px rgba(5, 150, 105, 0.35)"
-                      : "none"
+                    justifyContent: "center"
                   }}
                 >
-                  {loading ? (
-                    <span>Menyimpan Presensi...</span>
-                  ) : isAlreadyRecorded ? (
-                    <>
-                      <CheckCircle2 size={18} color="#166534" />
-                      <span>
-                        {isPegawai
-                          ? `SUDAH ABSEN ${pegawaiMode.toUpperCase()} HARI INI`
-                          : scheduleMode === "rapat"
-                            ? "SUDAH PRESENSI RAPAT DINAS HARI INI"
-                            : scheduleMode === "inval"
-                              ? isAlreadyRecordedByMe
-                                ? `SUDAH MENGGANTIKAN KELAS ${selectedSchedule?.kelas}`
-                                : `KELAS SUDAH DIISI OLEH ${invalAttRecord?.nama}`
-                              : `SUDAH PRESENSI KELAS ${selectedSchedule?.kelas} HARI INI`}
+                  <Clock size={28} />
+                </div>
+                <div style={{ fontSize: "1.12rem", fontWeight: 800, color: "var(--text-main)" }}>
+                  Presensi Ditutup (Hari Libur {getTodayDayName()})
+                </div>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", maxWidth: "340px", margin: 0, lineHeight: 1.55 }}>
+                  Sistem presensi kelas dan kehadiran hanya aktif pada hari kegiatan belajar mengajar (Senin s/d Jumat). Presensi ditutup pada akhir pekan.
+                </p>
+              </div>
+            ) : !isPegawai && !isRapat && !selectedSchedule ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "2.75rem 1.5rem",
+                  background: "#f8fafc",
+                  borderRadius: "var(--radius-md)",
+                  border: "1.5px dashed #cbd5e1",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "0.85rem",
+                  marginTop: "0.5rem"
+                }}
+              >
+                <div
+                  style={{
+                    width: "56px",
+                    height: "56px",
+                    borderRadius: "16px",
+                    background: "#fef3c7",
+                    color: "#d97706",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  <BookOpen size={28} />
+                </div>
+                <div style={{ fontSize: "1.12rem", fontWeight: 800, color: "var(--text-main)" }}>
+                  Tidak Ada Sesi Mengajar Aktif
+                </div>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", maxWidth: "340px", margin: 0, lineHeight: 1.55 }}>
+                  Bapak/Ibu Guru tidak memiliki jadwal mengajar pada hari ini. Jika bertugas menggantikan guru lain, silakan beralih ke tab <strong>Gantikan Guru</strong> atau <strong>Rapat Dinas</strong>.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Kamera Device Langsung untuk Presensi */}
+                <CameraCapture
+                  capturedPhoto={capturedPhoto}
+                  onCapture={(photoData) => setCapturedPhoto(photoData)}
+                  onPhotoCaptured={(photoData) => setCapturedPhoto(photoData)}
+                  onRetake={() => setCapturedPhoto(null)}
+                  user={currentUser}
+                  userName={currentUser?.nama || currentUser?.username}
+                />
+
+                {/* Banner Mode Guru Pengganti */}
+                {!isPegawai && scheduleMode === "inval" && selectedSchedule && (
+                  <div
+                    style={{
+                      background: "linear-gradient(135deg, #e0f2fe 0%, #ede9fe 100%)",
+                      border: "1.5px solid #7dd3fc",
+                      borderRadius: "var(--radius-md)",
+                      padding: "0.85rem 1rem",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.4rem"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.4rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontWeight: 800, fontSize: "0.88rem", color: "#0369a1" }}>
+                        <Users size={16} color="#0284c7" />
+                        <span>Mode: Guru Pengganti (Gantikan Guru)</span>
+                      </div>
+                      <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "0.15rem 0.5rem", borderRadius: "6px", background: "#ffffff", color: "#0284c7", border: "1px solid #bae6fd" }}>
+                        Kelas {selectedSchedule.kelas}
                       </span>
-                    </>
-                  ) : !timingEval.allowed ? (
-                    <>
-                      <Timer size={18} />
-                      <span>{timingEval.badgeText} - Presensi Dikunci</span>
-                    </>
-                  ) : !capturedPhoto ? (
-                    <>
-                      <Camera size={18} />
-                      <span>AMBIL FOTO KAMERA TERLEBIH DAHULU</span>
-                    </>
-                  ) : scheduleMode === "rapat" ? (
-                    <>
-                      <CheckCircle2 size={18} />
-                      <span>KIRIM PRESENSI</span>
-                    </>
-                  ) : timingEval.phase === "late" ? (
-                    <>
-                      <AlertTriangle size={18} />
-                      <span>
-                        {scheduleMode === "inval"
-                          ? `KIRIM PRESENSI GURU PENGGANTI (TERLAMBAT)`
-                          : `KIRIM PRESENSI ${isPegawai ? pegawaiMode.toUpperCase() : selectedSchedule ? `KELAS ${selectedSchedule.kelas}` : "HARIAN"} (TERLAMBAT)`}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 size={18} />
-                      <span>
-                        {scheduleMode === "inval"
-                          ? `KIRIM PRESENSI GURU PENGGANTI (TEPAT WAKTU)`
-                          : `KIRIM PRESENSI ${isPegawai ? pegawaiMode.toUpperCase() : selectedSchedule ? `KELAS ${selectedSchedule.kelas}` : "HARIAN"} (TEPAT WAKTU)`}
-                      </span>
-                    </>
-                  )}
-                </motion.button>
-              );
-            })()}
+                    </div>
+                    <div style={{ fontSize: "0.84rem", color: "var(--text-main)", lineHeight: 1.4 }}>
+                      Menggantikan Rekan: <strong>{selectedSchedule.nama_guru}</strong> ({selectedSchedule.mapel})
+                    </div>
+                    {(() => {
+                      const leaveInfo = getLeaveInfoForSchedule(selectedSchedule);
+                      if (leaveInfo) {
+                        return (
+                          <div style={{ fontSize: "0.78rem", color: "#b91c1c", background: "#fef2f2", padding: "0.3rem 0.55rem", borderRadius: "6px", border: "1px solid #fca5a5", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                            <AlertTriangle size={13} style={{ flexShrink: 0 }} />
+                            <span>Keterangan Izin Guru Asli: {leaveInfo.tipe} {leaveInfo.keterangan ? `(${leaveInfo.keterangan})` : ""}</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
+
+                {/* Status Validasi Presensi Geofencing & Jam Sesi */}
+                <div
+                  style={{
+                    background: "linear-gradient(135deg, #eef2ff 0%, #ecfeff 100%)",
+                    border: "1.5px solid #c7d2fe",
+                    borderRadius: "var(--radius-md)",
+                    padding: "1rem 1.15rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.6rem",
+                    boxShadow: "0 2px 10px rgba(99, 102, 241, 0.06)",
+                    overflow: "hidden"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.45rem" }}>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 800, color: isPegawai ? "#0284c7" : scheduleMode === "rapat" ? "#7c3aed" : "#4f46e5", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      {isPegawai
+                        ? `Status Presensi ${pegawaiMode === "masuk" ? "Masuk" : "Pulang"}`
+                        : scheduleMode === "rapat"
+                          ? "Status Presensi Rapat Dinas"
+                          : scheduleMode === "inval"
+                            ? "Status Sesi Guru Pengganti"
+                            : "Status Sesi & Validasi Waktu"}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        padding: "0.2rem 0.55rem",
+                        borderRadius: "6px",
+                        background: timingEval.badgeBg,
+                        color: timingEval.badgeColor,
+                        border: `1px solid ${timingEval.badgeBorder || timingEval.badgeColor}`,
+                        whiteSpace: "nowrap",
+                        flexShrink: 0
+                      }}
+                    >
+                      {timingEval.badgeText}
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: "0.92rem", color: "var(--text-main)", fontWeight: 800, wordBreak: "break-word" }}>
+                    {isPegawai
+                      ? `Presensi ${pegawaiMode === "masuk" ? "Masuk Kantor" : "Kepulangan Kantor"} (${pegawaiMode === "masuk" ? `${formatTimeString(settings?.jam_masuk_mulai) || "06:30"} - ${formatTimeString(settings?.jam_masuk_batas) || "07:15"}` : `Mulai ${formatTimeString(settings?.jam_pulang_mulai) || "15:00"}`})`
+                      : scheduleMode === "rapat"
+                        ? `🏛️ ${selectedRapatAgenda === "Lainnya" ? (customRapatAgenda || "Rapat Kedinasan") : selectedRapatAgenda}`
+                        : scheduleMode === "inval" && selectedSchedule
+                          ? `[Guru Pengganti] Kelas ${selectedSchedule.kelas} • ${selectedSchedule.mapel} (Gantikan: ${selectedSchedule.nama_guru})`
+                          : selectedSchedule
+                            ? `${selectedSchedule.kelas} • ${selectedSchedule.mapel} (${selectedSchedule.jam_mulai} - ${selectedSchedule.jam_selesai})`
+                            : "Presensi Kehadiran Harian Sekolah"}
+                  </div>
+
+                  {/* Banner Aturan Waktu Sesi */}
+                  <div
+                    style={{
+                      background: timingEval.badgeBg,
+                      border: `1px solid ${timingEval.badgeBorder || timingEval.badgeColor}`,
+                      borderRadius: "8px",
+                      padding: "0.65rem 0.85rem",
+                      fontSize: "0.8rem",
+                      color: timingEval.badgeColor,
+                      lineHeight: 1.35,
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "0.5rem"
+                    }}
+                  >
+                    <Clock size={16} style={{ flexShrink: 0, marginTop: "2px" }} />
+                    <span>{timingEval.message}</span>
+                  </div>
+                </div>
+
+                {/* Catatan Tugas Harian (Pegawai) atau Jurnal (Guru) */}
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                      color: "var(--text-secondary)",
+                      marginBottom: "0.4rem"
+                    }}
+                  >
+                    {isPegawai
+                      ? "Catatan Aktivitas / Tugas Harian (Opsional)"
+                      : scheduleMode === "rapat"
+                        ? "Catatan Tambahan Agenda Rapat (Opsional)"
+                        : scheduleMode === "inval"
+                          ? "Catatan Aktivitas Guru Pengganti"
+                          : "Catatan / Materi Pembelajaran (Opsional)"}
+                  </label>
+                  <input
+                    type="text"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder={
+                      isPegawai
+                        ? "Contoh: Mengarsipkan surat masuk & layanan legalisir..."
+                        : scheduleMode === "rapat"
+                          ? "Contoh: Mengikuti sesi rapat dan pembahasan evaluasi..."
+                          : scheduleMode === "inval"
+                            ? "Contoh: Menggantikan materi Bab 4 dan mendampingi diskusi kelompok..."
+                            : "Contoh: Pembahasan Bab 3 Persamaan Linear..."
+                    }
+                    className="neon-input"
+                  />
+                </div>
+
+                {/* Submit Button */}
+                {(() => {
+                  const invalAttRecord = (!isPegawai && scheduleMode === "inval" && selectedSchedule)
+                    ? getAttendanceForSchedule(selectedSchedule)
+                    : null;
+                  const isAlreadyRecordedByMe = invalAttRecord && (
+                    String(invalAttRecord.user_id) === String(currentUser?.id) ||
+                    (currentUser?.nip && String(invalAttRecord.nip) === String(currentUser?.nip))
+                  );
+
+                  const isScheduleAlreadyRecorded = !isPegawai && selectedSchedule && todayRecords.some(r =>
+                    String(r.jadwal_id) === String(selectedSchedule.id) ||
+                    (r.kelas === selectedSchedule.kelas && r.mapel === selectedSchedule.mapel && (r.jam_jadwal?.includes(selectedSchedule.jam_mulai) || !r.jam_jadwal))
+                  );
+
+                  const hasRapatToday = todayRecords.some(r => r.tipe_absen === "rapat" || r.jadwal_id === "RAPAT" || r.is_rapat);
+
+                  const isAlreadyRecorded = isPegawai
+                    ? ((pegawaiMode === "masuk" && hasCheckIn) || (pegawaiMode === "pulang" && hasCheckOut))
+                    : scheduleMode === "rapat"
+                      ? hasRapatToday
+                      : scheduleMode === "inval"
+                        ? Boolean(invalAttRecord)
+                        : (attendanceType === "jadwal" && isScheduleAlreadyRecorded);
+
+                  const isDisabled = loading || !timingEval.allowed || isAlreadyRecorded || !capturedPhoto;
+
+                  return (
+                    <motion.button
+                      whileHover={!isDisabled ? { scale: 1.02 } : {}}
+                      whileTap={!isDisabled ? { scale: 0.98 } : {}}
+                      type="button"
+                      onClick={handleAttendanceSubmit}
+                      disabled={isDisabled}
+                      style={{
+                        width: "100%",
+                        padding: "0.95rem",
+                        fontSize: "0.92rem",
+                        fontWeight: 800,
+                        marginTop: "0.5rem",
+                        borderRadius: "var(--radius-md)",
+                        border: "none",
+                        cursor: isDisabled ? "not-allowed" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "0.5rem",
+                        transition: "all 0.2s ease",
+                        background: isAlreadyRecorded
+                          ? "#f1f5f9"
+                          : !timingEval.allowed
+                            ? timingEval.badgeBg
+                            : !capturedPhoto
+                              ? "#fef3c7"
+                              : scheduleMode === "rapat"
+                                ? "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)"
+                                : timingEval.phase === "late"
+                                  ? "linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%)"
+                                  : isPegawai && pegawaiMode === "pulang"
+                                    ? "linear-gradient(135deg, #2563eb 0%, #0284c7 100%)"
+                                    : scheduleMode === "inval"
+                                      ? "linear-gradient(135deg, #0284c7 0%, #2563eb 100%)"
+                                      : "linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)",
+                        color: isAlreadyRecorded
+                          ? "#64748b"
+                          : !timingEval.allowed
+                            ? timingEval.badgeColor
+                            : !capturedPhoto
+                              ? "#92400e"
+                              : "#ffffff",
+                        boxShadow: !isDisabled
+                          ? scheduleMode === "rapat"
+                            ? "0 4px 16px rgba(124, 58, 237, 0.35)"
+                            : timingEval.phase === "late"
+                              ? "0 4px 16px rgba(234, 88, 12, 0.35)"
+                              : scheduleMode === "inval"
+                                ? "0 4px 16px rgba(2, 132, 199, 0.35)"
+                                : "0 4px 16px rgba(5, 150, 105, 0.35)"
+                          : "none"
+                      }}
+                    >
+                      {loading ? (
+                        <span>Menyimpan Presensi...</span>
+                      ) : isAlreadyRecorded ? (
+                        <>
+                          <CheckCircle2 size={18} color="#166534" />
+                          <span>
+                            {isPegawai
+                              ? `SUDAH ABSEN ${pegawaiMode.toUpperCase()} HARI INI`
+                              : scheduleMode === "rapat"
+                                ? "SUDAH PRESENSI RAPAT DINAS HARI INI"
+                                : scheduleMode === "inval"
+                                  ? isAlreadyRecordedByMe
+                                    ? `SUDAH MENGGANTIKAN KELAS ${selectedSchedule?.kelas}`
+                                    : `KELAS SUDAH DIISI OLEH ${invalAttRecord?.nama}`
+                                  : `SUDAH PRESENSI KELAS ${selectedSchedule?.kelas} HARI INI`}
+                          </span>
+                        </>
+                      ) : !timingEval.allowed ? (
+                        <>
+                          <Timer size={18} />
+                          <span>{timingEval.badgeText} - Presensi Dikunci</span>
+                        </>
+                      ) : !capturedPhoto ? (
+                        <>
+                          <Camera size={18} />
+                          <span>AMBIL FOTO KAMERA TERLEBIH DAHULU</span>
+                        </>
+                      ) : scheduleMode === "rapat" ? (
+                        <>
+                          <CheckCircle2 size={18} />
+                          <span>KIRIM PRESENSI</span>
+                        </>
+                      ) : timingEval.phase === "late" ? (
+                        <>
+                          <AlertTriangle size={18} />
+                          <span>
+                            {scheduleMode === "inval"
+                              ? `KIRIM PRESENSI GURU PENGGANTI (TERLAMBAT)`
+                              : `KIRIM PRESENSI ${isPegawai ? pegawaiMode.toUpperCase() : selectedSchedule ? `KELAS ${selectedSchedule.kelas}` : "HARIAN"} (TERLAMBAT)`}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 size={18} />
+                          <span>
+                            {scheduleMode === "inval"
+                              ? `KIRIM PRESENSI GURU PENGGANTI (TEPAT WAKTU)`
+                              : `KIRIM PRESENSI ${isPegawai ? pegawaiMode.toUpperCase() : selectedSchedule ? `KELAS ${selectedSchedule.kelas}` : "HARIAN"} (TEPAT WAKTU)`}
+                          </span>
+                        </>
+                      )}
+                    </motion.button>
+                  );
+                })()}
+              </>
+            )}
           </motion.div>
         </div>
       </main>

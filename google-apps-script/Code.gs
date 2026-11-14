@@ -604,6 +604,26 @@ function recordClassAttendanceHandler(data) {
   try {
     lock.waitLock(30000);
 
+    // 1. Cek Hari Libur Akhir Pekan (Sabtu & Minggu)
+    const dayOfWeekNum = parseInt(Utilities.formatDate(new Date(), "GMT+8", "u"), 10); // 1 = Senin, ..., 6 = Sabtu, 7 = Minggu
+    if (dayOfWeekNum === 6 || dayOfWeekNum === 7) {
+      return {
+        success: false,
+        message: "Presensi ditolak: Hari ini adalah hari libur akhir pekan (Sabtu / Minggu). Presensi madrasah dinonaktifkan!"
+      };
+    }
+
+    // 2. Cek Jenis Presensi & Keabsahan Sesi Mengajar
+    const isPegawai = data.tipe_absen === "masuk" || data.tipe_absen === "pulang" || data.jadwal_id === "MASUK" || data.jadwal_id === "PULANG";
+    const isRapat = data.tipe_absen === "rapat" || data.jadwal_id === "RAPAT" || data.is_rapat === true;
+
+    if (!isPegawai && !isRapat && (!data.jadwal_id || data.jadwal_id === "null" || data.jadwal_id === "undefined" || data.jadwal_id === "Harian" || String(data.jadwal_id).trim() === "")) {
+      return {
+        success: false,
+        message: "Presensi guru harus berdasarkan sesi jadwal kelas yang sah atau penugasan dinas aktif!"
+      };
+    }
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName(SHEET_ATTENDANCE);
     if (!sheet) {
@@ -625,7 +645,6 @@ function recordClassAttendanceHandler(data) {
         : String(rawDate).trim().replace(/^'/, "");
 
       if (aJadwalId === String(data.jadwal_id) && aUserId === String(data.user_id) && aDate === todayStr) {
-        const isPegawai = data.tipe_absen === "masuk" || data.tipe_absen === "pulang" || data.jadwal_id === "MASUK" || data.jadwal_id === "PULANG";
         return {
           success: false,
           message: isPegawai
@@ -635,11 +654,11 @@ function recordClassAttendanceHandler(data) {
       }
     }
 
-    // Cek pembatasan jam jadwal (jika data.jam_jadwal ada dan bukan absensi pegawai)
+    // Cek pembatasan jam jadwal (jika data.jam_jadwal ada dan bukan absensi pegawai / rapat)
     let finalStatus = data.status || "Hadir";
     let finalKeterangan = data.keterangan || "Tepat Waktu";
 
-    if (data.jam_jadwal && String(data.jam_jadwal).includes("-") && data.jadwal_id !== "MASUK" && data.jadwal_id !== "PULANG") {
+    if (data.jam_jadwal && String(data.jam_jadwal).includes("-") && !isPegawai && !isRapat) {
       const parts = String(data.jam_jadwal).split("-");
       const jamMulaiStr = parts[0].trim();
       const jamSelesaiStr = parts[1].trim();
@@ -672,16 +691,18 @@ function recordClassAttendanceHandler(data) {
       }
 
       if (startMin !== null && endMin !== null && nowMin !== null) {
-        if (nowMin < startMin) {
+        // Toleransi dibuka 15 menit sebelum jam pelajaran dimulai
+        if (nowMin < startMin - 15) {
           return {
             success: false,
-            message: "Sesi kelas " + (data.kelas || "") + " belum dimulai! Presensi baru dibuka tepat pukul " + jamMulaiStr + " (waktu saat ini: " + timeNowStr + ")."
+            message: "Sesi kelas " + (data.kelas || "") + " belum dibuka! Presensi dibuka 15 menit sebelum kelas dimulai (pukul " + jamMulaiStr + ")."
           };
         }
-        if (nowMin > endMin) {
+        // Batas toleransi presensi hingga 30 menit setelah jam pelajaran selesai
+        if (nowMin > endMin + 30) {
           return {
             success: false,
-            message: "Sesi kelas " + (data.kelas || "") + " telah berakhir pada pukul " + jamSelesaiStr + " (waktu saat ini: " + timeNowStr + ")."
+            message: "Sesi kelas " + (data.kelas || "") + " telah berakhir pada pukul " + jamSelesaiStr + " (batas waktu presensi telah lewat)."
           };
         }
         if (nowMin > startMin + toleransiMenit) {
