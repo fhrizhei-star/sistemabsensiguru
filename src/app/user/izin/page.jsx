@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
@@ -16,7 +16,11 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  UploadCloud
+  UploadCloud,
+  FileCheck,
+  X,
+  UserCheck,
+  Briefcase
 } from "lucide-react";
 
 export default function TeacherIzinPage() {
@@ -55,6 +59,24 @@ export default function TeacherIzinPage() {
     }
   };
 
+  const handleRemoveFile = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setBuktiNama("");
+  };
+
+  // Hitung jumlah hari izin
+  const durasiHari = useMemo(() => {
+    if (!tglMulai || !tglSelesai) return 1;
+    const d1 = new Date(tglMulai);
+    const d2 = new Date(tglSelesai);
+    const diffTime = d2.getTime() - d1.getTime();
+    if (isNaN(diffTime) || diffTime < 0) return 1;
+    return Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  }, [tglMulai, tglSelesai]);
+
+  const isPegawai = currentUser?.role === "pegawai";
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setNotice(null);
@@ -64,16 +86,22 @@ export default function TeacherIzinPage() {
       return;
     }
 
+    if (tglMulai && tglSelesai && tglMulai > tglSelesai) {
+      setNotice({ type: "error", msg: "Tanggal mulai tidak boleh lebih besar dari tanggal selesai!" });
+      return;
+    }
+
     setLoading(true);
     try {
       const body = {
         user_id: currentUser.id,
         nama: currentUser.nama || currentUser.username,
         nip: currentUser.nip || "-",
-        mapel: currentUser.mapel || "Guru",
+        mapel: currentUser.mapel || (isPegawai ? (currentUser.jabatan || "Tenaga Administrasi") : "Guru"),
         tipe,
         tgl_mulai: tglMulai,
         tgl_selesai: tglSelesai,
+        durasi_hari: durasiHari,
         alasan,
         bukti: buktiNama || "Surat_Permohonan.pdf"
       };
@@ -86,7 +114,7 @@ export default function TeacherIzinPage() {
           origin: { y: 0.6 }
         });
 
-        setNotice({ type: "success", msg: "Permohonan izin berhasil diajukan dan sedang menunggu verifikasi Tata Usaha." });
+        setNotice({ type: "success", msg: "Permohonan izin berhasil diajukan dan sedang menunggu verifikasi Tata Usaha / Pimpinan." });
         setAlasan("");
         setBuktiNama("");
         fetchLeaves(currentUser.id);
@@ -94,7 +122,7 @@ export default function TeacherIzinPage() {
         setNotice({ type: "error", msg: res?.message || "Gagal mengajukan izin." });
       }
     } catch (err) {
-      setNotice({ type: "error", msg: "Terjadi gangguan sistem." });
+      setNotice({ type: "error", msg: "Terjadi gangguan sistem. Silakan coba lagi." });
     } finally {
       setLoading(false);
     }
@@ -104,160 +132,255 @@ export default function TeacherIzinPage() {
 
   return (
     <>
-      <Navbar role="guru" />
-      <main style={{ maxWidth: "1280px", margin: "0 auto", padding: "1.5rem", width: "100%" }}>
+      <Navbar role={isPegawai ? "pegawai" : "guru"} />
+      <main style={{ maxWidth: "1280px", margin: "0 auto", padding: "1.5rem", width: "100%", boxSizing: "border-box" }}>
         <TeacherNav />
 
-        <div style={{ marginBottom: "1.5rem" }}>
-          <h1 style={{ fontSize: "1.55rem", fontWeight: 800, color: "var(--text-main)" }}>
-            Pengajuan Cuti & Izin
-          </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem" }}>
-            Ajukan permohonan dispensasi, surat sakit dokter, atau penugasan dinas luar sekolah
-          </p>
+        {/* Page Header */}
+        <div style={{ marginBottom: "1.5rem", display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+              <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text-main)", letterSpacing: "-0.02em" }}>
+                Pengajuan Cuti & Izin
+              </h1>
+              <span
+                style={{
+                  fontSize: "0.72rem",
+                  fontWeight: 700,
+                  padding: "0.25rem 0.65rem",
+                  borderRadius: "9999px",
+                  background: isPegawai ? "#ecfdf5" : "#eff6ff",
+                  color: isPegawai ? "#047857" : "#1d4ed8",
+                  border: `1px solid ${isPegawai ? "#a7f3d0" : "#bfdbfe"}`
+                }}
+              >
+                {isPegawai ? "Staf Pegawai / TU" : "Guru Pendidik"}
+              </span>
+            </div>
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.86rem" }}>
+              Layanan permohonan dispensasi, surat sakit dokter, cuti tahunan, atau tugas dinas luar
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1.5rem" }}>
+        {/* Responsive Grid Container */}
+        <div className="izin-grid">
           {/* Form Pengajuan Izin */}
           <motion.div
-            initial={{ opacity: 0, x: -15 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="glass-panel"
-            style={{ padding: "1.75rem", border: "1.5px solid #fde68a", background: "linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)" }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-panel izin-card"
+            style={{
+              border: "1.5px solid #fde68a",
+              background: "linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)",
+              boxShadow: "0 4px 20px rgba(245, 158, 11, 0.08)"
+            }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1.25rem" }}>
-              <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#fef3c7", border: "1px solid #fde68a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", marginBottom: "1.25rem" }}>
+              <div
+                style={{
+                  width: "38px",
+                  height: "38px",
+                  borderRadius: "10px",
+                  background: "#fef3c7",
+                  border: "1.5px solid #fde68a",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0
+                }}
+              >
                 <FileText size={20} color="#d97706" />
               </div>
-              <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)" }}>
-                Formulir Permohonan
-              </h2>
+              <div>
+                <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)", lineHeight: 1.2 }}>
+                  Formulir Permohonan
+                </h2>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                  Isi data izin dan lampirkan dokumen pendukung
+                </span>
+              </div>
             </div>
 
             <AnimatePresence>
               {notice && (
                 <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
+                  initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  animate={{ opacity: 1, height: "auto", marginBottom: "1.15rem" }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                   style={{
                     background: notice.type === "success" ? "#ecfdf5" : "#fff1f2",
-                    border: `1px solid ${notice.type === "success" ? "#a7f3d0" : "#fecdd3"}`,
+                    border: `1.5px solid ${notice.type === "success" ? "#a7f3d0" : "#fecdd3"}`,
                     color: notice.type === "success" ? "#065f46" : "#be123c",
-                    padding: "0.75rem 1rem",
+                    padding: "0.75rem 0.95rem",
                     borderRadius: "var(--radius-md)",
-                    fontSize: "0.85rem",
+                    fontSize: "0.84rem",
                     display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    marginBottom: "1.25rem",
-                    fontWeight: 600
+                    alignItems: "flex-start",
+                    gap: "0.55rem",
+                    fontWeight: 600,
+                    overflow: "hidden"
                   }}
                 >
-                  {notice.type === "success" ? <CheckCircle2 size={18} color="#059669" /> : <AlertCircle size={18} color="#e11d48" />}
-                  <span>{notice.msg}</span>
+                  <span style={{ flexShrink: 0, marginTop: "2px" }}>
+                    {notice.type === "success" ? <CheckCircle2 size={18} color="#059669" /> : <AlertCircle size={18} color="#e11d48" />}
+                  </span>
+                  <span style={{ flex: 1 }}>{notice.msg}</span>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {/* Kategori */}
               <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
                   Kategori Permohonan
                 </label>
                 <select
                   value={tipe}
                   onChange={(e) => setTipe(e.target.value)}
                   className="neon-input"
-                  style={{ cursor: "pointer", background: "#ffffff" }}
+                  style={{ cursor: "pointer", background: "#ffffff", width: "100%" }}
                 >
-                  <option value="Sakit">Sakit (Dengan Surat Dokter)</option>
-                  <option value="Tugas Dinas Luar">Tugas Dinas Luar / MGMP</option>
+                  <option value="Sakit">Sakit (Dengan Surat Keterangan Dokter)</option>
+                  <option value="Tugas Dinas Luar">Tugas Kedinasan Luar / Pelatihan / MGMP</option>
                   <option value="Cuti Tahunan">Cuti Tahunan</option>
-                  <option value="Izin Pribadi">Izin Keperluan Pribadi</option>
+                  <option value="Cuti Alasan Penting">Cuti Alasan Penting / Keperluan Keluarga</option>
+                  <option value="Izin Pribadi">Izin Terlambat / Pulang Lebih Awal</option>
                 </select>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
-                    Tanggal Mulai
-                  </label>
-                  <input
-                    type="date"
-                    value={tglMulai}
-                    onChange={(e) => setTglMulai(e.target.value)}
-                    className="neon-input"
-                    style={{ background: "#ffffff" }}
-                  />
+              {/* Tanggal Mulai & Selesai - Responsive Grid */}
+              <div>
+                <div className="izin-date-grid">
+                  <div className="izin-date-col">
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
+                      <Calendar size={13} color="#d97706" />
+                      <span>Tanggal Mulai</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={tglMulai}
+                      onChange={(e) => setTglMulai(e.target.value)}
+                      className="neon-input"
+                      style={{ background: "#ffffff" }}
+                    />
+                  </div>
+                  <div className="izin-date-col">
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
+                      <Calendar size={13} color="#d97706" />
+                      <span>Tanggal Selesai</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={tglSelesai}
+                      onChange={(e) => setTglSelesai(e.target.value)}
+                      className="neon-input"
+                      style={{ background: "#ffffff" }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
-                    Tanggal Selesai
-                  </label>
-                  <input
-                    type="date"
-                    value={tglSelesai}
-                    onChange={(e) => setTglSelesai(e.target.value)}
-                    className="neon-input"
-                    style={{ background: "#ffffff" }}
-                  />
+
+                {/* Info Durasi Hari */}
+                <div
+                  style={{
+                    marginTop: "0.55rem",
+                    padding: "0.45rem 0.75rem",
+                    borderRadius: "8px",
+                    background: "rgba(245, 158, 11, 0.1)",
+                    border: "1px solid rgba(245, 158, 11, 0.25)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    fontSize: "0.78rem",
+                    color: "#92400e",
+                    fontWeight: 600
+                  }}
+                >
+                  <span>Durasi Permohonan:</span>
+                  <span style={{ fontWeight: 800, background: "#fef3c7", padding: "0.15rem 0.5rem", borderRadius: "6px" }}>
+                    {durasiHari} Hari Kerja
+                  </span>
                 </div>
               </div>
 
+              {/* Alasan */}
               <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
                   Alasan / Keterangan Lengkap
                 </label>
                 <textarea
                   rows={3}
                   value={alasan}
                   onChange={(e) => setAlasan(e.target.value)}
-                  placeholder="Jelaskan alasan permohonan izin Anda..."
+                  placeholder="Jelaskan keperluan izin atau cuti Anda secara rinci..."
                   className="neon-input"
-                  style={{ resize: "vertical", background: "#ffffff" }}
+                  style={{ resize: "vertical", background: "#ffffff", width: "100%", minHeight: "85px" }}
                 />
               </div>
 
+              {/* Lampiran Dokumen Bukti */}
               <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
-                  Lampiran Dokumen Bukti (PDF / Foto)
+                <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "0.4rem" }}>
+                  Lampiran Dokumen Bukti (PDF / Foto Surat)
                 </label>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "0.5rem",
-                    padding: "0.85rem",
-                    borderRadius: "var(--radius-md)",
-                    border: "1.5px dashed #f59e0b",
-                    background: "#ffffff",
-                    cursor: "pointer",
-                    fontSize: "0.85rem",
-                    color: "#d97706",
-                    fontWeight: 600
-                  }}
-                >
-                  <UploadCloud size={18} color="#d97706" />
-                  <span>{buktiNama ? `Terpilih: ${buktiNama}` : "Pilih Dokumen / Surat Keterangan"}</span>
+                <label className="izin-upload-box">
+                  {buktiNama ? (
+                    <>
+                      <FileCheck size={18} color="#059669" style={{ flexShrink: 0 }} />
+                      <span className="izin-upload-text" style={{ color: "#065f46" }}>
+                        {buktiNama}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        title="Hapus file terpilih"
+                        style={{
+                          background: "#fee2e2",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "22px",
+                          height: "22px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          marginLeft: "auto",
+                          flexShrink: 0
+                        }}
+                      >
+                        <X size={12} color="#dc2626" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud size={18} color="#d97706" style={{ flexShrink: 0 }} />
+                      <span className="izin-upload-text">
+                        Pilih Surat Dokter / Surat Tugas (PDF/Foto)
+                      </span>
+                    </>
+                  )}
                   <input type="file" onChange={handleFileChange} style={{ display: "none" }} />
                 </label>
               </div>
 
+              {/* Submit Button */}
               <motion.button
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
                 className="btn-neon-primary"
                 disabled={loading}
                 style={{
                   width: "100%",
-                  marginTop: "0.5rem",
+                  marginTop: "0.4rem",
                   background: "linear-gradient(135deg, #d97706 0%, #f59e0b 100%)",
                   boxShadow: "0 4px 14px rgba(217, 119, 6, 0.35)",
                   border: "none",
-                  color: "#ffffff"
+                  color: "#ffffff",
+                  padding: "0.85rem 1.25rem",
+                  fontSize: "0.92rem",
+                  borderRadius: "var(--radius-md)"
                 }}
               >
                 {loading ? (
@@ -265,7 +388,7 @@ export default function TeacherIzinPage() {
                 ) : (
                   <>
                     <Send size={18} />
-                    <span>KIRIM PERMOHONAN</span>
+                    <span>KIRIM PERMOHONAN IZIN</span>
                   </>
                 )}
               </motion.button>
@@ -274,21 +397,56 @@ export default function TeacherIzinPage() {
 
           {/* Riwayat Permohonan Izin */}
           <motion.div
-            initial={{ opacity: 0, x: 15 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="glass-panel"
-            style={{ padding: "1.75rem", display: "flex", flexDirection: "column", gap: "1rem", border: "1.5px solid #bae6fd", background: "linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)" }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="glass-panel izin-card"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem",
+              border: "1.5px solid #bae6fd",
+              background: "linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)",
+              boxShadow: "0 4px 20px rgba(2, 132, 199, 0.08)"
+            }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#e0f2fe", border: "1px solid #bae6fd", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+                <div
+                  style={{
+                    width: "38px",
+                    height: "38px",
+                    borderRadius: "10px",
+                    background: "#e0f2fe",
+                    border: "1.5px solid #bae6fd",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0
+                  }}
+                >
                   <Clock size={20} color="#0284c7" />
                 </div>
-                <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)" }}>
-                  Status Permohonan Anda
-                </h2>
+                <div>
+                  <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)", lineHeight: 1.2 }}>
+                    Riwayat Permohonan
+                  </h2>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                    Pantau status verifikasi pengajuan Anda
+                  </span>
+                </div>
               </div>
-              <span style={{ fontSize: "0.78rem", color: "#0284c7", fontWeight: 700, background: "#e0f2fe", padding: "0.3rem 0.75rem", borderRadius: "var(--radius-full)" }}>
+              <span
+                style={{
+                  fontSize: "0.78rem",
+                  color: "#0284c7",
+                  fontWeight: 800,
+                  background: "#e0f2fe",
+                  border: "1px solid #bae6fd",
+                  padding: "0.25rem 0.65rem",
+                  borderRadius: "var(--radius-full)"
+                }}
+              >
                 {leavesList.length} Pengajuan
               </span>
             </div>
@@ -297,17 +455,23 @@ export default function TeacherIzinPage() {
               <div
                 style={{
                   textAlign: "center",
-                  padding: "3rem 1rem",
+                  padding: "3.5rem 1.25rem",
                   color: "var(--text-muted)",
-                  border: "1px dashed #bae6fd",
+                  border: "1.5px dashed #bae6fd",
                   borderRadius: "var(--radius-md)",
                   background: "#ffffff"
                 }}
               >
-                Belum ada permohonan izin yang diajukan.
+                <Clock size={36} color="#94a3b8" style={{ margin: "0 auto 0.75rem", opacity: 0.6 }} />
+                <p style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--text-main)", marginBottom: "0.25rem" }}>
+                  Belum Ada Permohonan
+                </p>
+                <p style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                  Pengajuan izin atau cuti yang Anda kirim akan muncul dan dipantau di sini.
+                </p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", maxHeight: "600px", overflowY: "auto", paddingRight: "0.25rem" }}>
                 {leavesList.map((item, idx) => {
                   const isApproved = item.status === "Disetujui";
                   const isRejected = item.status === "Ditolak";
@@ -323,17 +487,31 @@ export default function TeacherIzinPage() {
                       key={item.id || idx}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.04 }}
+                      transition={{ delay: idx * 0.03 }}
                       style={{
-                        padding: "1rem 1.25rem",
+                        padding: "1rem 1.15rem",
                         borderRadius: "var(--radius-md)",
                         background: cardBg,
                         border: `1.5px solid ${cardBorder}`,
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.03)"
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+                        boxSizing: "border-box",
+                        overflow: "hidden"
                       }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.35rem" }}>
-                        <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--text-main)" }}>{item.tipe}</span>
+                      {/* Baris Judul & Status */}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          flexWrap: "wrap",
+                          gap: "0.45rem",
+                          marginBottom: "0.45rem"
+                        }}
+                      >
+                        <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--text-main)", wordBreak: "break-word" }}>
+                          {item.tipe}
+                        </span>
                         <span
                           className={`badge-status ${
                             isApproved
@@ -342,30 +520,97 @@ export default function TeacherIzinPage() {
                               ? "badge-alpha"
                               : "badge-terlambat"
                           }`}
+                          style={{ flexShrink: 0 }}
                         >
-                        {item.status}
-                      </span>
-                    </div>
+                          {item.status}
+                        </span>
+                      </div>
 
-                    <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                      <Calendar size={13} color="#059669" />
-                      <span>{item.tgl_mulai} s/d {item.tgl_selesai}</span>
-                    </div>
+                      {/* Baris Tanggal & Durasi */}
+                      <div
+                        style={{
+                          fontSize: "0.8rem",
+                          color: "var(--text-secondary)",
+                          display: "flex",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: "0.45rem",
+                          marginBottom: "0.45rem"
+                        }}
+                      >
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                          <Calendar size={13} color="#059669" />
+                          <span style={{ fontWeight: 600 }}>
+                            {item.tgl_mulai} s/d {item.tgl_selesai}
+                          </span>
+                        </div>
+                        {item.durasi_hari && (
+                          <span
+                            style={{
+                              fontSize: "0.72rem",
+                              fontWeight: 700,
+                              background: "rgba(5, 150, 105, 0.1)",
+                              color: "#065f46",
+                              padding: "0.1rem 0.45rem",
+                              borderRadius: "4px"
+                            }}
+                          >
+                            {item.durasi_hari} Hari
+                          </span>
+                        )}
+                      </div>
 
-                    <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "0.4rem" }}>
-                      Alasan: {item.alasan}
-                    </p>
-
-                    {item.rejection_reason && (
-                      <p style={{ fontSize: "0.78rem", color: "var(--danger)", marginTop: "0.25rem", fontWeight: 600 }}>
-                        Catatan Admin: {item.rejection_reason}
+                      {/* Alasan */}
+                      <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", margin: 0, wordBreak: "break-word", lineHeight: 1.4 }}>
+                        <strong style={{ color: "var(--text-main)" }}>Alasan:</strong> {item.alasan}
                       </p>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
+
+                      {/* Lampiran */}
+                      {item.bukti && (
+                        <div
+                          style={{
+                            marginTop: "0.4rem",
+                            fontSize: "0.75rem",
+                            color: "#0369a1",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.35rem",
+                            background: "rgba(2, 132, 199, 0.08)",
+                            padding: "0.2rem 0.55rem",
+                            borderRadius: "6px",
+                            maxWidth: "100%",
+                            overflow: "hidden"
+                          }}
+                        >
+                          <FileText size={12} color="#0284c7" style={{ flexShrink: 0 }} />
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {item.bukti}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Catatan Admin Jika Ditolak */}
+                      {item.rejection_reason && (
+                        <div
+                          style={{
+                            fontSize: "0.78rem",
+                            color: "#be123c",
+                            marginTop: "0.45rem",
+                            padding: "0.4rem 0.65rem",
+                            borderRadius: "6px",
+                            background: "#fff1f2",
+                            border: "1px solid #fecdd3",
+                            fontWeight: 600
+                          }}
+                        >
+                          Catatan Admin: {item.rejection_reason}
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
           </motion.div>
         </div>
       </main>
