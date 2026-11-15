@@ -30,9 +30,9 @@ export function OfficialLkbSummaryDocument({
   const totalPending = safeData.filter((d) => d.status === "Menunggu Verifikasi" || d.status === "Menunggu").length;
   const totalUnsubmitted = safeData.filter((d) => d.status !== "Disetujui" && d.status !== "Menunggu Verifikasi" && d.status !== "Menunggu").length;
 
-  const namaSekolah = safeSettings.nama_sekolah || "MADRASAH TSANAWIYAH NEGERI GOWA";
-  const kepalaSekolah = safeSettings.kepala_sekolah || safeSettings.kepala_madrasah || safeSettings.nama_kepsek || "Dr. H. Suharto, M.Pd";
-  const nipKepalaSekolah = safeSettings.nip_kepsek || safeSettings.nip_kepala_madrasah || safeSettings.nip_kepala_sekolah || "196805121993031002";
+  const namaSekolah = safeSettings.nama_sekolah || "MTsN GOWA";
+  const kepalaSekolah = safeSettings.kepala_sekolah || safeSettings.kepala_madrasah || safeSettings.nama_kepsek || "Mansur Patiroi, SE., MM.";
+  const nipKepalaSekolah = safeSettings.nip_kepsek || safeSettings.nip_kepala_madrasah || safeSettings.nip_kepala_sekolah || "196907031992031001";
   const kota = safeSettings.kota || "Kabupaten Gowa";
   const namaOperator = currentUser?.nama || safeSettings.operator_nama || "Operator Kepegawaian";
   const nipOperator = safeSettings.operator_nip || safeSettings.nip_operator || currentUser?.nip || "___________________________";

@@ -772,13 +772,13 @@ export default function AdminRekapPage({ fixedRole = null }) {
 
     const kota = settings.kota || "Kabupaten Gowa";
     const tglCetak = formatTanggalIndonesia(getTodayDateStr());
-    const namaSekolah = settings.nama_sekolah || "MADRASAH TSANAWIYAH NEGERI GOWA";
-    const alamatSekolah = settings.alamat_sekolah || "Jl. Pendidikan Nasional, Kabupaten Gowa, Sulawesi Selatan";
-    const telpSekolah = settings.no_telp || settings.telepon || "(0411) 861234";
-    const namaKepsek = settings.kepala_sekolah || "Drs. H. Mulyadi, M.Pd";
-    const nipKepsek = settings.nip_kepsek || "196805121994031004";
-    const namaAdmin = settings.operator_nama || settings.nama_operator || currentUser?.nama || "Bpk. Hendra Gunawan, S.Kom";
-    const nipAdmin = settings.operator_nip || settings.nip_operator || currentUser?.nip || "198001012005011001";
+    const namaSekolah = settings.nama_sekolah || "MTsN GOWA";
+    const alamatSekolah = settings.alamat_sekolah || "-";
+    const telpSekolah = settings.no_telp || settings.telepon || "-";
+    const namaKepsek = settings.kepala_sekolah || settings.kepala_madrasah || "Mansur Patiroi, SE., MM.";
+    const nipKepsek = settings.nip_kepsek || settings.nip_kepala_sekolah || "196907031992031001";
+    const namaAdmin = settings.operator_nama || settings.nama_operator || currentUser?.nama || "-";
+    const nipAdmin = settings.operator_nip || settings.nip_operator || currentUser?.nip || "-";
 
     let rowsHtml = "";
     exportDataset.forEach((row, i) => {

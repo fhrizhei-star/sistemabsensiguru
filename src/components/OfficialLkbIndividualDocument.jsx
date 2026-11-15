@@ -69,8 +69,8 @@ export default function OfficialLkbIndividualDocument({
   const jabatanASN = user?.jabatan || (roleASN === "pegawai" ? "Staf Tata Usaha" : "Guru");
   const satkerASN = user?.satker || user?.satuan_kerja || settings?.satuan_kerja || settings?.satker || "PENDIS";
   const namaSekolah = settings?.nama_sekolah || "MTsN GOWA";
-  const kepalaMadrasah = settings?.kepala_madrasah || settings?.kepala_sekolah || settings?.nama_kepsek || "Dr. H. Suharto, M.Pd";
-  const nipKepalaMadrasah = settings?.nip_kepala_madrasah || settings?.nip_kepala_sekolah || settings?.nip_kepsek || "196805121993031002";
+  const kepalaMadrasah = settings?.kepala_madrasah || settings?.kepala_sekolah || settings?.nama_kepsek || "Mansur Patiroi, SE., MM.";
+  const nipKepalaMadrasah = settings?.nip_kepala_madrasah || settings?.nip_kepala_sekolah || settings?.nip_kepsek || "196907031992031001";
 
   // Tanggal sistem standar (DD/MM/YYYY) untuk running header & sistem
   const now = new Date();

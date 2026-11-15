@@ -43,15 +43,15 @@ export default function AdminSettingPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [settings, setSettings] = useState({
     nama_sekolah: "MTsN GOWA",
-    alamat_sekolah: "Jl. Pendidikan Nasional No. 45, Jakarta",
+    alamat_sekolah: "Jl. Pendidikan, Sungguminasa, Kab. Gowa",
     kota: "Kabupaten Gowa",
     npsn: "20123456",
     no_telp: "(0411) 861234",
     satuan_kerja: "PENDIS",
-    kepala_sekolah: "Dr. H. Suharto, M.Pd",
-    nip_kepsek: "196805121993031002",
-    operator_nama: "Bpk. Hendra Gunawan, S.Kom",
-    operator_nip: "198001012005011001",
+    kepala_sekolah: "Mansur Patiroi, SE., MM.",
+    nip_kepsek: "196907031992031001",
+    operator_nama: "",
+    operator_nip: "",
     ttd_kepsek_url: DEFAULT_SAMPLE_TTD,
     stempel_sekolah_url: DEFAULT_SAMPLE_STEMPEL,
     agenda_rapat_hari_ini: "",
@@ -59,8 +59,8 @@ export default function AdminSettingPage() {
     jam_masuk_mulai: "06:30",
     jam_masuk_batas: "07:15",
     jam_pulang_mulai: "15:00",
-    lat_sekolah: -6.2088,
-    lng_sekolah: 106.8456,
+    lat_sekolah: -5.2012,
+    lng_sekolah: 119.4817,
     radius_meter: 250,
     google_script_url: Api.getScriptUrl(),
     telegram_bot_token: "",
@@ -499,7 +499,7 @@ export default function AdminSettingPage() {
                     type="text"
                     value={settings.kepala_sekolah || ""}
                     onChange={(e) => setSettings({ ...settings, kepala_sekolah: e.target.value })}
-                    placeholder="contoh: Dr. H. Suharto, M.Pd"
+                    placeholder="contoh: Mansur Patiroi, SE., MM."
                     className="neon-input"
                   />
                 </div>
@@ -511,7 +511,7 @@ export default function AdminSettingPage() {
                     type="text"
                     value={settings.nip_kepsek || ""}
                     onChange={(e) => setSettings({ ...settings, nip_kepsek: e.target.value })}
-                    placeholder="contoh: 196805121993031002"
+                    placeholder="contoh: 196907031992031001"
                     className="neon-input"
                   />
                 </div>
@@ -523,7 +523,7 @@ export default function AdminSettingPage() {
                     type="text"
                     value={settings.operator_nama || ""}
                     onChange={(e) => setSettings({ ...settings, operator_nama: e.target.value })}
-                    placeholder="contoh: Hendra Gunawan, S.Kom"
+                    placeholder="contoh: Nama Operator / TU"
                     className="neon-input"
                   />
                 </div>
@@ -535,7 +535,7 @@ export default function AdminSettingPage() {
                     type="text"
                     value={settings.operator_nip || ""}
                     onChange={(e) => setSettings({ ...settings, operator_nip: e.target.value })}
-                    placeholder="contoh: 198001012005011001"
+                    placeholder="contoh: NIP Operator"
                     className="neon-input"
                   />
                 </div>

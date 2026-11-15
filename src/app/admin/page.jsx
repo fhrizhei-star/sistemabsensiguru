@@ -35,7 +35,9 @@ import {
   Filter,
   CalendarDays,
   AlertTriangle,
-  Info
+  Info,
+  Play,
+  Pause
 } from "lucide-react";
 
 const MONTH_NAMES = [
@@ -55,7 +57,7 @@ function formatYMD(year, month, day) {
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
-  const [schoolName, setSchoolName] = useState("SMA NEGERI 1 TELADAN");
+  const [schoolName, setSchoolName] = useState("MTsN GOWA");
   const [stats, setStats] = useState({
     total_guru: 0,
     total_sesi: 0,
@@ -65,6 +67,8 @@ export default function AdminDashboardPage() {
     alpha: 0
   });
   const [recentActivities, setRecentActivities] = useState([]);
+  const [allAttendance, setAllAttendance] = useState([]);
+  const [allLeaves, setAllLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // --- State Kalender & Kontrol Hari Libur ---
@@ -92,6 +96,13 @@ export default function AdminDashboardPage() {
   const [chartPeriod, setChartPeriod] = useState("minggu"); // "minggu" | "bulan"
   const [hoveredChartPoint, setHoveredChartPoint] = useState(null);
 
+  // --- State Slider Profil Individu Guru & Pegawai ---
+  const [staffList, setStaffList] = useState([]);
+  const [staffFilter, setStaffFilter] = useState("semua"); // "semua" | "guru" | "pegawai"
+  const [currentStaffIndex, setCurrentStaffIndex] = useState(0);
+  const [slideDirection, setSlideDirection] = useState(1);
+  const [isAutoSlidePaused, setIsAutoSlidePaused] = useState(false);
+
   useEffect(() => {
     const user = Auth.getCurrentUser();
     if (!user || user.role !== "admin") {
@@ -104,12 +115,13 @@ export default function AdminDashboardPage() {
       setLoading(true);
       try {
         const today = getTodayDateStr();
-        const [statsRes, usersRes, leavesRes, settingsRes, holRes] = await Promise.all([
+        const [statsRes, usersRes, leavesRes, settingsRes, holRes, attRes] = await Promise.all([
           Api.request("GET", "getDashboardStats", { tanggal: today }),
           Api.request("GET", "getUsers"),
           Api.request("GET", "getLeaves"),
           Api.request("GET", "getSettings"),
-          Api.request("GET", "getHolidays")
+          Api.request("GET", "getHolidays"),
+          Api.request("GET", "getAttendance")
         ]);
 
         if (settingsRes?.settings?.nama_sekolah) {
@@ -120,8 +132,13 @@ export default function AdminDashboardPage() {
           setHolidays(holRes.holidays);
         }
 
+        const fetchedAttendance = attRes?.attendance || attRes?.list || [];
+        const fetchedLeaves = leavesRes?.leaves || leavesRes?.list || [];
+        setAllAttendance(fetchedAttendance);
+        setAllLeaves(fetchedLeaves);
+
         const teachers = (usersRes?.users || usersRes?.list || []).filter((u) => u.role === "guru" && u.status !== "nonaktif");
-        const activeLeaves = (leavesRes?.leaves || leavesRes?.list || []).filter(
+        const activeLeaves = fetchedLeaves.filter(
           (l) => l.status === "Disetujui" && today >= l.tgl_mulai && today <= l.tgl_selesai
         );
 
@@ -145,6 +162,75 @@ export default function AdminDashboardPage() {
             izin: activeLeaves.length
           }));
         }
+
+        // Olah data guru dan pegawai untuk kartu slider profil individu berdasarkan database nyata
+        const allUsers = usersRes?.users || usersRes?.list || [];
+        const rawStaff = allUsers.filter((u) => (u.role === "guru" || u.role === "pegawai") && u.status !== "nonaktif");
+        const recents = statsRes?.recent_activity || statsRes?.recentAttendance || [];
+
+        const staffWithStats = rawStaff.map((u, idx) => {
+          const onLeave = activeLeaves.find((l) => (
+            (l.user_id && u.id && String(l.user_id) === String(u.id)) ||
+            (l.nip && u.nip && String(l.nip) === String(u.nip)) ||
+            (l.nama && u.nama && l.nama.trim().toLowerCase() === u.nama.trim().toLowerCase())
+          ));
+          const attended = recents.find((r) => (
+            (r.user_id && u.id && String(r.user_id) === String(u.id)) ||
+            (r.nip && u.nip && String(r.nip) === String(u.nip)) ||
+            (r.nama && u.nama && r.nama.trim().toLowerCase() === u.nama.trim().toLowerCase())
+          )) || fetchedAttendance.find((a) => (
+            a.tanggal === today && (
+              (a.user_id && u.id && String(a.user_id) === String(u.id)) ||
+              (a.nip && u.nip && String(a.nip) === String(u.nip)) ||
+              (a.nama && u.nama && a.nama.trim().toLowerCase() === u.nama.trim().toLowerCase())
+            )
+          ));
+
+          let statusHariIni = "Belum Absen";
+          let jamAbsen = "";
+          if (onLeave) {
+            statusHariIni = onLeave.tipe || "Izin Disetujui";
+          } else if (attended) {
+            statusHariIni = attended.status || "Hadir";
+            jamAbsen = attended.jam_absen ? (formatTimeString(attended.jam_absen) || attended.jam_absen) : "";
+          }
+
+          // Hitung riwayat presensi pengguna dari data presensi nyata
+          const userAttHistory = fetchedAttendance.filter((a) => (
+            (a.user_id && u.id && String(a.user_id) === String(u.id)) ||
+            (a.nip && u.nip && String(a.nip) === String(u.nip)) ||
+            (a.nama && u.nama && a.nama.trim().toLowerCase() === u.nama.trim().toLowerCase())
+          ));
+          const totalHadirUser = userAttHistory.filter((a) => a.status === "Hadir" || a.status === "Terlambat").length;
+          const kehadiranPercent = userAttHistory.length > 0
+            ? Math.round((totalHadirUser / userAttHistory.length) * 100)
+            : (attended ? 100 : 0);
+
+          const userLeaves = fetchedLeaves.filter((l) => (
+            l.status === "Disetujui" && (
+              (l.user_id && u.id && String(l.user_id) === String(u.id)) ||
+              (l.nip && u.nip && String(l.nip) === String(u.nip)) ||
+              (l.nama && u.nama && l.nama.trim().toLowerCase() === u.nama.trim().toLowerCase())
+            )
+          ));
+
+          return {
+            id: u.id || u.user_id || `staff-${idx}`,
+            nama: u.nama,
+            nip: u.nip || "-",
+            role: u.role || "guru",
+            jabatan: u.jabatan || (u.role === "pegawai" ? "Staf Tata Usaha" : "Guru"),
+            mapel: u.mapel || (u.role === "pegawai" ? "Administrasi Madrasah" : "-"),
+            foto_url: u.foto_url || "",
+            kehadiranPercent,
+            statusHariIni,
+            jamAbsen,
+            jamKbmAtauKantor: u.role === "pegawai" ? `${totalHadirUser * 7.5} Jam` : `${totalHadirUser * 4} Jam`,
+            izinCount: userLeaves.length
+          };
+        });
+
+        setStaffList(staffWithStats);
       } catch (err) {
         console.error("Gagal memuat dashboard:", err);
       } finally {
@@ -359,34 +445,113 @@ export default function AdminDashboardPage() {
     return holidays.find((h) => todayStr >= h.tgl_mulai && todayStr <= (h.tgl_selesai || h.tgl_mulai)) || null;
   }, [holidays, todayStr]);
 
-  // Data Tren Presensi untuk Spline Area Chart (Jobie Style)
+  // Data Tren Presensi untuk Spline Area Chart (Jobie Style) berdasarkan database nyata
   const chartData = useMemo(() => {
+    const today = new Date();
     if (chartPeriod === "bulan") {
-      return [
-        { label: "Mgg 1", dayName: "Minggu I", date: "1 - 7 Nov", guru: 96, pegawai: 98, izin: 4 },
-        { label: "Mgg 2", dayName: "Minggu II", date: "8 - 14 Nov", guru: 94, pegawai: 97, izin: 5 },
-        { label: "Mgg 3", dayName: "Minggu III", date: "15 - 21 Nov", guru: 95, pegawai: 96, izin: 3 },
-        { label: "Mgg 4", dayName: "Minggu IV", date: "22 - 28 Nov", guru: 92, pegawai: 95, izin: 6 }
+      const curMonth = today.getMonth();
+      const curYear = today.getFullYear();
+      const weeks = [
+        { label: "Mgg 1", dayName: "Minggu I", startDay: 1, endDay: 7 },
+        { label: "Mgg 2", dayName: "Minggu II", startDay: 8, endDay: 14 },
+        { label: "Mgg 3", dayName: "Minggu III", startDay: 15, endDay: 21 },
+        { label: "Mgg 4", dayName: "Minggu IV", startDay: 22, endDay: 31 }
       ];
-    }
-    return [
-      { label: "Sen", dayName: "Senin", date: "10 Nov", guru: 26, pegawai: 12, izin: 1 },
-      { label: "Sel", dayName: "Selasa", date: "11 Nov", guru: 28, pegawai: 12, izin: 0 },
-      { label: "Rab", dayName: "Rabu", date: "12 Nov", guru: 25, pegawai: 11, izin: 2 },
-      { label: "Kam", dayName: "Kamis", date: "13 Nov", guru: 27, pegawai: 12, izin: 1 },
-      { label: "Jum", dayName: "Jumat", date: "14 Nov", guru: 24, pegawai: 10, izin: 3 },
-      { label: "Sab", dayName: "Sabtu", date: "15 Nov", guru: stats.hadir || 26, pegawai: 12, izin: stats.izin || 1 }
-    ];
-  }, [chartPeriod, stats]);
 
-  // Hitung persentase kehadiran untuk ring profil
+      return weeks.map((w) => {
+        let guruCount = 0;
+        let pegawaiCount = 0;
+        let izinCount = 0;
+
+        allAttendance.forEach((a) => {
+          if (!a.tanggal) return;
+          const d = new Date(a.tanggal);
+          if (d.getFullYear() === curYear && d.getMonth() === curMonth) {
+            const dateNum = d.getDate();
+            if (dateNum >= w.startDay && dateNum <= w.endDay) {
+              const isPeg = (a.role === "pegawai" || (a.mapel && a.mapel.toLowerCase().includes("staf")));
+              if (isPeg) pegawaiCount++;
+              else guruCount++;
+            }
+          }
+        });
+
+        allLeaves.forEach((l) => {
+          if (l.status !== "Disetujui") return;
+          const tgl = l.tgl_mulai;
+          if (!tgl) return;
+          const d = new Date(tgl);
+          if (d.getFullYear() === curYear && d.getMonth() === curMonth) {
+            const dateNum = d.getDate();
+            if (dateNum >= w.startDay && dateNum <= w.endDay) {
+              izinCount++;
+            }
+          }
+        });
+
+        return {
+          label: w.label,
+          dayName: w.dayName,
+          date: `${w.startDay} - ${w.endDay} ${today.toLocaleDateString("id-ID", { month: "short" })}`,
+          guru: guruCount,
+          pegawai: pegawaiCount,
+          izin: izinCount
+        };
+      });
+    }
+
+    // Default: Hari kerja Senin - Sabtu dalam minggu berjalan
+    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday...
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + mondayOffset);
+
+    const daysName = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+    const daysFullName = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+    return daysName.map((lbl, idx) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + idx);
+      const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const dateLabel = `${d.getDate()} ${d.toLocaleDateString("id-ID", { month: "short" })}`;
+
+      let guruCount = 0;
+      let pegawaiCount = 0;
+      let izinCount = 0;
+
+      allAttendance.forEach((a) => {
+        if (a.tanggal === ymd) {
+          const isPeg = (a.role === "pegawai" || (a.mapel && a.mapel.toLowerCase().includes("staf")));
+          if (isPeg) pegawaiCount++;
+          else guruCount++;
+        }
+      });
+
+      allLeaves.forEach((l) => {
+        if (l.status === "Disetujui" && ymd >= l.tgl_mulai && ymd <= (l.tgl_selesai || l.tgl_mulai)) {
+          izinCount++;
+        }
+      });
+
+      return {
+        label: lbl,
+        dayName: daysFullName[idx],
+        date: dateLabel,
+        guru: guruCount,
+        pegawai: pegawaiCount,
+        izin: izinCount
+      };
+    });
+  }, [chartPeriod, allAttendance, allLeaves]);
+
+  // Hitung persentase kehadiran untuk ring profil berdasarkan database nyata
   const attendanceRate = useMemo(() => {
-    const total = stats.total_guru || 28;
+    const total = stats.total_guru || 0;
     const hadir = stats.hadir || 0;
     const terlambat = stats.terlambat || 0;
-    if (total === 0) return 94;
+    if (total === 0) return 0;
     const pct = Math.round(((hadir + terlambat) / total) * 100);
-    return Math.min(100, Math.max(0, pct || 94));
+    return Math.min(100, Math.max(0, pct));
   }, [stats]);
 
   // Komputasi Path SVG Spline & Area
@@ -476,6 +641,40 @@ export default function AdminDashboardPage() {
       }
     });
     setHoveredChartPoint(nearest);
+  };
+
+  // --- Memo & Handler Slider Profil Guru & Pegawai ---
+  const filteredStaff = useMemo(() => {
+    if (staffFilter === "guru") return staffList.filter((s) => s.role === "guru");
+    if (staffFilter === "pegawai") return staffList.filter((s) => s.role === "pegawai");
+    return staffList;
+  }, [staffList, staffFilter]);
+
+  const currentStaff = useMemo(() => {
+    if (!filteredStaff.length) return null;
+    return filteredStaff[Math.abs(currentStaffIndex) % filteredStaff.length];
+  }, [filteredStaff, currentStaffIndex]);
+
+  // Efek pergeseran otomatis (Auto-Slide 6 detik)
+  useEffect(() => {
+    if (isAutoSlidePaused || filteredStaff.length <= 1) return;
+
+    const timer = setInterval(() => {
+      setSlideDirection(1);
+      setCurrentStaffIndex((prev) => (prev + 1) % filteredStaff.length);
+    }, 6000);
+
+    return () => clearInterval(timer);
+  }, [isAutoSlidePaused, filteredStaff.length]);
+
+  const handleNextStaff = () => {
+    setSlideDirection(1);
+    setCurrentStaffIndex((prev) => (prev + 1) % (filteredStaff.length || 1));
+  };
+
+  const handlePrevStaff = () => {
+    setSlideDirection(-1);
+    setCurrentStaffIndex((prev) => (prev - 1 + (filteredStaff.length || 1)) % (filteredStaff.length || 1));
   };
 
   if (!currentUser) return null;
@@ -676,236 +875,464 @@ export default function AdminDashboardPage() {
                 LEFT COLUMN: Profile Completion Ring & Recent Activities
                 ========================================================= */}
             <div className="admin-jobie-left">
-              {/* Profile Card with Circular Progress Ring (Jobie Style) */}
+              {/* Profile Card Slider with Sliding Animation (Guru & Pegawai) */}
               <div
                 className="glass-panel jobie-profile-card"
+                onMouseEnter={() => setIsAutoSlidePaused(true)}
+                onMouseLeave={() => setIsAutoSlidePaused(false)}
+                onTouchStart={() => setIsAutoSlidePaused(true)}
+                onTouchEnd={() => setTimeout(() => setIsAutoSlidePaused(false), 4000)}
                 style={{
-                  padding: "1.75rem 1.5rem",
+                  padding: "1.35rem 1.35rem",
                   borderRadius: "22px",
                   background: "#ffffff",
                   border: "1.5px solid var(--border-light)",
                   boxShadow: "0 6px 24px rgba(0,0,0,0.03)",
                   display: "flex",
                   flexDirection: "column",
-                  alignItems: "center",
-                  textAlign: "center",
-                  position: "relative"
+                  position: "relative",
+                  overflow: "hidden"
                 }}
               >
-                {/* Avatar with Circular SVG Progress Ring */}
-                <div style={{ position: "relative", width: "112px", height: "112px", marginBottom: "0.85rem" }}>
-                  <svg width="112" height="112" viewBox="0 0 112 112" style={{ transform: "rotate(-90deg)" }}>
-                    <defs>
-                      <linearGradient id="profileRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#4f46e5" />
-                        <stop offset="50%" stopColor="#7c3aed" />
-                        <stop offset="100%" stopColor="#ec4899" />
-                      </linearGradient>
-                    </defs>
-                    {/* Background Ring Track */}
-                    <circle
-                      cx="56"
-                      cy="56"
-                      r="48"
-                      stroke="#f1f5f9"
-                      strokeWidth="6"
-                      fill="none"
-                    />
-                    {/* Animated Active Progress Arc */}
-                    <motion.circle
-                      cx="56"
-                      cy="56"
-                      r="48"
-                      stroke="url(#profileRingGradient)"
-                      strokeWidth="6"
-                      strokeDasharray={2 * Math.PI * 48}
-                      initial={{ strokeDashoffset: 2 * Math.PI * 48 }}
-                      animate={{ strokeDashoffset: 2 * Math.PI * 48 * (1 - attendanceRate / 100) }}
-                      transition={{ duration: 1.2, ease: "easeOut" }}
-                      strokeLinecap="round"
-                      fill="none"
-                    />
-                  </svg>
-
-                  {/* Centered User Photo */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: "10px",
-                      borderRadius: "50%",
-                      overflow: "hidden",
-                      border: "3px solid #ffffff",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.08)"
-                    }}
-                  >
-                    <img
-                      src={getAvatarUrl(currentUser.foto_url, currentUser.nama || "Admin")}
-                      alt={currentUser.nama || "Admin"}
-                      referrerPolicy="no-referrer"
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      onError={(e) => {
-                        e.target.src = getAvatarUrl("", currentUser.nama || "Admin");
-                      }}
-                    />
-                  </div>
-
-                  {/* Percentage Floating Badge */}
-                  <span
-                    style={{
-                      position: "absolute",
-                      bottom: "0",
-                      right: "6px",
-                      background: "#10b981",
-                      color: "#ffffff",
-                      fontSize: "0.65rem",
-                      fontWeight: 800,
-                      padding: "0.15rem 0.45rem",
-                      borderRadius: "999px",
-                      border: "2px solid #ffffff",
-                      boxShadow: "0 2px 6px rgba(16, 185, 129, 0.4)"
-                    }}
-                  >
-                    {attendanceRate}%
-                  </span>
-                </div>
-
-                {/* Identity Info */}
-                <h3
-                  style={{
-                    fontSize: "1.08rem",
-                    fontWeight: 800,
-                    color: "var(--text-main)",
-                    margin: "0 0 2px 0"
-                  }}
-                >
-                  {currentUser.nama || "Administrator Tata Usaha"}
-                </h3>
-                <p style={{ fontSize: "0.76rem", color: "var(--text-secondary)", margin: 0 }}>
-                  NIP: {currentUser.nip || "-"} &bull; {currentUser.jabatan || "Kepala Tata Usaha"}
-                </p>
-
-                {/* 3 Mini Donut / Circular Stat Gauges (Jobie Style: PHP, Vue, Laravel) */}
+                {/* Header Controls: Clean Filter Pills & Next/Prev Chevrons */}
                 <div
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                     gap: "0.5rem",
-                    width: "100%",
-                    marginTop: "1.35rem",
-                    paddingTop: "1.1rem",
-                    borderTop: "1px solid var(--border-light)"
+                    marginBottom: "1rem",
+                    width: "100%"
                   }}
                 >
-                  {/* Gauge 1: Hadir Tepat Waktu */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <div style={{ position: "relative", width: "48px", height: "48px" }}>
-                      <svg width="48" height="48" viewBox="0 0 48 48" style={{ transform: "rotate(-90deg)" }}>
-                        <circle cx="24" cy="24" r="19" stroke="#f1f5f9" strokeWidth="4" fill="none" />
-                        <circle
-                          cx="24"
-                          cy="24"
-                          r="19"
-                          stroke="#10b981"
-                          strokeWidth="4"
-                          strokeDasharray={2 * Math.PI * 19}
-                          strokeDashoffset={2 * Math.PI * 19 * (1 - attendanceRate / 100)}
-                          strokeLinecap="round"
-                          fill="none"
-                        />
-                      </svg>
-                      <span
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "0.72rem",
-                          fontWeight: 800,
-                          color: "#10b981"
-                        }}
-                      >
-                        {attendanceRate}%
-                      </span>
-                    </div>
-                    <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--text-muted)", marginTop: "4px" }}>
-                      Hadir
-                    </span>
+                  {/* Clean Filter Tabs: Semua | Guru | Pegawai */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.1rem",
+                      background: "#f8fafc",
+                      padding: "0.1em",
+                      borderRadius: "999px",
+                      border: "1px solid var(--border-light)"
+                    }}
+                  >
+                    {[
+                      { id: "semua", label: "Semua" },
+                      { id: "guru", label: "Guru" },
+                      { id: "pegawai", label: "Pegawai" }
+                    ].map((tab) => {
+                      const isActive = staffFilter === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => {
+                            setStaffFilter(tab.id);
+                            setCurrentStaffIndex(0);
+                            setSlideDirection(1);
+                          }}
+                          style={{
+                            background: isActive ? "#ffffff" : "transparent",
+                            border: isActive ? "1px solid var(--border-light)" : "none",
+                            boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
+                            color: isActive ? "#4f46e5" : "var(--text-muted)",
+                            fontWeight: isActive ? 800 : 600,
+                            fontSize: "0.68rem",
+                            padding: "0.2rem 0.44rem",
+                            borderRadius: "999px",
+                            cursor: "pointer",
+                            transition: "all 0.15s ease"
+                          }}
+                        >
+                          {tab.label}
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  {/* Gauge 2: Terlambat */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <div style={{ position: "relative", width: "48px", height: "48px" }}>
-                      <svg width="48" height="48" viewBox="0 0 48 48" style={{ transform: "rotate(-90deg)" }}>
-                        <circle cx="24" cy="24" r="19" stroke="#f1f5f9" strokeWidth="4" fill="none" />
-                        <circle
-                          cx="24"
-                          cy="24"
-                          r="19"
-                          stroke="#f59e0b"
-                          strokeWidth="4"
-                          strokeDasharray={2 * Math.PI * 19}
-                          strokeDashoffset={2 * Math.PI * 19 * (1 - Math.min(stats.terlambat * 10, 100) / 100)}
-                          strokeLinecap="round"
-                          fill="none"
-                        />
-                      </svg>
-                      <span
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "0.72rem",
-                          fontWeight: 800,
-                          color: "#f59e0b"
-                        }}
-                      >
-                        {stats.terlambat}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--text-muted)", marginTop: "4px" }}>
-                      Terlambat
+                  {/* Clean Slide Navigation & Counter */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.1em" }}>
+                    <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--text-muted)", marginRight: "7px", marginLeft: "-7px" }}>
+                      {filteredStaff.length > 0 ? `${(Math.abs(currentStaffIndex) % filteredStaff.length) + 1}/${filteredStaff.length}` : "0/0"}
                     </span>
-                  </div>
 
-                  {/* Gauge 3: Izin / Cuti */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <div style={{ position: "relative", width: "48px", height: "48px" }}>
-                      <svg width="48" height="48" viewBox="0 0 48 48" style={{ transform: "rotate(-90deg)" }}>
-                        <circle cx="24" cy="24" r="19" stroke="#f1f5f9" strokeWidth="4" fill="none" />
-                        <circle
-                          cx="24"
-                          cy="24"
-                          r="19"
-                          stroke="#0284c7"
-                          strokeWidth="4"
-                          strokeDasharray={2 * Math.PI * 19}
-                          strokeDashoffset={2 * Math.PI * 19 * (1 - Math.min(stats.izin * 15, 100) / 100)}
-                          strokeLinecap="round"
-                          fill="none"
-                        />
-                      </svg>
-                      <span
+                    {/* Play/Pause Button */}
+                    <button
+                      type="button"
+                      onClick={() => setIsAutoSlidePaused((prev) => !prev)}
+                      title={isAutoSlidePaused ? "Lanjutkan putar otomatis" : "Jeda slide"}
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "7px",
+                        border: "1px solid var(--border-light)",
+                        background: isAutoSlidePaused ? "#fffbeb" : "#f8fafc",
+                        color: isAutoSlidePaused ? "#d97706" : "var(--text-secondary)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        padding: 0
+                      }}
+                    >
+                      {isAutoSlidePaused ? <Play size={11} /> : <Pause size={11} />}
+                    </button>
+
+                    {/* Prev Chevron */}
+                    <button
+                      type="button"
+                      onClick={handlePrevStaff}
+                      title="Sebelumnya"
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "7px",
+                        border: "1px solid var(--border-light)",
+                        background: "#f8fafc",
+                        color: "var(--text-secondary)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        padding: 0
+                      }}
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+
+                    {/* Next Chevron */}
+                    <button
+                      type="button"
+                      onClick={handleNextStaff}
+                      title="Berikutnya"
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "7px",
+                        border: "1px solid var(--border-light)",
+                        background: "#f8fafc",
+                        color: "var(--text-secondary)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        padding: 0
+                      }}
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sliding Content Container */}
+                <div style={{ position: "relative", width: "100%", minHeight: "310px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <AnimatePresence custom={slideDirection} mode="wait">
+                    {currentStaff ? (
+                      <motion.div
+                        key={currentStaff.id}
+                        custom={slideDirection}
+                        variants={{
+                          enter: (dir) => ({
+                            x: dir > 0 ? 65 : -65,
+                            opacity: 0,
+                            scale: 0.97
+                          }),
+                          center: {
+                            x: 0,
+                            opacity: 1,
+                            scale: 1,
+                            transition: {
+                              x: { type: "spring", stiffness: 380, damping: 28 },
+                              opacity: { duration: 0.22 },
+                              scale: { duration: 0.22 }
+                            }
+                          },
+                          exit: (dir) => ({
+                            x: dir > 0 ? -65 : 65,
+                            opacity: 0,
+                            scale: 0.97,
+                            transition: {
+                              x: { type: "spring", stiffness: 380, damping: 28 },
+                              opacity: { duration: 0.18 },
+                              scale: { duration: 0.18 }
+                            }
+                          })
+                        }}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        drag="x"
+                        dragConstraints={{ left: 0, right: 0 }}
+                        onDragEnd={(e, { offset }) => {
+                          if (offset.x < -35) handleNextStaff();
+                          else if (offset.x > 35) handlePrevStaff();
+                        }}
                         style={{
-                          position: "absolute",
-                          inset: 0,
+                          width: "100%",
                           display: "flex",
+                          flexDirection: "column",
                           alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "0.72rem",
-                          fontWeight: 800,
-                          color: "#0284c7"
+                          textAlign: "center",
+                          touchAction: "pan-y"
                         }}
                       >
-                        {stats.izin}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "var(--text-muted)", marginTop: "4px" }}>
-                      Izin / Cuti
-                    </span>
-                  </div>
+                        {/* Avatar with Circular SVG Progress Ring */}
+                        <div style={{ position: "relative", width: "104px", height: "104px", marginBottom: "0.75rem" }}>
+                          <svg width="104" height="104" viewBox="0 0 104 104" style={{ transform: "rotate(-90deg)" }}>
+                            <defs>
+                              <linearGradient id="profileRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#4f46e5" />
+                                <stop offset="50%" stopColor="#7c3aed" />
+                                <stop offset="100%" stopColor="#ec4899" />
+                              </linearGradient>
+                              <linearGradient id="pegawaiRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#0284c7" />
+                                <stop offset="50%" stopColor="#06b6d4" />
+                                <stop offset="100%" stopColor="#10b981" />
+                              </linearGradient>
+                            </defs>
+                            {/* Background Ring Track */}
+                            <circle
+                              cx="52"
+                              cy="52"
+                              r="44"
+                              stroke="#f1f5f9"
+                              strokeWidth="6"
+                              fill="none"
+                            />
+                            {/* Animated Active Progress Arc */}
+                            <motion.circle
+                              cx="52"
+                              cy="52"
+                              r="44"
+                              stroke={currentStaff.role === "pegawai" ? "url(#pegawaiRingGradient)" : "url(#profileRingGradient)"}
+                              strokeWidth="6"
+                              strokeDasharray={2 * Math.PI * 44}
+                              initial={{ strokeDashoffset: 2 * Math.PI * 44 }}
+                              animate={{ strokeDashoffset: 2 * Math.PI * 44 * (1 - currentStaff.kehadiranPercent / 100) }}
+                              transition={{ duration: 0.8, ease: "easeOut" }}
+                              strokeLinecap="round"
+                              fill="none"
+                            />
+                          </svg>
+
+                          {/* Centered User Photo */}
+                          <div
+                            style={{
+                              position: "absolute",
+                              inset: "9px",
+                              borderRadius: "50%",
+                              overflow: "hidden",
+                              border: "3px solid #ffffff",
+                              boxShadow: "0 4px 12px rgba(0,0,0,0.08)"
+                            }}
+                          >
+                            <img
+                              src={getAvatarUrl(currentStaff.foto_url, currentStaff.nama)}
+                              alt={currentStaff.nama}
+                              referrerPolicy="no-referrer"
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              onError={(e) => {
+                                e.target.src = getAvatarUrl("", currentStaff.nama);
+                              }}
+                            />
+                          </div>
+
+                          {/* Percentage Floating Badge */}
+                          <span
+                            style={{
+                              position: "absolute",
+                              bottom: "0",
+                              right: "4px",
+                              background: currentStaff.kehadiranPercent >= 90 ? "#10b981" : "#f59e0b",
+                              color: "#ffffff",
+                              fontSize: "0.62rem",
+                              fontWeight: 800,
+                              padding: "0.15rem 0.42rem",
+                              borderRadius: "999px",
+                              border: "2px solid #ffffff",
+                              boxShadow: "0 2px 6px rgba(0,0,0,0.12)"
+                            }}
+                          >
+                            {currentStaff.kehadiranPercent}%
+                          </span>
+                        </div>
+
+                        {/* Status & Role Tag */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.4rem" }}>
+                          <span
+                            style={{
+                              fontSize: "0.62rem",
+                              fontWeight: 800,
+                              padding: "0.12rem 0.5rem",
+                              borderRadius: "999px",
+                              background: currentStaff.role === "pegawai" ? "#f0f9ff" : "#eef2ff",
+                              color: currentStaff.role === "pegawai" ? "#0284c7" : "#4f46e5",
+                              border: `1px solid ${currentStaff.role === "pegawai" ? "#bae6fd" : "#c7d2fe"}`
+                            }}
+                          >
+                            {currentStaff.role === "pegawai" ? "Pegawai TU" : "Guru"}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: "0.62rem",
+                              fontWeight: 800,
+                              padding: "0.12rem 0.5rem",
+                              borderRadius: "999px",
+                              background: currentStaff.statusHariIni.toLowerCase().includes("hadir")
+                                ? "#ecfdf5"
+                                : currentStaff.statusHariIni.toLowerCase().includes("izin")
+                                  ? "#fffbeb"
+                                  : "#f8fafc",
+                              color: currentStaff.statusHariIni.toLowerCase().includes("hadir")
+                                ? "#059669"
+                                : currentStaff.statusHariIni.toLowerCase().includes("izin")
+                                  ? "#d97706"
+                                  : "#64748b",
+                              border: `1px solid ${currentStaff.statusHariIni.toLowerCase().includes("hadir")
+                                ? "#a7f3d0"
+                                : currentStaff.statusHariIni.toLowerCase().includes("izin")
+                                  ? "#fde68a"
+                                  : "#e2e8f0"
+                                }`
+                            }}
+                          >
+                            {currentStaff.statusHariIni} {currentStaff.jamAbsen ? `(${currentStaff.jamAbsen})` : ""}
+                          </span>
+                        </div>
+
+                        {/* Identity Info */}
+                        <h3
+                          style={{
+                            fontSize: "1.02rem",
+                            fontWeight: 800,
+                            color: "var(--text-main)",
+                            margin: "0 0 2px 0",
+                            lineHeight: 1.25,
+                            maxWidth: "100%"
+                          }}
+                          className="truncate-1"
+                          title={currentStaff.nama}
+                        >
+                          {currentStaff.nama}
+                        </h3>
+                        <p style={{ fontSize: "0.74rem", color: "var(--text-secondary)", margin: 0, maxWidth: "100%" }} className="truncate-1">
+                          NIP: {currentStaff.nip} &bull; {currentStaff.mapel || currentStaff.jabatan}
+                        </p>
+
+                        {/* 3 Mini Donut / Circular Stat Gauges */}
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(3, 1fr)",
+                            gap: "0.5rem",
+                            width: "100%",
+                            marginTop: "1.1rem",
+                            paddingTop: "0.95rem",
+                            borderTop: "1px solid var(--border-light)"
+                          }}
+                        >
+                          {/* Gauge 1: Kehadiran */}
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                            <div style={{ position: "relative", width: "46px", height: "46px" }}>
+                              <svg width="46" height="46" viewBox="0 0 46 46" style={{ transform: "rotate(-90deg)" }}>
+                                <circle cx="23" cy="23" r="18" stroke="#f1f5f9" strokeWidth="4" fill="none" />
+                                <circle
+                                  cx="23"
+                                  cy="23"
+                                  r="18"
+                                  stroke="#10b981"
+                                  strokeWidth="4"
+                                  strokeDasharray={2 * Math.PI * 18}
+                                  strokeDashoffset={2 * Math.PI * 18 * (1 - currentStaff.kehadiranPercent / 100)}
+                                  strokeLinecap="round"
+                                  fill="none"
+                                />
+                              </svg>
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  inset: 0,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "0.7rem",
+                                  fontWeight: 800,
+                                  color: "#10b981"
+                                }}
+                              >
+                                {currentStaff.kehadiranPercent}%
+                              </span>
+                            </div>
+                            <span style={{ fontSize: "0.66rem", fontWeight: 700, color: "var(--text-muted)", marginTop: "4px" }}>
+                              Kehadiran
+                            </span>
+                          </div>
+
+                          {/* Gauge 2: Jam KBM / Jam Kantor */}
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                            <div
+                              style={{
+                                width: "46px",
+                                height: "46px",
+                                borderRadius: "50%",
+                                border: "2px solid #ddd6fe",
+                                background: "#f5f3ff",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "0.72rem",
+                                fontWeight: 800,
+                                color: "#7c3aed"
+                              }}
+                            >
+                              {currentStaff.role === "pegawai" ? "38J" : currentStaff.jamKbmAtauKantor.replace(" Jam", "J")}
+                            </div>
+                            <span style={{ fontSize: "0.66rem", fontWeight: 700, color: "var(--text-muted)", marginTop: "4px" }}>
+                              {currentStaff.role === "pegawai" ? "Jam Kantor" : "Jam KBM"}
+                            </span>
+                          </div>
+
+                          {/* Gauge 3: Izin / Cuti */}
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                            <div
+                              style={{
+                                width: "46px",
+                                height: "46px",
+                                borderRadius: "50%",
+                                border: "2px solid #bae6fd",
+                                background: "#f0f9ff",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "0.72rem",
+                                fontWeight: 800,
+                                color: "#0284c7"
+                              }}
+                            >
+                              {currentStaff.izinCount}x
+                            </div>
+                            <span style={{ fontSize: "0.66rem", fontWeight: 700, color: "var(--text-muted)", marginTop: "4px" }}>
+                              Izin/Cuti
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <div
+                        style={{
+                          textAlign: "center",
+                          padding: "3rem 1rem",
+                          color: "var(--text-muted)",
+                          fontSize: "0.85rem",
+                          fontWeight: 600
+                        }}
+                      >
+                        Belum ada data guru / pegawai terdaftar.
+                      </div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 

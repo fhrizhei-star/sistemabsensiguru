@@ -624,7 +624,7 @@ export default function AdminGuruPage() {
                       required
                       value={formData.nama}
                       onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                      placeholder="Contoh: Drs. Bambang Sudarsono, M.Pd"
+                      placeholder="Contoh: Nama Lengkap Guru, S.Pd"
                       className="neon-input"
                     />
                   </div>

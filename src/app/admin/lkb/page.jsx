@@ -118,9 +118,7 @@ export default function AdminLkbPage({ fixedRole = null }) {
         const nonAdmin = tRes.users.filter((u) => u.role !== "admin");
         setTeachers(nonAdmin);
         if (nonAdmin.length > 0 && !selectedAsnId) {
-          // Prioritaskan Zulhana jika ada, atau ASN pertama
-          const zul = nonAdmin.find((u) => (u.nama || "").toLowerCase().includes("zulhana"));
-          setSelectedAsnId(zul ? zul.id : nonAdmin[0].id);
+          setSelectedAsnId(nonAdmin[0].id);
         }
       }
 
