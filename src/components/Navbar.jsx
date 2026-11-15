@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Auth } from "@/lib/auth";
 import { Api } from "@/lib/api";
 import { formatDriveUrl, getAvatarUrl } from "@/lib/drive";
-import { Clock, School, LogOut, AlertTriangle, KeyRound } from "lucide-react";
+import { Clock, School, LogOut, AlertTriangle, KeyRound, PanelLeftClose } from "lucide-react";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
 
 export default function Navbar({ role = "guru" }) {
@@ -18,6 +18,41 @@ export default function Navbar({ role = "guru" }) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [schoolName, setSchoolName] = useState("MTsN GOWA");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      if (window.innerWidth <= 768) return false;
+      try {
+        const saved = localStorage.getItem("admin_sidebar_collapsed");
+        if (saved !== null) return saved !== "true";
+      } catch (e) { }
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    // Sync sidebar state from window & localStorage on mount
+    if (typeof window !== "undefined") {
+      if (window.innerWidth <= 768) {
+        setIsSidebarOpen(false);
+      } else {
+        try {
+          const saved = localStorage.getItem("admin_sidebar_collapsed");
+          setIsSidebarOpen(saved !== "true");
+        } catch (e) {
+          setIsSidebarOpen(true);
+        }
+      }
+    }
+
+    const handleStateChange = (e) => {
+      if (e?.detail && typeof e.detail.isOpen === "boolean") {
+        setIsSidebarOpen(e.detail.isOpen);
+      }
+    };
+
+    window.addEventListener("admin-sidebar-state-changed", handleStateChange);
+    return () => window.removeEventListener("admin-sidebar-state-changed", handleStateChange);
+  }, []);
 
   useEffect(() => {
     const user = Auth.getCurrentUser();
@@ -83,71 +118,171 @@ export default function Navbar({ role = "guru" }) {
             gap: "1rem"
           }}
         >
-          {/* Brand Logo & Name */}
-          <Link
-            href={role === "admin" ? "/admin" : "/user"}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.85rem",
-              textDecoration: "none",
-              color: "inherit"
-            }}
-          >
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              style={{
-                width: "44px",
-                height: "44px",
-                borderRadius: "14px",
-                background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)",
-                border: "1.5px solid #a7f3d0",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 4px 14px rgba(5, 150, 105, 0.2)",
-                padding: "4px"
-              }}
-            >
-              <img
-                src="/img/logo-sekolah.png"
-                alt="Logo Sekolah"
-                style={{ width: "32px", height: "32px", objectFit: "contain" }}
-              />
-            </motion.div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
-                <span
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    fontWeight: 900,
-                    fontSize: "1.25rem",
-                    color: "var(--text-main)",
-                    letterSpacing: "0.2em"
-                  }}
-                >
-                  SIDIAN
-                </span>
-              </div>
-              <p
+          {/* Brand Logo & Name (With Sidebar Toggle Button for Admin) */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+            {role === "admin" && (
+              <motion.button
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("toggle-admin-sidebar"));
+                  }
+                }}
+                title={isSidebarOpen ? "Tutup Navigasi Admin" : "Buka Navigasi Admin"}
+                aria-label={isSidebarOpen ? "Tutup Navigasi Admin" : "Buka Navigasi Admin"}
                 style={{
-                  fontSize: "0.55rem",
-                  fontWeight: 700,
-                  color: "#059669",
-                  letterSpacing: "0.03em",
-                  textTransform: "uppercase"
+                  width: "42px",
+                  height: "42px",
+                  borderRadius: "12px",
+                  border: isSidebarOpen ? "1.5px solid #818cf8" : "1.5px solid var(--border-light)",
+                  background: isSidebarOpen
+                    ? "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)"
+                    : "#ffffff",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  boxShadow: isSidebarOpen
+                    ? "0 4px 14px rgba(79, 70, 229, 0.22)"
+                    : "0 2px 6px rgba(0, 0, 0, 0.04)",
+                  transition: "background 0.25s, border-color 0.25s, box-shadow 0.25s",
+                  padding: 0,
+                  flexShrink: 0
                 }}
               >
-                {schoolName}
-              </p>
-            </div>
-          </Link>
+                {/* Modern Morphing Animated Hamburger to 'X' */}
+                <div
+                  style={{
+                    width: "20px",
+                    height: "15px",
+                    position: "relative",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    alignItems: "center"
+                  }}
+                >
+                  {/* Top Bar */}
+                  <motion.span
+                    animate={
+                      isSidebarOpen
+                        ? { rotate: 45, y: 6.5, backgroundColor: "#4f46e5" }
+                        : { rotate: 0, y: 0, backgroundColor: "#334155" }
+                    }
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      height: "2.5px",
+                      borderRadius: "999px",
+                      transformOrigin: "center"
+                    }}
+                  />
 
-          {/* Center Digital Clock */}
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
+                  {/* Middle Bar (short sleek line that fades away when open) */}
+                  <motion.span
+                    animate={
+                      isSidebarOpen
+                        ? { opacity: 0, scaleX: 0, backgroundColor: "#4f46e5" }
+                        : { opacity: 1, scaleX: 1, backgroundColor: "#334155" }
+                    }
+                    transition={{ duration: 0.18 }}
+                    style={{
+                      display: "block",
+                      width: "70%",
+                      height: "2.5px",
+                      borderRadius: "999px",
+                      alignSelf: "flex-start",
+                      transformOrigin: "left"
+                    }}
+                  />
+
+                  {/* Bottom Bar */}
+                  <motion.span
+                    animate={
+                      isSidebarOpen
+                        ? { rotate: -45, y: -6.5, backgroundColor: "#4f46e5" }
+                        : { rotate: 0, y: 0, backgroundColor: "#334155" }
+                    }
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      height: "2.5px",
+                      borderRadius: "999px",
+                      transformOrigin: "center"
+                    }}
+                  />
+                </div>
+              </motion.button>
+            )}
+
+            <Link
+              href={role === "admin" ? "/admin" : "/user"}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.85rem",
+                textDecoration: "none",
+                color: "inherit"
+              }}
+            >
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "14px",
+                  background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)",
+                  border: "1.5px solid #a7f3d0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 14px rgba(5, 150, 105, 0.2)",
+                  padding: "4px"
+                }}
+              >
+                <img
+                  src="/img/logo-sekolah.png"
+                  alt="Logo Sekolah"
+                  style={{ width: "32px", height: "32px", objectFit: "contain" }}
+                />
+              </motion.div>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 900,
+                      fontSize: "1.25rem",
+                      color: "var(--text-main)",
+                      letterSpacing: "0.2em"
+                    }}
+                  >
+                    SIDIAN
+                  </span>
+                </div>
+                <p
+                  style={{
+                    fontSize: "0.55rem",
+                    fontWeight: 700,
+                    color: "#059669",
+                    letterSpacing: "0.03em",
+                    textTransform: "uppercase"
+                  }}
+                >
+                  {schoolName}
+                </p>
+              </div>
+            </Link>
+          </div>
+
+          {/* Center Digital Clock (Stable, No Re-animation on page switch) */}
+          <div
             style={{
               display: "flex",
               alignItems: "center",
@@ -169,7 +304,7 @@ export default function Navbar({ role = "guru" }) {
                 {currentDate || "Memuat waktu..."}
               </span>
             </div>
-          </motion.div>
+          </div>
 
           {/* User Profile & Actions */}
           <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>

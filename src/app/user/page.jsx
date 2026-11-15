@@ -33,7 +33,8 @@ import {
   Search,
   Filter,
   ArrowRight,
-  UserPlus
+  UserPlus,
+  Palmtree
 } from "lucide-react";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
 
@@ -56,7 +57,21 @@ function formatMinutesToTime(totalMinutes) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-function evaluateAttendanceTiming(schedule, settings, dateObj = new Date()) {
+function evaluateAttendanceTiming(schedule, settings, dateObj = new Date(), activeHoliday = null) {
+  if (activeHoliday) {
+    return {
+      allowed: false,
+      phase: "holiday",
+      recordStatus: "Libur",
+      badgeText: `🌴 ${activeHoliday.tipe || "Libur"}`,
+      badgeColor: "#dc2626",
+      badgeBg: "#fef2f2",
+      badgeBorder: "#fca5a5",
+      message: `Hari ini adalah hari libur resmi madrasah: ${activeHoliday.nama_libur} (${activeHoliday.tipe}). Kegiatan belajar mengajar libur dan presensi ditutup.`,
+      keterangan: activeHoliday.nama_libur
+    };
+  }
+
   const day = dateObj.getDay();
   // Validasi Hari Libur Akhir Pekan (Sabtu & Minggu)
   if (day === 0 || day === 6) {
@@ -191,7 +206,21 @@ function evaluateAttendanceTiming(schedule, settings, dateObj = new Date()) {
 }
 
 // --- Helper Evaluasi Waktu Presensi Masuk & Pulang Pegawai ---
-function evaluatePegawaiTiming(mode, settings, dateObj = new Date()) {
+function evaluatePegawaiTiming(mode, settings, dateObj = new Date(), activeHoliday = null) {
+  if (activeHoliday) {
+    return {
+      allowed: false,
+      phase: "holiday",
+      recordStatus: "Libur",
+      badgeText: `🌴 ${activeHoliday.tipe || "Libur"}`,
+      badgeColor: "#dc2626",
+      badgeBg: "#fef2f2",
+      badgeBorder: "#fca5a5",
+      message: `Hari ini adalah hari libur resmi madrasah: ${activeHoliday.nama_libur} (${activeHoliday.tipe}). Presensi pegawai ditutup.`,
+      keterangan: activeHoliday.nama_libur
+    };
+  }
+
   const day = dateObj.getDay();
   // Validasi Hari Libur Akhir Pekan (Sabtu & Minggu)
   if (day === 0 || day === 6) {
@@ -306,6 +335,7 @@ export default function TeacherDashboard() {
   const [invalTeacherFilter, setInvalTeacherFilter] = useState("semua");
   const [invalClassFilter, setInvalClassFilter] = useState("semua");
   const [todayRecords, setTodayRecords] = useState([]);
+  const [holidaysList, setHolidaysList] = useState([]);
   const [gpsLocation, setGpsLocation] = useState({ lat: 0, lng: 0, string: "Presensi Kamera Device" });
   const [capturedPhoto, setCapturedPhoto] = useState(null);
   const [notes, setNotes] = useState("");
@@ -352,16 +382,18 @@ export default function TeacherDashboard() {
       const day = getTodayDayName();
       const todayDate = getTodayDateStr();
       try {
-        const [setRes, attRes] = await Promise.all([
+        const [setRes, attRes, holRes] = await Promise.all([
           Api.request("GET", "getSettings"),
           Api.request("GET", "getAttendance", {
             user_id: user.id || user.nip,
             tanggal: todayDate
-          })
+          }),
+          Api.request("GET", "getHolidays")
         ]);
 
         if (setRes && setRes.settings) setSettings(setRes.settings);
         if (attRes && attRes.attendance) setTodayRecords(attRes.attendance);
+        if (holRes && holRes.holidays) setHolidaysList(holRes.holidays);
 
         if (user.role !== "pegawai") {
           const [schedRes, allSchedRes, leavesRes, allAttRes] = await Promise.all([
@@ -500,6 +532,18 @@ export default function TeacherDashboard() {
   };
 
   const isWeekend = nowDate.getDay() === 0 || nowDate.getDay() === 6;
+
+  // Evaluasi apakah hari ini masuk rentang kalender hari libur madrasah / libur semester
+  const activeHoliday = useMemo(() => {
+    const todayStr = getTodayDateStr();
+    return (holidaysList || []).find((h) => {
+      const start = h.tgl_mulai;
+      const end = h.tgl_selesai || h.tgl_mulai;
+      return todayStr >= start && todayStr <= end;
+    }) || null;
+  }, [holidaysList]);
+  const isHoliday = Boolean(activeHoliday);
+
   const isSubstitute = !isPegawai && scheduleMode === "inval" && selectedSchedule;
   const isRapat = !isPegawai && scheduleMode === "rapat";
   const activeSchedule = attendanceType === "jadwal" && !isRapat ? selectedSchedule : null;
@@ -515,26 +559,44 @@ export default function TeacherDashboard() {
       message: `Hari ini adalah hari ${getTodayDayName()} (Akhir Pekan / Libur Sekolah). Kegiatan belajar mengajar libur dan presensi ditutup.`,
       keterangan: "Hari Libur"
     }
-    : isPegawai
-      ? evaluatePegawaiTiming(pegawaiMode, settings, nowDate)
-      : isRapat
-        ? {
-          allowed: true,
-          phase: "on_time",
-          recordStatus: "Hadir",
-          badgeText: "🟢 Presensi Tugas Kedinasan",
-          badgeColor: "#059669",
-          badgeBg: "#ecfdf5",
-          badgeBorder: "#a7f3d0",
-          message: "Presensi rapat dewan guru / tugas dinas bersama dibuka. Jam kelas dialihkan dan tercatat di LKB.",
-          keterangan: "Tugas Kedinasan / Rapat Resmi"
-        }
-        : evaluateAttendanceTiming(activeSchedule, settings, nowDate);
+    : isHoliday
+      ? {
+        allowed: false,
+        phase: "holiday",
+        recordStatus: "Libur",
+        badgeText: `🌴 Libur (${activeHoliday.nama_libur})`,
+        badgeColor: "#dc2626",
+        badgeBg: "#fef2f2",
+        badgeBorder: "#fca5a5",
+        message: `Hari ini adalah hari libur resmi madrasah: ${activeHoliday.nama_libur} (${activeHoliday.tipe}). Presensi kegiatan dan kehadiran ditutup secara otomatis.`,
+        keterangan: activeHoliday.nama_libur
+      }
+      : isPegawai
+        ? evaluatePegawaiTiming(pegawaiMode, settings, nowDate, activeHoliday)
+        : isRapat
+          ? {
+            allowed: true,
+            phase: "on_time",
+            recordStatus: "Hadir",
+            badgeText: "🟢 Presensi Tugas Kedinasan",
+            badgeColor: "#059669",
+            badgeBg: "#ecfdf5",
+            badgeBorder: "#a7f3d0",
+            message: "Presensi rapat dewan guru / tugas dinas bersama dibuka. Jam kelas dialihkan dan tercatat di LKB.",
+            keterangan: "Tugas Kedinasan / Rapat Resmi"
+          }
+          : evaluateAttendanceTiming(activeSchedule, settings, nowDate, activeHoliday);
 
   const handleAttendanceSubmit = async () => {
     setErrorNotice(null);
 
-    // 0. Validasi hari libur akhir pekan
+    // 0. Validasi hari libur resmi madrasah
+    if (isHoliday) {
+      setErrorNotice(`Presensi tidak dapat dilakukan: Hari ini adalah hari libur resmi madrasah (${activeHoliday.nama_libur})!`);
+      return;
+    }
+
+    // 0a. Validasi hari libur akhir pekan
     if (isWeekend) {
       setErrorNotice(`Presensi tidak dapat dilakukan pada hari libur akhir pekan (${getTodayDayName()})!`);
       return;
@@ -855,17 +917,7 @@ export default function TeacherDashboard() {
             <motion.div
               initial={{ opacity: 0, x: -15 }}
               animate={{ opacity: 1, x: 0 }}
-              className="glass-panel"
-              style={{
-                padding: "clamp(1.15rem, 2.5vw, 1.65rem)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1.15rem",
-                overflow: "hidden",
-                minWidth: 0,
-                width: "100%",
-                boxSizing: "border-box"
-              }}
+              className="glass-panel user-panel-card"
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
@@ -891,172 +943,217 @@ export default function TeacherDashboard() {
                 </span>
               </div>
 
-              {/* 2 Status Cards: Masuk & Pulang (Stack Vertikal Bersih & Responsif) */}
-              <div className="pegawai-cards-grid">
-                {/* 1. Presensi Masuk */}
-                <motion.div
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={() => setPegawaiMode("masuk")}
-                  className="pegawai-card-box"
+              {/* 2 Status Cards: Masuk & Pulang ATAU Info Hari Libur */}
+              {isHoliday ? (
+                <div
                   style={{
-                    padding: "1.1rem 1.25rem",
-                    cursor: "pointer",
-                    background: pegawaiMode === "masuk"
-                      ? (hasCheckIn ? "linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)" : "linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)")
-                      : (hasCheckIn ? "#f0fdf4" : "#ffffff"),
-                    border: `2px solid ${pegawaiMode === "masuk" ? "#059669" : (hasCheckIn ? "#86efac" : "var(--border-light)")}`,
-                    boxShadow: pegawaiMode === "masuk" ? "0 4px 16px rgba(5, 150, 105, 0.15)" : "var(--shadow-sm)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.65rem"
+                    textAlign: "center",
+                    padding: "2.5rem 1.25rem",
+                    background: "linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%)",
+                    borderRadius: "var(--radius-md)",
+                    border: "1.5px dashed #fca5a5"
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
-                      <div
+                  <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#fee2e2", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.75rem" }}>
+                    <Palmtree size={24} />
+                  </div>
+                  <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "0.15rem 0.55rem", borderRadius: "999px", background: "#fee2e2", color: "#b91c1c", border: "1px solid #fca5a5" }}>
+                    {activeHoliday.tipe}
+                  </span>
+                  <h4 style={{ fontSize: "1.08rem", fontWeight: 800, color: "#991b1b", margin: "0.4rem 0 0.25rem 0" }}>
+                    {activeHoliday.nama_libur}
+                  </h4>
+                  <p style={{ fontSize: "0.82rem", color: "#7f1d1d", maxWidth: "340px", margin: "0 auto", lineHeight: 1.5 }}>
+                    Hari ini adalah hari libur resmi madrasah ({activeHoliday.tipe}). Presensi pegawai diliburkan tanpa mengurangi rekap kehadiran.
+                  </p>
+                </div>
+              ) : isWeekend ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "2.5rem 1.25rem",
+                    background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                    borderRadius: "var(--radius-md)",
+                    border: "1.5px dashed #cbd5e1"
+                  }}
+                >
+                  <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#fee2e2", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.75rem" }}>
+                    <Clock size={24} />
+                  </div>
+                  <h4 style={{ fontSize: "1.05rem", fontWeight: 800, color: "var(--text-main)", marginBottom: "0.3rem" }}>
+                    Hari Libur Akhir Pekan ({getTodayDayName()})
+                  </h4>
+                  <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", maxWidth: "340px", margin: "0 auto", lineHeight: 1.5 }}>
+                    Madrasah menerapkan 5 hari kerja (Senin s/d Jumat). Presensi pegawai diliburkan pada hari Sabtu dan Minggu.
+                  </p>
+                </div>
+              ) : (
+                <div className="pegawai-cards-grid">
+                  {/* 1. Presensi Masuk */}
+                  <motion.div
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => setPegawaiMode("masuk")}
+                    className="pegawai-card-box"
+                    style={{
+                      padding: "1.1rem 1.25rem",
+                      cursor: "pointer",
+                      background: pegawaiMode === "masuk"
+                        ? (hasCheckIn ? "linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)" : "linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)")
+                        : (hasCheckIn ? "#f0fdf4" : "#ffffff"),
+                      border: `2px solid ${pegawaiMode === "masuk" ? "#059669" : (hasCheckIn ? "#86efac" : "var(--border-light)")}`,
+                      boxShadow: pegawaiMode === "masuk" ? "0 4px 16px rgba(5, 150, 105, 0.15)" : "var(--shadow-sm)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.65rem"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
+                        <div
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            borderRadius: "10px",
+                            background: hasCheckIn ? "#dcfce7" : "#fef3c7",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0
+                          }}
+                        >
+                          <Sun size={20} color={hasCheckIn ? "#059669" : "#d97706"} />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 800, fontSize: "0.98rem", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                            <span>Presensi Masuk</span>
+                            {pegawaiMode === "masuk" && (
+                              <span style={{ fontSize: "0.65rem", fontWeight: 700, padding: "0.15rem 0.45rem", borderRadius: "6px", background: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0" }}>
+                                Dipilih
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                            Jam Masuk: <strong>{formatTimeString(settings?.jam_masuk_mulai) || "06:30"} - {formatTimeString(settings?.jam_masuk_batas) || "07:15"}</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <span
                         style={{
-                          width: "36px",
-                          height: "36px",
-                          borderRadius: "10px",
-                          background: hasCheckIn ? "#dcfce7" : "#fef3c7",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
+                          fontSize: "0.72rem",
+                          fontWeight: 800,
+                          padding: "0.25rem 0.65rem",
+                          borderRadius: "999px",
+                          background: hasCheckIn ? "#dcfce7" : "#fffbeb",
+                          color: hasCheckIn ? "#166534" : "#b45309",
+                          border: `1px solid ${hasCheckIn ? "#bbf7d0" : "#fde68a"}`,
+                          whiteSpace: "nowrap",
                           flexShrink: 0
                         }}
                       >
-                        <Sun size={20} color={hasCheckIn ? "#059669" : "#d97706"} />
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: "0.98rem", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
-                          <span>Presensi Masuk</span>
-                          {pegawaiMode === "masuk" && (
-                            <span style={{ fontSize: "0.65rem", fontWeight: 700, padding: "0.15rem 0.45rem", borderRadius: "6px", background: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0" }}>
-                              Dipilih
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                          Jam Masuk: <strong>{formatTimeString(settings?.jam_masuk_mulai) || "06:30"} - {formatTimeString(settings?.jam_masuk_batas) || "07:15"}</strong>
-                        </div>
-                      </div>
+                        {hasCheckIn ? "✅ SUDAH ABSEN" : "⏳ BELUM ABSEN"}
+                      </span>
                     </div>
 
-                    <span
-                      style={{
-                        fontSize: "0.72rem",
-                        fontWeight: 800,
-                        padding: "0.25rem 0.65rem",
-                        borderRadius: "999px",
-                        background: hasCheckIn ? "#dcfce7" : "#fffbeb",
-                        color: hasCheckIn ? "#166534" : "#b45309",
-                        border: `1px solid ${hasCheckIn ? "#bbf7d0" : "#fde68a"}`,
-                        whiteSpace: "nowrap",
-                        flexShrink: 0
-                      }}
-                    >
-                      {hasCheckIn ? "✅ SUDAH ABSEN" : "⏳ BELUM ABSEN"}
-                    </span>
-                  </div>
+                    <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                      {hasCheckIn ? (
+                        <div style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "0.45rem 0.75rem", color: "#065f46", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.4rem" }}>
+                          <span>Tercatat: {checkInRecord?.jam_absen}</span>
+                          <span>Status: {checkInRecord?.status}</span>
+                        </div>
+                      ) : (
+                        <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", padding: "0.45rem 0.75rem", color: "#92400e", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                          <Clock size={14} style={{ flexShrink: 0 }} />
+                          <span>Toleransi keterlambatan {settings?.toleransi_menit || 15} menit setelah jam batas masuk.</span>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
 
-                  <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
-                    {hasCheckIn ? (
-                      <div style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "0.45rem 0.75rem", color: "#065f46", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.4rem" }}>
-                        <span>Tercatat: {checkInRecord?.jam_absen}</span>
-                        <span>Status: {checkInRecord?.status}</span>
+                  {/* 2. Presensi Pulang */}
+                  <motion.div
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => setPegawaiMode("pulang")}
+                    className="pegawai-card-box"
+                    style={{
+                      padding: "1.1rem 1.25rem",
+                      cursor: "pointer",
+                      background: pegawaiMode === "pulang"
+                        ? (hasCheckOut ? "linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)" : "linear-gradient(135deg, #eff6ff 0%, #ffffff 100%)")
+                        : (hasCheckOut ? "#f0fdf4" : "#ffffff"),
+                      border: `2px solid ${pegawaiMode === "pulang" ? "#2563eb" : (hasCheckOut ? "#86efac" : "var(--border-light)")}`,
+                      boxShadow: pegawaiMode === "pulang" ? "0 4px 16px rgba(37, 99, 235, 0.15)" : "var(--shadow-sm)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.65rem"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
+                        <div
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            borderRadius: "10px",
+                            background: hasCheckOut ? "#dcfce7" : "#e0e7ff",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0
+                          }}
+                        >
+                          <Moon size={20} color={hasCheckOut ? "#059669" : "#6366f1"} />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 800, fontSize: "0.98rem", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                            <span>Presensi Pulang</span>
+                            {pegawaiMode === "pulang" && (
+                              <span style={{ fontSize: "0.65rem", fontWeight: 700, padding: "0.15rem 0.45rem", borderRadius: "6px", background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe" }}>
+                                Dipilih
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                            Jam Kepulangan: Mulai Pukul <strong>{formatTimeString(settings?.jam_pulang_mulai) || "15:00"}</strong>
+                          </div>
+                        </div>
                       </div>
-                    ) : (
-                      <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", padding: "0.45rem 0.75rem", color: "#92400e", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                        <Clock size={14} style={{ flexShrink: 0 }} />
-                        <span>Toleransi keterlambatan {settings?.toleransi_menit || 15} menit setelah jam batas masuk.</span>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
 
-                {/* 2. Presensi Pulang */}
-                <motion.div
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={() => setPegawaiMode("pulang")}
-                  className="pegawai-card-box"
-                  style={{
-                    padding: "1.1rem 1.25rem",
-                    cursor: "pointer",
-                    background: pegawaiMode === "pulang"
-                      ? (hasCheckOut ? "linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)" : "linear-gradient(135deg, #eff6ff 0%, #ffffff 100%)")
-                      : (hasCheckOut ? "#f0fdf4" : "#ffffff"),
-                    border: `2px solid ${pegawaiMode === "pulang" ? "#2563eb" : (hasCheckOut ? "#86efac" : "var(--border-light)")}`,
-                    boxShadow: pegawaiMode === "pulang" ? "0 4px 16px rgba(37, 99, 235, 0.15)" : "var(--shadow-sm)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.65rem"
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
-                      <div
+                      <span
                         style={{
-                          width: "36px",
-                          height: "36px",
-                          borderRadius: "10px",
-                          background: hasCheckOut ? "#dcfce7" : "#e0e7ff",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
+                          fontSize: "0.72rem",
+                          fontWeight: 800,
+                          padding: "0.25rem 0.65rem",
+                          borderRadius: "999px",
+                          background: hasCheckOut ? "#dcfce7" : "#f1f5f9",
+                          color: hasCheckOut ? "#166534" : "#64748b",
+                          border: `1px solid ${hasCheckOut ? "#bbf7d0" : "#cbd5e1"}`,
+                          whiteSpace: "nowrap",
                           flexShrink: 0
                         }}
                       >
-                        <Moon size={20} color={hasCheckOut ? "#059669" : "#6366f1"} />
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: "0.98rem", color: "var(--text-main)", display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
-                          <span>Presensi Pulang</span>
-                          {pegawaiMode === "pulang" && (
-                            <span style={{ fontSize: "0.65rem", fontWeight: 700, padding: "0.15rem 0.45rem", borderRadius: "6px", background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe" }}>
-                              Dipilih
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                          Jam Kepulangan: Mulai Pukul <strong>{formatTimeString(settings?.jam_pulang_mulai) || "15:00"}</strong>
-                        </div>
-                      </div>
+                        {hasCheckOut ? "✅ SUDAH ABSEN" : "⏳ BELUM ABSEN"}
+                      </span>
                     </div>
 
-                    <span
-                      style={{
-                        fontSize: "0.72rem",
-                        fontWeight: 800,
-                        padding: "0.25rem 0.65rem",
-                        borderRadius: "999px",
-                        background: hasCheckOut ? "#dcfce7" : "#f1f5f9",
-                        color: hasCheckOut ? "#166534" : "#64748b",
-                        border: `1px solid ${hasCheckOut ? "#bbf7d0" : "#cbd5e1"}`,
-                        whiteSpace: "nowrap",
-                        flexShrink: 0
-                      }}
-                    >
-                      {hasCheckOut ? "✅ SUDAH ABSEN" : "⏳ BELUM ABSEN"}
-                    </span>
-                  </div>
-
-                  <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
-                    {hasCheckOut ? (
-                      <div style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "0.45rem 0.75rem", color: "#065f46", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.4rem" }}>
-                        <span>Tercatat: {checkOutRecord?.jam_absen}</span>
-                        <span>Status: Selesai Tugas</span>
-                      </div>
-                    ) : (
-                      <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.45rem 0.75rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                        <Clock size={14} style={{ flexShrink: 0 }} />
-                        <span>Presensi pulang dibuka setelah jam operasional kepulangan sekolah.</span>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              </div>
+                    <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                      {hasCheckOut ? (
+                        <div style={{ background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "0.45rem 0.75rem", color: "#065f46", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.4rem" }}>
+                          <span>Tercatat: {checkOutRecord?.jam_absen}</span>
+                          <span>Status: Selesai Tugas</span>
+                        </div>
+                      ) : (
+                        <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.45rem 0.75rem", color: "#64748b", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                          <Clock size={14} style={{ flexShrink: 0 }} />
+                          <span>Presensi pulang dibuka setelah jam operasional kepulangan sekolah.</span>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </div>
+              )}
 
               {/* Panduan Pegawai */}
               <div
@@ -1084,57 +1181,56 @@ export default function TeacherDashboard() {
             <motion.div
               initial={{ opacity: 0, x: -15 }}
               animate={{ opacity: 1, x: 0 }}
-              className="glass-panel"
-              style={{
-                padding: "clamp(1.15rem, 2.5vw, 1.65rem)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1.15rem",
-                overflow: "hidden",
-                minWidth: 0,
-                width: "100%",
-                boxSizing: "border-box"
-              }}
+              className="glass-panel user-panel-card"
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
                   {scheduleMode === "mandiri" ? (
                     <BookOpen size={20} color="#059669" style={{ flexShrink: 0 }} />
+                  ) : scheduleMode === "rapat" ? (
+                    <Briefcase size={20} color="#7c3aed" style={{ flexShrink: 0 }} />
                   ) : (
                     <Users size={20} color="#0284c7" style={{ flexShrink: 0 }} />
                   )}
-                  <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)", margin: 0 }}>
-                    {scheduleMode === "mandiri" ? "Jadwal Mengajar Saya" : "Jadwal Guru Pengganti (Gantikan Guru)"}
+                  <h2 style={{ fontSize: "1.12rem", fontWeight: 800, color: "var(--text-main)", margin: 0 }}>
+                    {scheduleMode === "mandiri"
+                      ? "Jadwal Mengajar Saya"
+                      : scheduleMode === "rapat"
+                        ? "Presensi Rapat"
+                        : "Jadwa Mengajar Guru"}
                   </h2>
                 </div>
                 <span
                   style={{
                     fontSize: "0.78rem",
-                    color: scheduleMode === "mandiri" ? "var(--primary)" : "#0284c7",
+                    color: scheduleMode === "mandiri"
+                      ? "var(--primary)"
+                      : scheduleMode === "rapat"
+                        ? "#7c3aed"
+                        : "#0284c7",
                     fontWeight: 700,
-                    background: scheduleMode === "mandiri" ? "var(--primary-light)" : "#e0f2fe",
-                    padding: "0.25rem 0.65rem",
+                    background: scheduleMode === "mandiri"
+                      ? "var(--primary-light)"
+                      : scheduleMode === "rapat"
+                        ? "#ede9fe"
+                        : "#e0f2fe",
+                    border: `1px solid ${scheduleMode === "mandiri" ? "var(--primary-border)" : scheduleMode === "rapat" ? "#ddd6fe" : "#bae6fd"}`,
+                    padding: "0.22rem 0.65rem",
                     borderRadius: "var(--radius-full)",
                     whiteSpace: "nowrap",
                     flexShrink: 0
                   }}
                 >
-                  {scheduleMode === "mandiri" ? `${schedules.length} Sesi` : `${invalSchedules.length} Kelas Tersedia`}
+                  {scheduleMode === "mandiri"
+                    ? `${schedules.length} Sesi`
+                    : scheduleMode === "rapat"
+                      ? (todayRecords.some(r => r.tipe_absen === "rapat" || r.jadwal_id === "RAPAT" || r.is_rapat) ? "✓ Sudah Terabsen" : "Agenda Kedinasan")
+                      : `${invalSchedules.length} Kelas Tersedia`}
                 </span>
               </div>
 
               {/* Tab Switcher: Jadwal Saya vs Guru Pengganti vs Rapat Dinas */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-                  gap: "0.45rem",
-                  background: "var(--bg-muted)",
-                  padding: "0.3rem",
-                  borderRadius: "12px",
-                  border: "1px solid var(--border-light)"
-                }}
-              >
+              <div className="user-tab-grid">
                 <button
                   type="button"
                   onClick={() => {
@@ -1145,32 +1241,24 @@ export default function TeacherDashboard() {
                       setNotes("");
                     }
                   }}
+                  className="user-tab-btn"
                   style={{
-                    padding: "0.6rem 0.5rem",
-                    borderRadius: "9px",
-                    border: "none",
-                    fontWeight: 700,
-                    fontSize: "0.84rem",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "0.4rem",
-                    transition: "all 0.2s ease",
                     background: scheduleMode === "mandiri" ? "#ffffff" : "transparent",
                     color: scheduleMode === "mandiri" ? "#059669" : "var(--text-secondary)",
                     boxShadow: scheduleMode === "mandiri" ? "0 2px 8px rgba(0, 0, 0, 0.08)" : "none"
                   }}
                 >
-                  <BookOpen size={16} />
-                  <span>Jadwal Saya</span>
+                  <BookOpen size={15} style={{ flexShrink: 0 }} />
+                  <span className="user-tab-label-desktop">Jadwal Saya</span>
+                  <span className="user-tab-label-mobile">Jadwal</span>
                   <span
                     style={{
-                      fontSize: "0.7rem",
-                      padding: "0.1rem 0.4rem",
+                      fontSize: "0.68rem",
+                      padding: "0.1rem 0.35rem",
                       borderRadius: "999px",
                       background: scheduleMode === "mandiri" ? "#ecfdf5" : "#e2e8f0",
-                      color: scheduleMode === "mandiri" ? "#059669" : "#64748b"
+                      color: scheduleMode === "mandiri" ? "#059669" : "#64748b",
+                      flexShrink: 0
                     }}
                   >
                     {schedules.length}
@@ -1188,32 +1276,24 @@ export default function TeacherDashboard() {
                       setNotes(`Menggantikan ${first.nama_guru} mengajar di kelas ${first.kelas} (${first.mapel})`);
                     }
                   }}
+                  className="user-tab-btn"
                   style={{
-                    padding: "0.6rem 0.5rem",
-                    borderRadius: "9px",
-                    border: "none",
-                    fontWeight: 700,
-                    fontSize: "0.84rem",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "0.4rem",
-                    transition: "all 0.2s ease",
                     background: scheduleMode === "inval" ? "#ffffff" : "transparent",
                     color: scheduleMode === "inval" ? "#0284c7" : "var(--text-secondary)",
                     boxShadow: scheduleMode === "inval" ? "0 2px 8px rgba(0, 0, 0, 0.08)" : "none"
                   }}
                 >
-                  <Users size={16} />
-                  <span>Gantikan Guru</span>
+                  <Users size={15} style={{ flexShrink: 0 }} />
+                  <span className="user-tab-label-desktop">Gantikan Guru</span>
+                  <span className="user-tab-label-mobile">Pengganti</span>
                   <span
                     style={{
-                      fontSize: "0.7rem",
-                      padding: "0.1rem 0.4rem",
+                      fontSize: "0.68rem",
+                      padding: "0.1rem 0.35rem",
                       borderRadius: "999px",
                       background: scheduleMode === "inval" ? "#e0f2fe" : "#e2e8f0",
-                      color: scheduleMode === "inval" ? "#0369a1" : "#64748b"
+                      color: scheduleMode === "inval" ? "#0369a1" : "#64748b",
+                      flexShrink: 0
                     }}
                   >
                     {invalSchedules.length}
@@ -1228,32 +1308,24 @@ export default function TeacherDashboard() {
                     setAttendanceType("rapat");
                     setNotes("");
                   }}
+                  className="user-tab-btn"
                   style={{
-                    padding: "0.6rem 0.5rem",
-                    borderRadius: "9px",
-                    border: "none",
-                    fontWeight: 700,
-                    fontSize: "0.84rem",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "0.4rem",
-                    transition: "all 0.2s ease",
                     background: scheduleMode === "rapat" ? "#ffffff" : "transparent",
                     color: scheduleMode === "rapat" ? "#7c3aed" : "var(--text-secondary)",
                     boxShadow: scheduleMode === "rapat" ? "0 2px 8px rgba(0, 0, 0, 0.08)" : "none"
                   }}
                 >
-                  <Briefcase size={16} />
-                  <span>Rapat</span>
+                  <Briefcase size={15} style={{ flexShrink: 0 }} />
+                  <span className="user-tab-label-desktop">Rapat Dinas</span>
+                  <span className="user-tab-label-mobile">Rapat</span>
                   <span
                     style={{
-                      fontSize: "0.7rem",
-                      padding: "0.1rem 0.4rem",
+                      fontSize: "0.68rem",
+                      padding: "0.1rem 0.35rem",
                       borderRadius: "999px",
                       background: scheduleMode === "rapat" ? "#ede9fe" : "#e2e8f0",
-                      color: scheduleMode === "rapat" ? "#7c3aed" : "#64748b"
+                      color: scheduleMode === "rapat" ? "#7c3aed" : "#64748b",
+                      flexShrink: 0
                     }}
                   >
                     Dinas
@@ -1350,7 +1422,30 @@ export default function TeacherDashboard() {
               {/* Konten Tab 1: Jadwal Mandiri */}
               {scheduleMode === "mandiri" && (
                 <>
-                  {isWeekend ? (
+                  {isHoliday ? (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "2.5rem 1.25rem",
+                        background: "linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%)",
+                        borderRadius: "var(--radius-md)",
+                        border: "1.5px dashed #fca5a5"
+                      }}
+                    >
+                      <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#fee2e2", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.75rem" }}>
+                        <Palmtree size={24} />
+                      </div>
+                      <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "0.15rem 0.55rem", borderRadius: "999px", background: "#fee2e2", color: "#b91c1c", border: "1px solid #fca5a5" }}>
+                        {activeHoliday.tipe}
+                      </span>
+                      <h4 style={{ fontSize: "1.08rem", fontWeight: 800, color: "#991b1b", margin: "0.4rem 0 0.25rem 0" }}>
+                        {activeHoliday.nama_libur}
+                      </h4>
+                      <p style={{ fontSize: "0.82rem", color: "#7f1d1d", maxWidth: "340px", margin: "0 auto", lineHeight: 1.5 }}>
+                        Hari ini adalah hari libur resmi madrasah. Seluruh kegiatan belajar mengajar diliburkan dan presensi dinonaktifkan.
+                      </p>
+                    </div>
+                  ) : isWeekend ? (
                     <div
                       style={{
                         textAlign: "center",
@@ -1392,7 +1487,7 @@ export default function TeacherDashboard() {
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
                       {schedules.map((item) => {
                         const isSelected = selectedSchedule && selectedSchedule.id === item.id && scheduleMode === "mandiri";
-                        const itemTiming = evaluateAttendanceTiming(item, settings, nowDate);
+                        const itemTiming = evaluateAttendanceTiming(item, settings, nowDate, activeHoliday);
                         const isDoneToday = todayRecords.some(
                           (r) =>
                             String(r.jadwal_id) === String(item.id) ||
@@ -1531,7 +1626,30 @@ export default function TeacherDashboard() {
               {/* Konten Tab 2: Jadwal Guru Pengganti */}
               {scheduleMode === "inval" && (
                 <>
-                  {invalSchedules.length === 0 ? (
+                  {isHoliday ? (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "2.5rem 1.25rem",
+                        background: "linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%)",
+                        borderRadius: "var(--radius-md)",
+                        border: "1.5px dashed #fca5a5"
+                      }}
+                    >
+                      <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#fee2e2", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.75rem" }}>
+                        <Palmtree size={24} />
+                      </div>
+                      <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "0.15rem 0.55rem", borderRadius: "999px", background: "#fee2e2", color: "#b91c1c", border: "1px solid #fca5a5" }}>
+                        {activeHoliday.tipe}
+                      </span>
+                      <h4 style={{ fontSize: "1.08rem", fontWeight: 800, color: "#991b1b", margin: "0.4rem 0 0.25rem 0" }}>
+                        {activeHoliday.nama_libur}
+                      </h4>
+                      <p style={{ fontSize: "0.82rem", color: "#7f1d1d", maxWidth: "340px", margin: "0 auto", lineHeight: 1.5 }}>
+                        Hari ini adalah hari libur resmi madrasah. Seluruh kelas diliburkan dan tidak ada penugasan guru pengganti.
+                      </p>
+                    </div>
+                  ) : invalSchedules.length === 0 ? (
                     <div
                       style={{
                         textAlign: "center",
@@ -1553,7 +1671,7 @@ export default function TeacherDashboard() {
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
                       {invalSchedules.map((item) => {
                         const isSelected = selectedSchedule && selectedSchedule.id === item.id && scheduleMode === "inval";
-                        const itemTiming = evaluateAttendanceTiming(item, settings, nowDate);
+                        const itemTiming = evaluateAttendanceTiming(item, settings, nowDate, activeHoliday);
                         const leaveInfo = getLeaveInfoForSchedule(item);
                         const attInfo = getAttendanceForSchedule(item);
                         const isDiisiSaya = attInfo && (
@@ -1734,34 +1852,75 @@ export default function TeacherDashboard() {
               {scheduleMode === "rapat" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
                   {(() => {
+                    if (isHoliday) {
+                      return (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "2.5rem 1.25rem",
+                            background: "linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%)",
+                            borderRadius: "var(--radius-md)",
+                            border: "1.5px dashed #fca5a5"
+                          }}
+                        >
+                          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#fee2e2", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 0.75rem" }}>
+                            <Palmtree size={24} />
+                          </div>
+                          <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "0.15rem 0.55rem", borderRadius: "999px", background: "#fee2e2", color: "#b91c1c", border: "1px solid #fca5a5" }}>
+                            {activeHoliday.tipe}
+                          </span>
+                          <h4 style={{ fontSize: "1.08rem", fontWeight: 800, color: "#991b1b", margin: "0.4rem 0 0.25rem 0" }}>
+                            {activeHoliday.nama_libur}
+                          </h4>
+                          <p style={{ fontSize: "0.82rem", color: "#7f1d1d", maxWidth: "340px", margin: "0 auto", lineHeight: 1.5 }}>
+                            Hari ini adalah hari libur resmi madrasah. Seluruh agenda kedinasan dan rapat dinonaktifkan.
+                          </p>
+                        </div>
+                      );
+                    }
+
                     const hasRapatToday = todayRecords.some(r => r.tipe_absen === "rapat" || r.jadwal_id === "RAPAT" || r.is_rapat);
                     const rapatRec = todayRecords.find(r => r.tipe_absen === "rapat" || r.jadwal_id === "RAPAT" || r.is_rapat);
 
                     if (hasRapatToday) {
                       return (
                         <div
+                          className="user-rapat-verified-card"
                           style={{
-                            padding: "1.25rem",
+                            padding: "1rem 1.15rem",
                             borderRadius: "12px",
                             background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)",
                             border: "1.5px solid #a7f3d0",
                             display: "flex",
-                            alignItems: "center",
-                            gap: "0.85rem"
+                            alignItems: "flex-start",
+                            gap: "0.75rem",
+                            boxSizing: "border-box"
                           }}
                         >
-                          <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "#d1fae5", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <CheckCircle2 size={24} />
+                          <div
+                            style={{
+                              width: "38px",
+                              height: "38px",
+                              borderRadius: "10px",
+                              background: "#d1fae5",
+                              color: "#059669",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0
+                            }}
+                          >
+                            <CheckCircle2 size={22} />
                           </div>
-                          <div>
-                            <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "#065f46" }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontWeight: 800, fontSize: "0.92rem", color: "#065f46", wordBreak: "break-word" }}>
                               Presensi Rapat Dinas Hari Ini Telah Terverifikasi!
                             </div>
-                            <div style={{ fontSize: "0.82rem", color: "#047857", marginTop: "2px" }}>
+                            <div style={{ fontSize: "0.8rem", color: "#047857", marginTop: "3px", wordBreak: "break-word" }}>
                               Agenda: <strong>{cleanRapatText(rapatRec?.keterangan || rapatRec?.catatan) || selectedRapatAgenda}</strong>
                             </div>
-                            <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
-                              Tercatat pukul <strong>{formatTimeString(rapatRec?.jam_absen) || rapatRec?.jam_absen} WITA</strong> • Masuk dalam butir laporan LKB bulan ini (Hadir Penuh 100%).
+                            <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "3px", wordBreak: "break-word", lineHeight: 1.4 }}>
+                              Tercatat pukul <strong>{formatTimeString(rapatRec?.jam_absen) || rapatRec?.jam_absen} WITA</strong> &bull; Masuk dalam butir laporan LKB bulan ini (Hadir Penuh 100%).
                             </div>
                           </div>
                         </div>
@@ -1770,27 +1929,29 @@ export default function TeacherDashboard() {
 
                     return (
                       <div
+                        className="user-rapat-form-card"
                         style={{
-                          padding: "1.25rem",
+                          padding: "1.1rem 1.15rem",
                           borderRadius: "12px",
                           background: "linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%)",
-                          border: "1.5px solid #ddd6fe"
+                          border: "1.5px solid #ddd6fe",
+                          boxSizing: "border-box"
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.6rem" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                            <Briefcase size={20} color="#7c3aed" />
-                            <h4 style={{ fontSize: "0.95rem", fontWeight: 800, color: "#5b21b6", margin: 0 }}>
-                              Agenda Rapat / Tugas Kedinasan Bersama
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.45rem", marginBottom: "0.55rem" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", minWidth: 0 }}>
+                            <Briefcase size={18} color="#7c3aed" style={{ flexShrink: 0 }} />
+                            <h4 style={{ fontSize: "0.92rem", fontWeight: 800, color: "#5b21b6", margin: 0 }}>
+                              Agenda Rapat & Tugas Kedinasan
                             </h4>
                           </div>
-                          <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "0.2rem 0.6rem", borderRadius: "999px", background: "#ede9fe", color: "#6d28d9", border: "1px solid #c4b5fd" }}>
+                          <span style={{ fontSize: "0.7rem", fontWeight: 800, padding: "0.15rem 0.55rem", borderRadius: "999px", background: "#ede9fe", color: "#6d28d9", border: "1px solid #c4b5fd" }}>
                             Status: Hadir Penuh (100%)
                           </span>
                         </div>
 
-                        <p style={{ fontSize: "0.8rem", color: "#6d28d9", margin: "0 0 1rem 0", lineHeight: 1.45 }}>
-                          Gunakan opsi ini saat seluruh guru mengadakan rapat atau kegiatan dinas resmi di sekolah. Jam mengajar Anda hari ini otomatis dialihkan sehingga Anda <strong>tidak alpa</strong> dan presensi langsung terdata dalam <strong>LKB</strong>.
+                        <p style={{ fontSize: "0.78rem", color: "#6d28d9", margin: "0 0 0.85rem 0", lineHeight: 1.45 }}>
+                          Gunakan opsi ini saat mengadakan rapat atau kegiatan dinas resmi di madrasah. Jam mengajar Anda otomatis dialihkan ke status <strong>Tugas Kedinasan (Hadir Penuh)</strong> di LKB.
                         </p>
 
                         <div style={{ marginBottom: "0.85rem" }}>
@@ -1847,26 +2008,26 @@ export default function TeacherDashboard() {
           <motion.div
             initial={{ opacity: 0, x: 15 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-panel"
-            style={{
-              padding: "clamp(1.15rem, 2.5vw, 1.65rem)",
-              display: "flex",
-              flexDirection: "column",
-              gap: "1.15rem",
-              overflow: "hidden",
-              minWidth: 0,
-              width: "100%",
-              boxSizing: "border-box"
-            }}
+            className="glass-panel user-panel-card"
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
-                <UserCheck size={20} color={isPegawai ? "#0284c7" : "#4f46e5"} style={{ flexShrink: 0 }} />
-                <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)", margin: 0 }}>
-                  {isPegawai ? "Formulir Presensi Pegawai" : "Formulir Presensi Mengajar"}
+                {isPegawai ? (
+                  <Briefcase size={20} color="#0284c7" style={{ flexShrink: 0 }} />
+                ) : scheduleMode === "rapat" ? (
+                  <Briefcase size={20} color="#7c3aed" style={{ flexShrink: 0 }} />
+                ) : (
+                  <UserCheck size={20} color="#4f46e5" style={{ flexShrink: 0 }} />
+                )}
+                <h2 style={{ fontSize: "1.12rem", fontWeight: 800, color: "var(--text-main)", margin: 0 }}>
+                  {isPegawai
+                    ? "Formulir Presensi Pegawai"
+                    : scheduleMode === "rapat"
+                      ? "Formulir Presensi Rapat Dinas"
+                      : "Formulir Presensi Mengajar"}
                 </h2>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", color: isPegawai ? "#0284c7" : "#4f46e5", fontWeight: 700, background: isPegawai ? "#f0f9ff" : "#eef2ff", padding: "0.3rem 0.65rem", borderRadius: "8px", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", color: isPegawai ? "#0284c7" : scheduleMode === "rapat" ? "#7c3aed" : "#4f46e5", fontWeight: 700, background: isPegawai ? "#f0f9ff" : scheduleMode === "rapat" ? "#ede9fe" : "#eef2ff", padding: "0.3rem 0.65rem", borderRadius: "8px", flexShrink: 0 }}>
                 <Clock size={14} />
                 <span>{nowDate.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
               </div>
@@ -1950,8 +2111,62 @@ export default function TeacherDashboard() {
               )}
             </AnimatePresence>
 
-            {/* Panel Konten Presensi: Ditutup jika Akhir Pekan atau Guru Tanpa Jadwal */}
-            {isWeekend ? (
+            {/* Panel Konten Presensi: Ditutup jika Libur Resmi, Akhir Pekan, atau Guru Tanpa Jadwal */}
+            {isHoliday ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "2.75rem 1.5rem",
+                  background: "linear-gradient(135deg, #ffffff 0%, #fff1f2 100%)",
+                  borderRadius: "var(--radius-md)",
+                  border: "1.5px dashed #fca5a5",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "0.85rem",
+                  marginTop: "0.5rem"
+                }}
+              >
+                <div
+                  style={{
+                    width: "56px",
+                    height: "56px",
+                    borderRadius: "16px",
+                    background: "#fee2e2",
+                    color: "#dc2626",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  <Palmtree size={28} />
+                </div>
+                <div>
+                  <span
+                    style={{
+                      fontSize: "0.72rem",
+                      fontWeight: 800,
+                      padding: "0.15rem 0.55rem",
+                      borderRadius: "999px",
+                      background: "#fee2e2",
+                      color: "#b91c1c",
+                      border: "1px solid #fca5a5"
+                    }}
+                  >
+                    {activeHoliday.tipe}
+                  </span>
+                  <div style={{ fontSize: "1.12rem", fontWeight: 800, color: "#991b1b", marginTop: "0.35rem" }}>
+                    Presensi Ditutup ({activeHoliday.nama_libur})
+                  </div>
+                </div>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", maxWidth: "340px", margin: 0, lineHeight: 1.55 }}>
+                  Hari ini adalah hari libur resmi madrasah. Seluruh sistem presensi kelas dan pegawai dikunci secara otomatis.
+                </p>
+                <div style={{ fontSize: "0.75rem", color: "#059669", background: "#ecfdf5", padding: "0.35rem 0.75rem", borderRadius: "8px", border: "1px solid #a7f3d0", fontWeight: 700 }}>
+                  ✓ Kehadiran dihitung libur resmi (Bukan Alpa)
+                </div>
+              </div>
+            ) : isWeekend ? (
               <div
                 style={{
                   textAlign: "center",

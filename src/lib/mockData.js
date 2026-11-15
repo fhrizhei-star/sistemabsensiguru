@@ -548,6 +548,32 @@ export const INITIAL_MOCK_DATA = {
       tanggal_verifikasi: "2026-10-31",
       created_at: "2026-10-30 14:00"
     }
+  ],
+  holidays: [
+    {
+      id: "HOL-001",
+      nama_libur: "Tahun Baru Masehi 2027",
+      tipe: "Libur Nasional",
+      tgl_mulai: "2027-01-01",
+      tgl_selesai: "2027-01-01",
+      keterangan: "Hari Libur Nasional Awal Tahun"
+    },
+    {
+      id: "HOL-002",
+      nama_libur: "Libur Semester Ganjil TA 2026/2027",
+      tipe: "Libur Semester",
+      tgl_mulai: "2026-12-21",
+      tgl_selesai: "2027-01-02",
+      keterangan: "Libur Penilaian Akhir Semester (PAS) Ganjil dan Pergantian Tahun"
+    },
+    {
+      id: "HOL-003",
+      nama_libur: "Hari Guru Nasional & Libur Madrasah",
+      tipe: "Libur Khusus Madrasah",
+      tgl_mulai: "2026-11-25",
+      tgl_selesai: "2026-11-25",
+      keterangan: "Peringatan Hari Guru Nasional & Apresiasi Pendidik Kemenag"
+    }
   ]
 };
 
@@ -566,6 +592,15 @@ export const MockDB = {
       if (!Array.isArray(data.schedules) || !Array.isArray(data.users)) {
         this.save(INITIAL_MOCK_DATA);
         return JSON.parse(JSON.stringify(INITIAL_MOCK_DATA));
+      }
+      if (!Array.isArray(data.holidays) || data.holidays.length === 0) {
+        data.holidays = INITIAL_MOCK_DATA.holidays || [];
+      } else {
+        INITIAL_MOCK_DATA.holidays.forEach(initH => {
+          if (!data.holidays.some(h => h.id === initH.id)) {
+            data.holidays.push(initH);
+          }
+        });
       }
       if (
         data.settings &&

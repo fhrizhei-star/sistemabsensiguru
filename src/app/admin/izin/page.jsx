@@ -79,7 +79,7 @@ export default function AdminIzinPage() {
       <div style={{ display: "flex", flex: 1 }}>
         <AdminSidebar />
 
-        <main style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
+        <main className="fade-in" style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
           {/* Header */}
           <div
             style={{
@@ -199,11 +199,8 @@ export default function AdminIzinPage() {
                   : "linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)";
 
                 return (
-                  <motion.div
+                  <div
                     key={item.id || idx}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.04 }}
                     className="glass-panel"
                     style={{
                       padding: "1.5rem",
@@ -292,7 +289,7 @@ export default function AdminIzinPage() {
                         </motion.button>
                       </div>
                     )}
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>

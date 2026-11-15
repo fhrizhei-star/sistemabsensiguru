@@ -534,7 +534,8 @@ export default function TeacherLkbPage() {
                 {/* Badge Status */}
                 <span
                   style={{
-                    fontSize: "0.75rem",
+                    textAlign: "center",
+                    fontSize: "0.65rem",
                     fontWeight: 800,
                     padding: "0.3rem 0.75rem",
                     borderRadius: "999px",
@@ -710,7 +711,7 @@ export default function TeacherLkbPage() {
               )}
 
               {monthlyAttendance.length === 0 && !isApproved && (
-                <div style={{ fontSize: "0.74rem", color: "#ef4444", marginTop: "0.4rem", textAlign: "center" }}>
+                <div style={{ fontSize: "0.55rem", color: "#ef4444", marginTop: "0.4rem", textAlign: "center" }}>
                   * Belum ada presensi kamera mengajar/kerja pada bulan ini
                 </div>
               )}
@@ -757,6 +758,7 @@ export default function TeacherLkbPage() {
 
                 <span
                   style={{
+                    textAlign: "center",
                     fontSize: "0.75rem",
                     fontWeight: 800,
                     padding: "0.3rem 0.75rem",

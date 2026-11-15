@@ -35,11 +35,20 @@ export const Auth = {
       sessionStorage.setItem(AUTH_STORAGE_KEY, dataStr);
       localStorage.removeItem(AUTH_STORAGE_KEY);
     }
+    // Reset state badge PLP setiap kali user login baru
+    try {
+      sessionStorage.removeItem("plp_card_hidden_session");
+      sessionStorage.removeItem("plp_card_start_time");
+    } catch (e) {}
   },
 
   logout() {
     if (typeof window === "undefined") return;
     sessionStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem(AUTH_STORAGE_KEY);
+    try {
+      sessionStorage.removeItem("plp_card_hidden_session");
+      sessionStorage.removeItem("plp_card_start_time");
+    } catch (e) {}
   }
 };

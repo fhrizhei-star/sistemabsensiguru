@@ -508,7 +508,7 @@ export default function AdminLkbPage({ fixedRole = null }) {
       <div className="no-print" style={{ display: "flex", flex: 1 }}>
         <AdminSidebar />
 
-        <main style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
+        <main className="fade-in" style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
           {/* Header Title */}
           <div
             style={{
@@ -761,7 +761,7 @@ export default function AdminLkbPage({ fixedRole = null }) {
                       Pilih ASN & Periode Bulan
                     </div>
                     <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-                      Dokumen resmi tabel 5 kolom otomatis tersusun dari data presensi kamera madrasah
+                      Dokumen resmi untuk Laporan Kinerja Pegawai
                     </div>
                   </div>
                 </div>

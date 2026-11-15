@@ -576,6 +576,19 @@ export const Api = {
           };
         }
 
+        // Cek apakah hari ini termasuk Hari Libur Nasional atau Libur Semester
+        const todayHoliday = (db.holidays || []).find((h) => {
+          const start = h.tgl_mulai;
+          const end = h.tgl_selesai || h.tgl_mulai;
+          return today >= start && today <= end;
+        });
+        if (todayHoliday) {
+          return {
+            success: false,
+            message: `Presensi tidak dapat dilakukan: Hari ini adalah hari libur resmi madrasah (${todayHoliday.nama_libur})!`
+          };
+        }
+
         const isPegawai = body.tipe_absen === "masuk" || body.tipe_absen === "pulang" || body.jadwal_id === "MASUK" || body.jadwal_id === "PULANG";
         const isRapat = body.tipe_absen === "rapat" || body.jadwal_id === "RAPAT" || body.is_rapat === true;
 
@@ -828,6 +841,38 @@ export const Api = {
         db.lkb = db.lkb.filter((l) => l.id !== id);
         MockDB.save(db);
         return { success: true, message: "Dokumen LKB berhasil dihapus" };
+      }
+
+      case "getHolidays": {
+        if (!Array.isArray(db.holidays)) db.holidays = [];
+        return { success: true, holidays: [...db.holidays] };
+      }
+
+      case "saveHoliday": {
+        if (!Array.isArray(db.holidays)) db.holidays = [];
+        const item = { ...body };
+        if (item.id) {
+          const idx = db.holidays.findIndex((h) => h.id === item.id);
+          if (idx !== -1) {
+            db.holidays[idx] = { ...db.holidays[idx], ...item, updated_at: new Date().toISOString() };
+          } else {
+            db.holidays.push(item);
+          }
+        } else {
+          item.id = "HOL-" + Date.now();
+          item.created_at = new Date().toISOString();
+          db.holidays.push(item);
+        }
+        MockDB.save(db);
+        return { success: true, message: "Hari libur berhasil disimpan", holiday: item, holidays: db.holidays };
+      }
+
+      case "deleteHoliday": {
+        if (!Array.isArray(db.holidays)) db.holidays = [];
+        const id = body?.id || params.id;
+        db.holidays = db.holidays.filter((h) => h.id !== id);
+        MockDB.save(db);
+        return { success: true, message: "Hari libur berhasil dihapus", holidays: db.holidays };
       }
 
       default:

@@ -239,7 +239,7 @@ function OfficialSchoolDocument({ data = [], settings = {}, currentUser = null, 
               <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "90px", color: "#ffffff" }}>Tanggal</th>
             )}
             <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>{isPegawai ? "Nama Pegawai" : "Nama Guru"}</th>
-            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", width: "120px", color: "#ffffff" }}>NIP</th>
+            <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>NIP</th>
             {isPegawai ? (
               <>
                 <th style={{ border: "1px solid #333", padding: "6px 8px", textAlign: "center", color: "#ffffff" }}>Jabatan / Unit Kerja</th>
@@ -1111,7 +1111,7 @@ export default function AdminRekapPage({ fixedRole = null }) {
       <Navbar role="admin" />
       <div className="no-print" style={{ display: "flex", flex: 1 }}>
         <AdminSidebar />
-        <main style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
+        <main className="fade-in" style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
 
           {/* Header */}
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginBottom: "1.25rem" }}>
@@ -1525,20 +1525,20 @@ export default function AdminRekapPage({ fixedRole = null }) {
                       </th>
                       {roleTab === "pegawai" ? (
                         <>
-                          <th style={{ padding: "1rem 1.25rem", color: "#0369a1", fontWeight: 800 }}>Jabatan / Unit Kerja</th>
-                          <th style={{ padding: "1rem 1.25rem", color: "#0369a1", fontWeight: 800 }}>Jenis Presensi</th>
-                          <th style={{ padding: "1rem 1.25rem", color: "#0369a1", fontWeight: 800 }}>Jam Kerja</th>
+                          <th style={{ padding: "1rem 1.25rem", color: "#0369a1", textAlign: "center", fontWeight: 800 }}>Jabatan / Unit Kerja</th>
+                          <th style={{ padding: "1rem 1.25rem", color: "#0369a1", textAlign: "center", fontWeight: 800 }}>Jenis Presensi</th>
+                          <th style={{ padding: "1rem 1.25rem", color: "#0369a1", textAlign: "center", fontWeight: 800 }}>Jam Kerja</th>
                         </>
                       ) : (
                         <>
                           <th style={{ padding: "1rem 1.25rem", color: "#065f46", fontWeight: 800 }}>Mata Pelajaran</th>
-                          <th style={{ padding: "1rem 1.25rem", color: "#065f46", fontWeight: 800 }}>Kelas & Sesi</th>
+                          <th style={{ padding: "1rem 1.25rem", color: "#065f46", textAlign: "center", fontWeight: 800, }}>Kelas & Sesi</th>
                         </>
                       )}
-                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", fontWeight: 800 }}>Jam Absen</th>
-                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", fontWeight: 800 }}>Status</th>
-                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", fontWeight: 800 }}>Persentase</th>
-                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", fontWeight: 700 }}>
+                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", textAlign: "center", fontWeight: 800 }}>Jam Absen</th>
+                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", textAlign: "center", fontWeight: 800 }}>Status</th>
+                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", textAlign: "center", fontWeight: 800 }}>Persentase</th>
+                      <th style={{ padding: "1rem 1.25rem", color: roleTab === "pegawai" ? "#0369a1" : "#065f46", textAlign: "center", fontWeight: 700 }}>
                         {roleTab === "pegawai" ? "Catatan Aktivitas" : "Keterangan"}
                       </th>
                     </tr>
@@ -1578,7 +1578,7 @@ export default function AdminRekapPage({ fixedRole = null }) {
                           background: idx % 2 === 0 ? "#ffffff" : (roleTab === "pegawai" ? "#fbfdff" : "#f8fffe")
                         }}>
                           <td style={{ padding: "1rem 1.25rem" }}>
-                            <div style={{ fontWeight: 700, color: "var(--text-main)", display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
+                            <div style={{ fontWeight: 700, color: "var(--text-main)", alignItems: "center", width: "120px" }}>
                               <span>{row.nama}</span>
                               {(row.is_pengganti || row.guru_asli_nama) && (
                                 <span
@@ -1611,48 +1611,51 @@ export default function AdminRekapPage({ fixedRole = null }) {
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>NIP: {row.nip || "-"}</div>
+                            <div style={{ fontSize: "0.55rem", color: "var(--text-muted)" }}>NIP: {row.nip || "-"}</div>
                           </td>
 
                           {roleTab === "pegawai" ? (
                             <>
-                              <td style={{ padding: "1rem 1.25rem", fontWeight: 600, color: "var(--text-main)" }}>
+                              <td style={{ textAlign: "center", padding: "1rem 1.25rem", fontWeight: 600, color: "var(--text-main)" }}>
                                 {row.kelas || row.mapel || "Tata Usaha / Administrasi"}
                               </td>
                               <td style={{ padding: "1rem 1.25rem" }}>
                                 {isPulang ? (
                                   <span style={{
+                                    textAlign: "center",
                                     display: "inline-flex", alignItems: "center", gap: "0.35rem",
                                     background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe",
-                                    padding: "0.22rem 0.65rem", borderRadius: "999px", fontSize: "0.76rem", fontWeight: 800
+                                    padding: "0.22rem 0.45rem", borderRadius: "9px", fontSize: "0.76rem", fontWeight: 800
                                   }}>
-                                    <Moon size={13} color="#2563eb" /> Presensi Pulang
+                                    Presensi Pulang
                                   </span>
                                 ) : (
                                   <span style={{
-                                    display: "inline-flex", alignItems: "center", gap: "0.35rem",
+                                    textAlign: "center",
+                                    display: "inline-flex", alignItems: "center", gap: "0.2rem",
                                     background: "#fffbeb", color: "#b45309", border: "1px solid #fde68a",
-                                    padding: "0.22rem 0.65rem", borderRadius: "999px", fontSize: "0.76rem", fontWeight: 800
+                                    padding: "0.22rem 0.45rem", borderRadius: "9px", fontSize: "0.76rem", fontWeight: 800
                                   }}>
-                                    <Sun size={13} color="#d97706" /> Presensi Masuk
+                                    Presensi Masuk
                                   </span>
                                 )}
                               </td>
-                              <td style={{ padding: "1rem 1.25rem", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                              <td style={{ textAlign: "center", padding: "1rem 1.25rem", fontSize: "0.82rem", color: "var(--text-secondary)", }}>
                                 {row.jam_jadwal || "-"}
                               </td>
                             </>
                           ) : (
                             <>
                               <td style={{ padding: "1rem 1.25rem", color: "#059669", fontWeight: 700 }}>{row.mapel || "-"}</td>
-                              <td style={{ padding: "1rem 1.25rem" }}>
-                                <span style={{ fontWeight: 600, color: "var(--text-main)" }}>{row.kelas || "-"}</span>
-                                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{row.jam_jadwal || "-"}</div>
+                              <td style={{ textAlign: "center", padding: "1rem 1.25rem", }}>
+                                <span style={{ fontWeight: 600, color: "var(--text-main)", }}>{row.kelas || "-"}</span>
+                                <div style={{ textAlign: "center", fontSize: "0.75rem", color: "var(--text-muted)", }}>{row.jam_jadwal || "-"}</div>
                               </td>
                             </>
                           )}
 
                           <td style={{
+                            textAlign: "center",
                             padding: "1rem 1.25rem",
                             fontFamily: "var(--font-mono)",
                             color: roleTab === "pegawai" ? "#0284c7" : "#059669",
@@ -1672,6 +1675,7 @@ export default function AdminRekapPage({ fixedRole = null }) {
                                 {rowPct}%
                               </span>
                               <span style={{
+
                                 fontSize: "0.68rem",
                                 fontWeight: 700,
                                 padding: "0.15rem 0.45rem",

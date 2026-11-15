@@ -145,6 +145,7 @@ export default function TeacherIzinPage() {
               </h1>
               <span
                 style={{
+                  textAlign: "center",
                   fontSize: "0.72rem",
                   fontWeight: 700,
                   padding: "0.25rem 0.65rem",
@@ -479,8 +480,8 @@ export default function TeacherIzinPage() {
                   const cardBg = isApproved
                     ? "linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)"
                     : isRejected
-                    ? "linear-gradient(135deg, #ffffff 0%, #fff1f2 100%)"
-                    : "linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)";
+                      ? "linear-gradient(135deg, #ffffff 0%, #fff1f2 100%)"
+                      : "linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)";
 
                   return (
                     <motion.div
@@ -513,13 +514,12 @@ export default function TeacherIzinPage() {
                           {item.tipe}
                         </span>
                         <span
-                          className={`badge-status ${
-                            isApproved
+                          className={`badge-status ${isApproved
                               ? "badge-hadir"
                               : isRejected
-                              ? "badge-alpha"
-                              : "badge-terlambat"
-                          }`}
+                                ? "badge-alpha"
+                                : "badge-terlambat"
+                            }`}
                           style={{ flexShrink: 0 }}
                         >
                           {item.status}

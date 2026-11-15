@@ -253,7 +253,7 @@ export default function AdminGuruPage() {
       <div style={{ display: "flex", flex: 1 }}>
         <AdminSidebar />
 
-        <main style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
+        <main className="fade-in" style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
           {/* Header */}
           <div
             style={{
@@ -343,16 +343,13 @@ export default function AdminGuruPage() {
             </div>
           </div>
 
-          {/* Teacher Cards Grid */}
+          {/* Teacher Cards Grid (Immediate Smooth Render) */}
           <div className="guru-grid-cards">
             {filteredTeachers.map((teacher, idx) => {
               const theme = GURU_CARD_THEMES[idx % GURU_CARD_THEMES.length];
               return (
-                <motion.div
+                <div
                   key={teacher.id || idx}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.04 }}
                   className="glass-panel guru-card"
                   style={{
                     padding: "1.15rem",
@@ -497,7 +494,7 @@ export default function AdminGuruPage() {
                       </button>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>

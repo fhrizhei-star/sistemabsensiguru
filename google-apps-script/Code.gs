@@ -22,6 +22,7 @@ const SHEET_ATTENDANCE = "ABSENSI_GURU";
 const SHEET_LEAVES = "IZIN_CUTI_GURU";
 const SHEET_SETTINGS = "PENGATURAN";
 const SHEET_LKB = "LKB_GURU";
+const SHEET_HOLIDAYS = "HARI_LIBUR";
 
 function onOpen() {
   initDatabase();
@@ -206,6 +207,18 @@ function initDatabase() {
     sheetLkb.getRange(1, 1, 1, 18).setFontWeight("bold").setBackground("#6366f1").setFontColor("#ffffff");
   }
 
+  // 7. Sheet HARI_LIBUR (Kalender Libur Nasional & Libur Semester)
+  let sheetHolidays = ss.getSheetByName(SHEET_HOLIDAYS);
+  if (!sheetHolidays) {
+    sheetHolidays = ss.insertSheet(SHEET_HOLIDAYS);
+    sheetHolidays.appendRow([
+      "id", "nama_libur", "tipe", "tgl_mulai", "tgl_selesai", "keterangan", "created_at"
+    ]);
+    sheetHolidays.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#991b1b").setFontColor("#ffffff");
+    sheetHolidays.appendRow(["HOL-001", "Tahun Baru Masehi", "Libur Nasional", "2027-01-01", "2027-01-01", "Tahun Baru Masehi", new Date()]);
+    sheetHolidays.appendRow(["HOL-002", "Libur Semester Ganjil TA 2026/2027", "Libur Semester", "2026-12-21", "2027-01-02", "Libur Akhir Semester Ganjil", new Date()]);
+  }
+
   return { success: true, message: "Database Absensi Mengajar Guru berhasil disiapkan!" };
 }
 
@@ -255,6 +268,9 @@ function doGet(e) {
         break;
       case "getLkb":
         result = getLkbHandler(e.parameter.user_id, e.parameter.bulan, e.parameter.tahun, e.parameter.status);
+        break;
+      case "getHolidays":
+        result = getHolidaysHandler();
         break;
       case "getDashboardStats":
         result = getDashboardStatsHandler(e.parameter.tanggal);
@@ -334,6 +350,12 @@ function doPost(e) {
         break;
       case "deleteUser":
         result = deleteUserHandler(data.id);
+        break;
+      case "saveHoliday":
+        result = saveHolidayHandler(data);
+        break;
+      case "deleteHoliday":
+        result = deleteHolidayHandler(data.id || (e && e.parameter ? e.parameter.id : null));
         break;
       case "updateSettings":
         result = updateSettingsHandler(data.settings);
@@ -633,6 +655,26 @@ function recordClassAttendanceHandler(data) {
 
     const todayStr = data.tanggal || Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
     const timeNowStr = data.jam_absen || Utilities.formatDate(new Date(), "GMT+8", "HH:mm:ss");
+
+    // 1b. Cek Hari Libur Nasional & Libur Semester dari Sheet HARI_LIBUR
+    const sheetHol = ss.getSheetByName(SHEET_HOLIDAYS);
+    if (sheetHol) {
+      const holRows = sheetHol.getDataRange().getValues();
+      for (let h = 1; h < holRows.length; h++) {
+        const hNama = String(holRows[h][1] || "Libur Resmi");
+        const rawMulai = holRows[h][3];
+        const rawSelesai = holRows[h][4] || rawMulai;
+        const hMulai = rawMulai instanceof Date ? Utilities.formatDate(rawMulai, "GMT+8", "yyyy-MM-dd") : String(rawMulai).trim().replace(/^'/, "");
+        const hSelesai = rawSelesai instanceof Date ? Utilities.formatDate(rawSelesai, "GMT+8", "yyyy-MM-dd") : String(rawSelesai).trim().replace(/^'/, "");
+
+        if (todayStr >= hMulai && todayStr <= hSelesai) {
+          return {
+            success: false,
+            message: "Presensi ditolak: Hari ini adalah hari libur madrasah (" + hNama + "). Presensi dinonaktifkan!"
+          };
+        }
+      }
+    }
 
     // Cek apakah guru sudah pernah absen untuk jadwal ini pada tanggal yang sama
     const rows = sheet.getDataRange().getValues();
@@ -2399,4 +2441,95 @@ function menuEnkripsiPassword() {
       : "Kini database akun di Google Sheets jauh lebih aman dan terjaga kerahasiaannya!"),
     ui.ButtonSet.OK
   );
+}
+
+/**
+ * ====================================================================
+ * MANAJEMEN KALENDER HARI LIBUR & LIBUR SEMESTER (SHEET HARI_LIBUR)
+ * ====================================================================
+ */
+function getHolidaysHandler() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_HOLIDAYS);
+  if (!sheet) {
+    initDatabase();
+    sheet = ss.getSheetByName(SHEET_HOLIDAYS);
+  }
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return { success: true, holidays: [] };
+
+  const holidays = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r[0]) continue;
+    const formatGasDate = function(val) {
+      if (!val) return "";
+      if (val instanceof Date) return Utilities.formatDate(val, "GMT+8", "yyyy-MM-dd");
+      return String(val).trim().replace(/^'/, "");
+    };
+
+    holidays.push({
+      id: String(r[0]),
+      nama_libur: String(r[1] || ""),
+      tipe: String(r[2] || "Libur Nasional"),
+      tgl_mulai: formatGasDate(r[3]),
+      tgl_selesai: formatGasDate(r[4]),
+      keterangan: String(r[5] || ""),
+      created_at: r[6]
+    });
+  }
+  return { success: true, holidays: holidays };
+}
+
+function saveHolidayHandler(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_HOLIDAYS);
+  if (!sheet) {
+    initDatabase();
+    sheet = ss.getSheetByName(SHEET_HOLIDAYS);
+  }
+
+  const id = data.id || ("HOL-" + new Date().getTime());
+  const nama = sanitizeSheetCell(data.nama_libur || "Hari Libur");
+  const tipe = sanitizeSheetCell(data.tipe || "Libur Nasional");
+  const tglMulai = String(data.tgl_mulai || "").trim();
+  const tglSelesai = String(data.tgl_selesai || tglMulai).trim();
+  const keterangan = sanitizeSheetCell(data.keterangan || "-");
+
+  const rows = sheet.getDataRange().getValues();
+  let foundRow = -1;
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(id)) {
+      foundRow = i + 1;
+      break;
+    }
+  }
+
+  if (foundRow !== -1) {
+    sheet.getRange(foundRow, 2, 1, 5).setValues([[
+      nama, tipe, "'" + tglMulai, "'" + tglSelesai, keterangan
+    ]]);
+  } else {
+    sheet.appendRow([
+      id, nama, tipe, "'" + tglMulai, "'" + tglSelesai, keterangan, new Date()
+    ]);
+  }
+
+  return { success: true, message: "Data hari libur berhasil disimpan!" };
+}
+
+function deleteHolidayHandler(id) {
+  if (!id) return { success: false, message: "ID hari libur diperlukan!" };
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_HOLIDAYS);
+  if (!sheet) return { success: false, message: "Sheet HARI_LIBUR tidak ditemukan!" };
+
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(id)) {
+      sheet.deleteRow(i + 1);
+      return { success: true, message: "Hari libur berhasil dihapus!" };
+    }
+  }
+  return { success: false, message: "Data hari libur tidak ditemukan!" };
 }

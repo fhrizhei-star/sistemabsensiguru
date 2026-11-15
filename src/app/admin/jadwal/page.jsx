@@ -365,7 +365,7 @@ export default function AdminJadwalPage() {
       <div style={{ display: "flex", flex: 1 }}>
         <AdminSidebar />
 
-        <main style={{ flex: 1, padding: "2rem", overflowX: "hidden", maxWidth: "1600px" }}>
+        <main className="fade-in" style={{ flex: 1, padding: "2rem", overflowX: "hidden", maxWidth: "1600px" }}>
           {/* Header Title & Action */}
           <div
             style={{
@@ -1035,11 +1035,8 @@ export default function AdminJadwalPage() {
               {sortedSchedules.map((item, idx) => {
                 const theme = CARD_THEMES[idx % CARD_THEMES.length];
                 return (
-                  <motion.div
+                  <div
                     key={item.id || idx}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.03 }}
                     className="glass-panel"
                     style={{
                       padding: "1.15rem",
@@ -1198,7 +1195,7 @@ export default function AdminJadwalPage() {
                         <Trash2 size={13} />
                       </button>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>

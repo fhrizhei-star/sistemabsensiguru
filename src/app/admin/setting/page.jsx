@@ -7,7 +7,7 @@ import Navbar from "@/components/Navbar";
 import AdminSidebar from "@/components/AdminSidebar";
 import { Auth } from "@/lib/auth";
 import { Api } from "@/lib/api";
-import { MockDB } from "@/lib/mockData";
+import { MockDB, getTodayDateStr } from "@/lib/mockData";
 import {
   Sliders,
   MapPin,
@@ -29,7 +29,12 @@ import {
   Image as ImageIcon,
   FileText,
   Trash2,
-  Sparkles
+  Sparkles,
+  Calendar,
+  Plus,
+  X,
+  Palmtree,
+  AlertTriangle
 } from "lucide-react";
 import { DEFAULT_SAMPLE_TTD, DEFAULT_SAMPLE_STEMPEL } from "@/lib/signatureAssets";
 
@@ -72,6 +77,19 @@ export default function AdminSettingPage() {
   const [telegramTestResult, setTelegramTestResult] = useState(null);
   const [showTelegramGuide, setShowTelegramGuide] = useState(false);
 
+  // States untuk Manajemen Kalender Libur & Libur Semester
+  const [holidays, setHolidays] = useState([]);
+  const [holidayModalOpen, setHolidayModalOpen] = useState(false);
+  const [holidayForm, setHolidayForm] = useState({
+    id: "",
+    nama_libur: "",
+    tipe: "Libur Nasional",
+    tgl_mulai: getTodayDateStr(),
+    tgl_selesai: getTodayDateStr(),
+    keterangan: ""
+  });
+  const [holidaySaving, setHolidaySaving] = useState(false);
+
   useEffect(() => {
     const user = Auth.getCurrentUser();
     if (!user || user.role !== "admin") {
@@ -91,7 +109,17 @@ export default function AdminSettingPage() {
       }
     };
 
+    const loadHolidays = async () => {
+      try {
+        const res = await Api.request("GET", "getHolidays");
+        if (res && res.holidays) {
+          setHolidays(res.holidays);
+        }
+      } catch (err) {}
+    };
+
     loadSettings();
+    loadHolidays();
   }, [router]);
 
   const handleGetCurrentLocation = () => {
@@ -250,6 +278,60 @@ export default function AdminSettingPage() {
     }
   };
 
+  const handleOpenAddHoliday = () => {
+    setHolidayForm({
+      id: "",
+      nama_libur: "",
+      tipe: "Libur Nasional",
+      tgl_mulai: getTodayDateStr(),
+      tgl_selesai: getTodayDateStr(),
+      keterangan: ""
+    });
+    setHolidayModalOpen(true);
+  };
+
+  const handleSaveHoliday = async (e) => {
+    e.preventDefault();
+    if (!holidayForm.nama_libur.trim()) {
+      alert("Harap masukkan nama hari libur!");
+      return;
+    }
+    if (holidayForm.tgl_mulai > (holidayForm.tgl_selesai || holidayForm.tgl_mulai)) {
+      alert("Tanggal mulai tidak boleh melebihi tanggal selesai!");
+      return;
+    }
+
+    setHolidaySaving(true);
+    try {
+      const res = await Api.request("POST", "saveHoliday", {}, holidayForm);
+      if (res && res.success) {
+        setHolidayModalOpen(false);
+        const resList = await Api.request("GET", "getHolidays");
+        if (resList && resList.holidays) setHolidays(resList.holidays);
+      } else {
+        alert(res?.message || "Gagal menyimpan data hari libur");
+      }
+    } catch (err) {
+      alert("Terjadi kesalahan saat menyimpan hari libur");
+    } finally {
+      setHolidaySaving(false);
+    }
+  };
+
+  const handleDeleteHoliday = async (id, nama) => {
+    if (!window.confirm(`Yakin ingin menghapus hari libur "${nama}"?`)) return;
+    try {
+      const res = await Api.request("POST", "deleteHoliday", { id }, { id });
+      if (res && res.success) {
+        setHolidays((prev) => prev.filter((h) => h.id !== id));
+      } else {
+        alert(res?.message || "Gagal menghapus hari libur");
+      }
+    } catch (err) {
+      alert("Terjadi kesalahan saat menghapus hari libur");
+    }
+  };
+
   const handleResetData = () => {
     if (confirm("Apakah Anda yakin ingin me-reset cache data lokal? Semua data di cache lokal browser akan diperbarui dari server.")) {
       MockDB.reset();
@@ -265,7 +347,7 @@ export default function AdminSettingPage() {
       <div style={{ display: "flex", flex: 1 }}>
         <AdminSidebar />
 
-        <main style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
+        <main className="fade-in" style={{ flex: 1, padding: "2rem", overflowX: "hidden" }}>
           {/* Header */}
           <div
             style={{
@@ -765,7 +847,217 @@ export default function AdminSettingPage() {
               </div>
             </div>
 
+            {/* Section 2b: Manajemen Kalender Libur Madrasah & Libur Semester */}
+            <div
+              className="glass-panel"
+              style={{
+                padding: "1.75rem",
+                border: "1.5px solid #fca5a5",
+                background: "linear-gradient(135deg, #ffffff 0%, #fff1f2 100%)",
+                boxShadow: "0 4px 20px rgba(239, 68, 68, 0.06)"
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "0.75rem",
+                  marginBottom: "1.25rem"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <div
+                    style={{
+                      width: "38px",
+                      height: "38px",
+                      borderRadius: "10px",
+                      background: "#fee2e2",
+                      border: "1.5px solid #fca5a5",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#dc2626",
+                      flexShrink: 0
+                    }}
+                  >
+                    <Calendar size={20} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: "1.15rem", fontWeight: 800, color: "var(--text-main)", margin: 0 }}>
+                      Kalender Libur Madrasah & Libur Semester
+                    </h2>
+                    <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
+                      Atur hari libur nasional, cuti bersama, dan rentang libur semester agar presensi terkunci otomatis tanpa dianggap alpa.
+                    </p>
+                  </div>
+                </div>
 
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/admin")}
+                    className="btn-neon-secondary"
+                    style={{ fontSize: "0.82rem", padding: "0.5rem 0.85rem", display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+                  >
+                    <Calendar size={14} color="#ea580c" /> Buka Kalender Dashboard
+                  </button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    onClick={handleOpenAddHoliday}
+                    className="btn-neon-primary"
+                    style={{
+                      background: "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)",
+                      border: "none",
+                      boxShadow: "0 4px 14px rgba(220, 38, 38, 0.25)",
+                      fontSize: "0.84rem",
+                      padding: "0.55rem 1.15rem",
+                      color: "#ffffff"
+                    }}
+                  >
+                    <Plus size={16} /> Tambah Hari Libur
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Daftar Hari Libur Terjadwal */}
+              {holidays.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "2.5rem 1rem",
+                    borderRadius: "12px",
+                    border: "1.5px dashed #fca5a5",
+                    background: "#ffffff",
+                    color: "var(--text-muted)"
+                  }}
+                >
+                  <Palmtree size={32} color="#dc2626" style={{ margin: "0 auto 0.5rem", opacity: 0.7 }} />
+                  <div style={{ fontWeight: 700, fontSize: "0.92rem", color: "var(--text-main)", marginBottom: "0.2rem" }}>
+                    Belum Ada Jadwal Hari Libur
+                  </div>
+                  <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0 }}>
+                    Sistem saat ini hanya mengunci presensi pada akhir pekan (Sabtu & Minggu). Klik tombol di atas untuk menambah hari libur nasional atau libur semester.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  {holidays.map((item) => {
+                    const todayStr = getTodayDateStr();
+                    const startStr = item.tgl_mulai;
+                    const endStr = item.tgl_selesai || startStr;
+                    const isOngoing = todayStr >= startStr && todayStr <= endStr;
+                    const isUpcoming = todayStr < startStr;
+                    const isPast = todayStr > endStr;
+
+                    const d1 = new Date(startStr);
+                    const d2 = new Date(endStr);
+                    const diffDays = !isNaN(d1.getTime()) && !isNaN(d2.getTime()) && d2 >= d1
+                      ? Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1
+                      : 1;
+
+                    return (
+                      <div
+                        key={item.id}
+                        style={{
+                          padding: "0.95rem 1.15rem",
+                          borderRadius: "12px",
+                          background: isOngoing ? "#fef2f2" : "#ffffff",
+                          border: `1.5px solid ${isOngoing ? "#f87171" : "#fecaca"}`,
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          flexWrap: "wrap",
+                          gap: "0.75rem"
+                        }}
+                      >
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.3rem" }}>
+                            <span style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--text-main)" }}>
+                              {item.nama_libur}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: "0.7rem",
+                                fontWeight: 800,
+                                padding: "0.15rem 0.55rem",
+                                borderRadius: "999px",
+                                background: item.tipe === "Libur Semester" ? "#ede9fe" : item.tipe === "Cuti Bersama" ? "#fef3c7" : "#fee2e2",
+                                color: item.tipe === "Libur Semester" ? "#6d28d9" : item.tipe === "Cuti Bersama" ? "#b45309" : "#dc2626",
+                                border: `1px solid ${item.tipe === "Libur Semester" ? "#c4b5fd" : item.tipe === "Cuti Bersama" ? "#fde68a" : "#fca5a5"}`
+                              }}
+                            >
+                              {item.tipe}
+                            </span>
+                            {isOngoing && (
+                              <span
+                                style={{
+                                  fontSize: "0.7rem",
+                                  fontWeight: 800,
+                                  padding: "0.15rem 0.55rem",
+                                  borderRadius: "999px",
+                                  background: "#ecfdf5",
+                                  color: "#059669",
+                                  border: "1px solid #a7f3d0"
+                                }}
+                              >
+                                🌴 Sedang Aktif Hari Ini
+                              </span>
+                            )}
+                            {isPast && (
+                              <span style={{ fontSize: "0.68rem", color: "#94a3b8", fontWeight: 600 }}>
+                                (Selesai)
+                              </span>
+                            )}
+                          </div>
+
+                          <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", fontWeight: 600 }}>
+                              <Calendar size={13} color="#dc2626" />
+                              {item.tgl_mulai} {item.tgl_selesai && item.tgl_selesai !== item.tgl_mulai ? `s/d ${item.tgl_selesai}` : ""}
+                            </span>
+                            <span style={{ fontSize: "0.72rem", background: "#f1f5f9", padding: "0.1rem 0.45rem", borderRadius: "4px", color: "#475569", fontWeight: 700 }}>
+                              {diffDays} Hari
+                            </span>
+                            {item.keterangan && item.keterangan !== "-" && (
+                              <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                                &bull; {item.keterangan}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteHoliday(item.id, item.nama_libur)}
+                          title="Hapus hari libur ini"
+                          style={{
+                            width: "34px",
+                            height: "34px",
+                            borderRadius: "8px",
+                            background: "#fee2e2",
+                            border: "1px solid #fecaca",
+                            color: "#dc2626",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            transition: "all 0.2s"
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Section 3: Integrasi Server Database Cloud */}
             <div className="glass-panel" style={{ padding: "1.75rem", border: "1.5px solid #bae6fd", background: "linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)" }}>
@@ -1099,6 +1391,205 @@ export default function AdminSettingPage() {
               </button>
             </div>
           </form>
+
+          {/* Modal Dialog Tambah Hari Libur */}
+          <AnimatePresence>
+            {holidayModalOpen && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 9999,
+                  background: "rgba(15, 23, 42, 0.65)",
+                  backdropFilter: "blur(4px)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "1rem"
+                }}
+                onClick={(e) => {
+                  if (e.target === e.currentTarget && !holidaySaving) setHolidayModalOpen(false);
+                }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                  transition={{ duration: 0.2 }}
+                  className="glass-panel"
+                  style={{
+                    width: "100%",
+                    maxWidth: "500px",
+                    background: "#ffffff",
+                    borderRadius: "16px",
+                    padding: "1.75rem",
+                    border: "1.5px solid #fecaca",
+                    boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)",
+                    position: "relative"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                      <div
+                        style={{
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "10px",
+                          background: "#fee2e2",
+                          border: "1px solid #fca5a5",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#dc2626"
+                        }}
+                      >
+                        <Calendar size={18} />
+                      </div>
+                      <div>
+                        <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--text-main)", margin: 0 }}>
+                          Tambah Hari Libur Baru
+                        </h3>
+                        <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)", margin: 0 }}>
+                          Atur jadwal libur nasional atau rentang libur semester
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => !holidaySaving && setHolidayModalOpen(false)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "var(--text-muted)",
+                        cursor: "pointer",
+                        padding: "0.3rem",
+                        borderRadius: "6px"
+                      }}
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveHoliday} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.35rem" }}>
+                        Nama Hari Libur *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="contoh: Libur Semester Ganjil TA 2026/2027"
+                        value={holidayForm.nama_libur}
+                        onChange={(e) => setHolidayForm({ ...holidayForm, nama_libur: e.target.value })}
+                        className="neon-input"
+                        style={{ width: "100%", padding: "0.65rem 0.85rem", fontSize: "0.85rem" }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.35rem" }}>
+                        Kategori Libur *
+                      </label>
+                      <select
+                        value={holidayForm.tipe}
+                        onChange={(e) => setHolidayForm({ ...holidayForm, tipe: e.target.value })}
+                        className="neon-input"
+                        style={{ width: "100%", padding: "0.65rem 0.85rem", fontSize: "0.85rem", background: "#ffffff" }}
+                      >
+                        <option value="Libur Nasional">Libur Nasional</option>
+                        <option value="Cuti Bersama">Cuti Bersama</option>
+                        <option value="Libur Semester">Libur Semester (Siswa & Guru)</option>
+                        <option value="Libur Khusus Madrasah">Libur Khusus Madrasah</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.35rem" }}>
+                          Tanggal Mulai *
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          value={holidayForm.tgl_mulai}
+                          onChange={(e) => {
+                            const newStart = e.target.value;
+                            setHolidayForm(prev => ({
+                              ...prev,
+                              tgl_mulai: newStart,
+                              // If end date is empty or earlier than new start, update end date to match start
+                              tgl_selesai: !prev.tgl_selesai || prev.tgl_selesai < newStart ? newStart : prev.tgl_selesai
+                            }));
+                          }}
+                          className="neon-input"
+                          style={{ width: "100%", padding: "0.6rem 0.75rem", fontSize: "0.85rem" }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.35rem" }}>
+                          Tanggal Selesai *
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          value={holidayForm.tgl_selesai}
+                          min={holidayForm.tgl_mulai}
+                          onChange={(e) => setHolidayForm({ ...holidayForm, tgl_selesai: e.target.value })}
+                          className="neon-input"
+                          style={{ width: "100%", padding: "0.6rem 0.75rem", fontSize: "0.85rem" }}
+                        />
+                      </div>
+                    </div>
+                    <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "-0.5rem" }}>
+                      *Untuk libur 1 hari saja, samakan Tanggal Mulai dan Tanggal Selesai.
+                    </span>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.35rem" }}>
+                        Keterangan Tambahan (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="contoh: Sesuai SKB 3 Menteri atau Kalender Pendidikan Kemenag"
+                        value={holidayForm.keterangan}
+                        onChange={(e) => setHolidayForm({ ...holidayForm, keterangan: e.target.value })}
+                        className="neon-input"
+                        style={{ width: "100%", padding: "0.65rem 0.85rem", fontSize: "0.85rem" }}
+                      />
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "0.75rem", marginTop: "0.75rem" }}>
+                      <button
+                        type="button"
+                        disabled={holidaySaving}
+                        onClick={() => setHolidayModalOpen(false)}
+                        className="btn-neon-secondary"
+                        style={{ padding: "0.6rem 1.25rem", fontSize: "0.84rem" }}
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={holidaySaving}
+                        className="btn-neon-primary"
+                        style={{
+                          background: "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)",
+                          border: "none",
+                          boxShadow: "0 4px 14px rgba(220, 38, 38, 0.25)",
+                          padding: "0.6rem 1.4rem",
+                          fontSize: "0.84rem",
+                          color: "#ffffff"
+                        }}
+                      >
+                        {holidaySaving ? "Menyimpan..." : "Simpan Hari Libur"}
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
         </main>
       </div>
     </>
