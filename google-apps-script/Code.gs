@@ -452,20 +452,44 @@ function getSettingsHandler() {
 
 function updateSettingsHandler(newSettings) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_SETTINGS);
+  let sheet = ss.getSheetByName(SHEET_SETTINGS);
+  if (!sheet) {
+    initDatabase();
+    sheet = ss.getSheetByName(SHEET_SETTINGS);
+  }
   const rows = sheet.getDataRange().getValues();
 
   for (let key in newSettings) {
+    let val = newSettings[key];
+
+    // Auto-upload gambar TTD & Stempel ke Google Drive jika berupa Base64 besar
+    if ((key === "ttd_kepsek_url" || key === "stempel_sekolah_url") && typeof val === "string") {
+      if (val.indexOf("data:image/") === 0 && val.indexOf("data:image/svg+xml") === -1 && val.length > 500) {
+        try {
+          const driveUrl = uploadBase64ToDrive(val, key + "_" + (new Date().getTime()), "ASET_MADRASAH");
+          if (driveUrl) {
+            val = driveUrl;
+          }
+        } catch (eDrive) {
+          Logger.log("Drive upload skipped for " + key + ": " + eDrive.toString());
+        }
+      }
+      // Keamanan ekstra: Jika string masih > 49.000 karakter, potong agar Google Sheets tidak throw Exception
+      if (typeof val === "string" && val.length > 49000) {
+        val = val.substring(0, 49000);
+      }
+    }
+
     let found = false;
     for (let i = 1; i < rows.length; i++) {
       if (rows[i][0] == key) {
-        sheet.getRange(i + 1, 2).setValue(newSettings[key]);
+        sheet.getRange(i + 1, 2).setValue(val);
         found = true;
         break;
       }
     }
     if (!found) {
-      sheet.appendRow([key, newSettings[key], ""]);
+      sheet.appendRow([key, val, ""]);
     }
   }
 

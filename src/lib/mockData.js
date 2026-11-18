@@ -4,6 +4,8 @@
  * MTsN GOWA (Production Ready)
  */
 
+import { DEFAULT_SAMPLE_TTD, DEFAULT_SAMPLE_STEMPEL } from "./signatureAssets";
+
 export const STORAGE_KEY = "ABSENSI_GURU_DATABASE_NEXT_V2";
 
 export function getTodayDateStr() {
@@ -33,6 +35,8 @@ export const INITIAL_MOCK_DATA = {
     nip_kepsek: "196907031992031001",
     operator_nama: "",
     operator_nip: "",
+    ttd_kepsek_url: DEFAULT_SAMPLE_TTD,
+    stempel_sekolah_url: DEFAULT_SAMPLE_STEMPEL,
     toleransi_menit: 15,
     jam_masuk_mulai: "06:30",
     jam_masuk_batas: "07:15",

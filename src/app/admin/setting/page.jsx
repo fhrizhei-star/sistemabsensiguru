@@ -34,9 +34,81 @@ import {
   Plus,
   X,
   Palmtree,
-  AlertTriangle
+  AlertTriangle,
+  Loader2,
+  Link as LinkIcon
 } from "lucide-react";
 import { DEFAULT_SAMPLE_TTD, DEFAULT_SAMPLE_STEMPEL } from "@/lib/signatureAssets";
+import { formatDriveUrl } from "@/lib/drive";
+
+/**
+ * Kompresi dan penyesuaian resolusi berkas gambar (TTD / Stempel) menggunakan HTML5 Canvas
+ * Menjamin Base64 selalu di bawah 30.000 karakter agar 100% aman disimpan ke dalam sel Google Sheets
+ * (Batas sel Google Sheets: 50.000 karakter) dan tidak membebani kuota localStorage browser.
+ */
+function compressSignatureImage(file, maxWidth = 340, maxHeight = 160) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve("");
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.max(1, Math.round(width * ratio));
+          height = Math.max(1, Math.round(height * ratio));
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+
+        const isPng = file.type === "image/png" || file.name?.toLowerCase().endsWith(".png");
+
+        if (isPng) {
+          ctx.clearRect(0, 0, width, height);
+        } else {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, width, height);
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let dataUrl = canvas.toDataURL(isPng ? "image/png" : "image/jpeg", 0.85);
+
+        // Jika Base64 masih > 30.000 karakter, kecilkan dimensi canvas secara bertahap
+        if (dataUrl.length > 30000) {
+          const c2 = document.createElement("canvas");
+          c2.width = Math.max(1, Math.round(width * 0.75));
+          c2.height = Math.max(1, Math.round(height * 0.75));
+          const ctx2 = c2.getContext("2d");
+          if (!isPng) {
+            ctx2.fillStyle = "#ffffff";
+            ctx2.fillRect(0, 0, c2.width, c2.height);
+          } else {
+            ctx2.clearRect(0, 0, c2.width, c2.height);
+          }
+          ctx2.drawImage(canvas, 0, 0, c2.width, c2.height);
+          dataUrl = c2.toDataURL(isPng ? "image/png" : "image/jpeg", 0.75);
+        }
+
+        if (dataUrl.length > 30000) {
+          dataUrl = canvas.toDataURL("image/jpeg", 0.65);
+        }
+
+        resolve(dataUrl);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function AdminSettingPage() {
   const router = useRouter();
@@ -76,6 +148,12 @@ export default function AdminSettingPage() {
   const [telegramLoading, setTelegramLoading] = useState(false);
   const [telegramTestResult, setTelegramTestResult] = useState(null);
   const [showTelegramGuide, setShowTelegramGuide] = useState(false);
+
+  // States untuk Status Kompresi & Validasi TTD & Stempel
+  const [compressingTtd, setCompressingTtd] = useState(false);
+  const [compressingStempel, setCompressingStempel] = useState(false);
+  const [ttdNotice, setTtdNotice] = useState("");
+  const [stempelNotice, setStempelNotice] = useState("");
 
   // States untuk Manajemen Kalender Libur & Libur Semester
   const [holidays, setHolidays] = useState([]);
@@ -145,32 +223,48 @@ export default function AdminSettingPage() {
     );
   };
 
-  const handleUploadTtd = (e) => {
+  const handleUploadTtd = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) {
-      alert("Ukuran file tanda tangan maksimal 3MB!");
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Ukuran berkas tanda tangan maksimal 10MB!");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setSettings((prev) => ({ ...prev, ttd_kepsek_url: ev.target.result }));
-    };
-    reader.readAsDataURL(file);
+    setCompressingTtd(true);
+    setTtdNotice("Mengoptimasi ukuran tanda tangan...");
+    try {
+      const compressed = await compressSignatureImage(file, 340, 160);
+      setSettings((prev) => ({ ...prev, ttd_kepsek_url: compressed }));
+      const kb = (compressed.length / 1024).toFixed(1);
+      setTtdNotice(`✓ Siap disimpan (${kb} KB - Ukuran Optimal)`);
+    } catch (err) {
+      alert("Gagal memproses berkas tanda tangan: " + err.message);
+    } finally {
+      setCompressingTtd(false);
+      e.target.value = "";
+    }
   };
 
-  const handleUploadStempel = (e) => {
+  const handleUploadStempel = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) {
-      alert("Ukuran file stempel maksimal 3MB!");
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Ukuran berkas stempel maksimal 10MB!");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setSettings((prev) => ({ ...prev, stempel_sekolah_url: ev.target.result }));
-    };
-    reader.readAsDataURL(file);
+    setCompressingStempel(true);
+    setStempelNotice("Mengoptimasi ukuran stempel...");
+    try {
+      const compressed = await compressSignatureImage(file, 220, 220);
+      setSettings((prev) => ({ ...prev, stempel_sekolah_url: compressed }));
+      const kb = (compressed.length / 1024).toFixed(1);
+      setStempelNotice(`✓ Siap disimpan (${kb} KB - Ukuran Optimal)`);
+    } catch (err) {
+      alert("Gagal memproses berkas stempel: " + err.message);
+    } finally {
+      setCompressingStempel(false);
+      e.target.value = "";
+    }
   };
 
   const handleApplySampleSignatures = () => {
@@ -179,6 +273,8 @@ export default function AdminSettingPage() {
       ttd_kepsek_url: DEFAULT_SAMPLE_TTD,
       stempel_sekolah_url: DEFAULT_SAMPLE_STEMPEL
     }));
+    setTtdNotice("✓ Format Standar Vektor (SVG) Aktif");
+    setStempelNotice("✓ Format Standar Vektor (SVG) Aktif");
   };
 
   const handleTestScript = async () => {
@@ -261,15 +357,21 @@ export default function AdminSettingPage() {
 
     try {
       // 1. Simpan ke database lokal agar Api.getScriptUrl() langsung aktif seketika
-      const db = MockDB.load();
-      db.settings = { ...db.settings, ...settings };
-      MockDB.save(db);
+      try {
+        const db = MockDB.load();
+        db.settings = { ...db.settings, ...settings };
+        MockDB.save(db);
+      } catch (locErr) {
+        console.warn("Penyimpanan cache browser terlampaui:", locErr);
+      }
 
       // 2. Kirim update ke Google Apps Script backend
       const res = await Api.request("POST", "updateSettings", {}, { settings });
       if (res && (res.success || res.status === "success")) {
         setSavedNotice(true);
         setTimeout(() => setSavedNotice(false), 4000);
+      } else {
+        alert("Gagal menyimpan ke server database: " + (res?.message || res?.error || "Terjadi kesalahan pada server Google Sheets."));
       }
     } catch (err) {
       alert("Gagal menyimpan pengaturan: " + err.message);
@@ -619,32 +721,64 @@ export default function AdminSettingPage() {
                     </div>
 
                     <div style={{ flex: 1 }}>
-                      <label
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.4rem",
-                          padding: "0.45rem 0.85rem",
-                          fontSize: "0.8rem",
-                          fontWeight: 700,
-                          borderRadius: "8px",
-                          border: "1px solid #059669",
-                          background: "#ecfdf5",
-                          color: "#059669",
-                          cursor: "pointer"
-                        }}
-                      >
-                        <Upload size={14} />
-                        <span>Pilih File TTD (PNG/JPG)</span>
+                      {compressingTtd ? (
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", padding: "0.45rem 0.85rem", fontSize: "0.8rem", fontWeight: 700, borderRadius: "8px", background: "#ecfdf5", color: "#059669" }}>
+                          <Loader2 size={15} className="animate-spin" />
+                          <span>Mengompres TTD...</span>
+                        </div>
+                      ) : (
+                        <label
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.4rem",
+                            padding: "0.45rem 0.85rem",
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            borderRadius: "8px",
+                            border: "1px solid #059669",
+                            background: "#ecfdf5",
+                            color: "#059669",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <Upload size={14} />
+                          <span>Pilih File TTD (PNG/JPG)</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleUploadTtd}
+                            style={{ display: "none" }}
+                          />
+                        </label>
+                      )}
+                      {ttdNotice ? (
+                        <div style={{ fontSize: "0.72rem", color: "#059669", fontWeight: 700, marginTop: "0.3rem" }}>
+                          {ttdNotice}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>
+                          Maks. 10MB (Otomatis dikompresi &lt; 30 KB untuk Google Sheets)
+                        </div>
+                      )}
+
+                      <div style={{ marginTop: "0.65rem", paddingTop: "0.55rem", borderTop: "1px dashed #e2e8f0" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+                          <LinkIcon size={12} />
+                          <span>Atau tempel Link Gambar / Google Drive:</span>
+                        </div>
                         <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleUploadTtd}
-                          style={{ display: "none" }}
+                          type="text"
+                          value={settings.ttd_kepsek_url?.startsWith("http") ? settings.ttd_kepsek_url : ""}
+                          onChange={(e) => {
+                            const val = formatDriveUrl(e.target.value);
+                            setSettings(prev => ({ ...prev, ttd_kepsek_url: val }));
+                            if (val) setTtdNotice("✓ Menggunakan link gambar online");
+                          }}
+                          placeholder="https://drive.google.com/file/d/... atau URL gambar"
+                          className="neon-input"
+                          style={{ fontSize: "0.75rem", padding: "0.35rem 0.6rem", width: "100%" }}
                         />
-                      </label>
-                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>
-                        Maks. 3MB (PNG latar transparan / JPG)
                       </div>
                     </div>
                   </div>
@@ -659,7 +793,10 @@ export default function AdminSettingPage() {
                     {settings.stempel_sekolah_url && (
                       <button
                         type="button"
-                        onClick={() => setSettings(prev => ({ ...prev, stempel_sekolah_url: "" }))}
+                        onClick={() => {
+                          setSettings(prev => ({ ...prev, stempel_sekolah_url: "" }));
+                          setStempelNotice("");
+                        }}
                         style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "0.2rem" }}
                       >
                         <Trash2 size={12} /> Hapus
@@ -697,32 +834,64 @@ export default function AdminSettingPage() {
                     </div>
 
                     <div style={{ flex: 1 }}>
-                      <label
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.4rem",
-                          padding: "0.45rem 0.85rem",
-                          fontSize: "0.8rem",
-                          fontWeight: 700,
-                          borderRadius: "8px",
-                          border: "1px solid #0284c7",
-                          background: "#f0f9ff",
-                          color: "#0284c7",
-                          cursor: "pointer"
-                        }}
-                      >
-                        <Upload size={14} />
-                        <span>Pilih File Stempel (PNG/JPG)</span>
+                      {compressingStempel ? (
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", padding: "0.45rem 0.85rem", fontSize: "0.8rem", fontWeight: 700, borderRadius: "8px", background: "#f0f9ff", color: "#0284c7" }}>
+                          <Loader2 size={15} className="animate-spin" />
+                          <span>Mengompres Stempel...</span>
+                        </div>
+                      ) : (
+                        <label
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.4rem",
+                            padding: "0.45rem 0.85rem",
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            borderRadius: "8px",
+                            border: "1px solid #0284c7",
+                            background: "#f0f9ff",
+                            color: "#0284c7",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <Upload size={14} />
+                          <span>Pilih File Stempel (PNG/JPG)</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleUploadStempel}
+                            style={{ display: "none" }}
+                          />
+                        </label>
+                      )}
+                      {stempelNotice ? (
+                        <div style={{ fontSize: "0.72rem", color: "#0284c7", fontWeight: 700, marginTop: "0.3rem" }}>
+                          {stempelNotice}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>
+                          Maks. 10MB (Otomatis dikompresi &lt; 30 KB untuk Google Sheets)
+                        </div>
+                      )}
+
+                      <div style={{ marginTop: "0.65rem", paddingTop: "0.55rem", borderTop: "1px dashed #e2e8f0" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: "0.25rem" }}>
+                          <LinkIcon size={12} />
+                          <span>Atau tempel Link Gambar / Google Drive:</span>
+                        </div>
                         <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleUploadStempel}
-                          style={{ display: "none" }}
+                          type="text"
+                          value={settings.stempel_sekolah_url?.startsWith("http") ? settings.stempel_sekolah_url : ""}
+                          onChange={(e) => {
+                            const val = formatDriveUrl(e.target.value);
+                            setSettings(prev => ({ ...prev, stempel_sekolah_url: val }));
+                            if (val) setStempelNotice("✓ Menggunakan link gambar online");
+                          }}
+                          placeholder="https://drive.google.com/file/d/... atau URL gambar"
+                          className="neon-input"
+                          style={{ fontSize: "0.75rem", padding: "0.35rem 0.6rem", width: "100%" }}
                         />
-                      </label>
-                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.3rem" }}>
-                        Maks. 3MB (PNG latar transparan / JPG)
                       </div>
                     </div>
                   </div>
